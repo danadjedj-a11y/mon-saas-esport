@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Auth from './Auth'
 import Dashboard from './Dashboard' // <--- Nouveau
 import Tournament from './Tournament'
+import JoinButton from './JoinButton';
 
 function App() {
   const [session, setSession] = useState(null)
