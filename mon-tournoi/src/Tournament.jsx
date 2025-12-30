@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; // Ajout de useNavigate
 import { supabase } from './supabaseClient';
 import confetti from 'canvas-confetti'; // <--- LA MAGIE
+import JoinButton from './JoinButton'       // <--- 2. Importe le bouton ici
+import CheckInButton from './CheckInButton';
+import Chat from './Chat';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -126,6 +129,7 @@ export default function Tournament({ session }) {
     const s1 = parseInt(scoreA);
     const s2 = parseInt(scoreB);
 
+    // 1. On sauvegarde le score du match
     await supabase.from('matches').update({ score_p1: s1, score_p2: s2, status: 'completed' }).eq('id', currentMatch.id);
 
     if (s1 !== s2) {
@@ -138,13 +142,22 @@ export default function Tournament({ session }) {
         
         // Si c'est la FINALE (pas de round suivant)
         const totalRounds = Math.max(...matches.map(m => m.round_number));
+        
         if (currentMatch.round_number === totalRounds) {
             // C'EST GAGNÉ !
             triggerConfetti();
             const winnerName = s1 > s2 ? currentMatch.player1_name : currentMatch.player2_name;
             setWinnerName(winnerName);
+
+            // 👇👇👇 NOUVEAU : On dit à la base de données que c'est FINI 👇👇👇
+            await supabase
+              .from('tournaments')
+              .update({ status: 'completed' }) 
+              .eq('id', id); // 'id' vient de useParams() au début du fichier
+            // 👆👆👆 FIN DU NOUVEAU 👆👆👆
+
         } else {
-            // Avancement normal
+            // Avancement normal vers le round suivant
             const nextRoundMatches = matches.filter(m => m.round_number === nextRound).sort((a,b) => a.match_number - b.match_number);
             const nextMatch = nextRoundMatches[Math.floor(myIndex / 2)];
             if (nextMatch) {
@@ -203,27 +216,61 @@ export default function Tournament({ session }) {
         </div>
       )}
 
+      {tournoi.status === 'draft' && (
+        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          
+          {/* Bouton d'inscription */}
+          <JoinButton 
+            tournamentId={id} 
+            supabase={supabase} 
+            session={session} 
+          />
+
+          {/* NOUVEAU : Bouton de Check-in */}
+          <CheckInButton 
+            tournamentId={id} 
+            supabase={supabase} 
+            session={session} 
+          />
+
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', alignItems:'flex-start' }}>
         {/* COLONNE GAUCHE */}
-        <div style={{ flex: '1', minWidth: '300px', maxWidth: '400px', background: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
-          <div style={{padding:'15px', borderBottom:'1px solid #333'}}>
-            <h3 style={{margin:0}}>Joueurs</h3>
-          </div>
-          {tournoi.status === 'draft' && (
-             <div style={{display:'flex', padding:'10px', gap:'10px'}}>
-               <input type="text" placeholder="Ajouter joueur..." value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)} onKeyDown={e=>e.key==='Enter' && addParticipant()} style={{flex:1, padding:'8px', background:'#111', border:'1px solid #444', color:'white', borderRadius:'4px'}} />
-               <button onClick={addParticipant} style={{background:'#4ade80', border:'none', borderRadius:'4px', padding:'0 15px', fontWeight:'bold'}}>+</button>
-             </div>
-          )}
-          <ul style={{listStyle:'none', padding:0, margin:0, maxHeight:'500px', overflowY:'auto'}}>
-            {participants.map(p => (
-                <li key={p.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between'}}>
-                    <span>{p.name}</span>
-                    {isOwner && <button onClick={()=>removeParticipant(p.id)} style={{background:'transparent', border:'none', color:'#666', cursor:'pointer'}}>✕</button>}
-                </li>
-            ))}
-          </ul>
-        </div>
+<div style={{ flex: '1', minWidth: '300px', maxWidth: '400px', background: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
+  <div style={{padding:'15px', borderBottom:'1px solid #333'}}>
+    <h3 style={{margin:0}}>Joueurs</h3>
+  </div>
+  
+  {tournoi.status === 'draft' && (
+      <div style={{display:'flex', padding:'10px', gap:'10px'}}>
+        <input type="text" placeholder="Ajouter joueur..." value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)} onKeyDown={e=>e.key==='Enter' && addParticipant()} style={{flex:1, padding:'8px', background:'#111', border:'1px solid #444', color:'white', borderRadius:'4px'}} />
+        <button onClick={addParticipant} style={{background:'#4ade80', border:'none', borderRadius:'4px', padding:'0 15px', fontWeight:'bold'}}>+</button>
+      </div>
+  )}
+
+  <ul style={{listStyle:'none', padding:0, margin:0, maxHeight:'300px', overflowY:'auto'}}> {/* J'ai réduit le maxHeight de 500 à 300 pour laisser de la place au chat */}
+    {participants.map(p => (
+        <li key={p.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between'}}>
+            <span>{p.name}</span>
+            {isOwner && <button onClick={()=>removeParticipant(p.id)} style={{background:'transparent', border:'none', color:'#666', cursor:'pointer'}}>✕</button>}
+        </li>
+    ))}
+  </ul>
+
+  {/* --- AJOUT DU CHAT ICI (Juste après le </ul>) --- */}
+  <div style={{ borderTop: '1px solid #333', padding: '15px' }}>
+    <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>💬 Chat</h3>
+    <Chat 
+      tournamentId={id} 
+      session={session} 
+      supabase={supabase} 
+    />
+  </div>
+  {/* --------------------------------------------- */}
+
+</div>
 
         {/* COLONNE DROITE (ARBRE) */}
         <div style={{ flex: '3', minWidth:'300px', overflowX:'auto' }}>
@@ -245,6 +292,7 @@ export default function Tournament({ session }) {
                                 <div style={{padding:'10px', display:'flex', justifyContent:'space-between', background: m.score_p2 > m.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px'}}>
                                     <span style={{color: m.player2_id ? 'white' : '#666', fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal'}}>{m.player2_name}</span>
                                     <span>{m.score_p2}</span>
+                                    
                                 </div>
                             </div>
                         ))}

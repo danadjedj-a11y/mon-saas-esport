@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Auth from './Auth'
 import Dashboard from './Dashboard' // <--- Nouveau
 import Tournament from './Tournament'
-import JoinButton from './JoinButton';
+import Profile from './Profile';
 
 function App() {
   const [session, setSession] = useState(null)
@@ -42,6 +42,7 @@ function App() {
         <Route path="/tournament/:id" element={<Tournament session={session} />} />
         {/* Redirection si route inconnue */}
         <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/profile" element={<Profile session={session} />} />
       </Routes>
     </Router>
   )
