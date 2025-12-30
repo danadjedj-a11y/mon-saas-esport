@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-// REMPLACE CES VALEURS PAR LES TIENNES !
-// Tu les trouves sur Supabase dans : Settings (roue dentée bas gauche) > API
-const supabaseUrl = 'https://tyjhbfvuhggtehmspayo.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5amhiZnZ1aGdndGVobXNwYXlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMjc4MjAsImV4cCI6MjA4MjYwMzgyMH0.xNkDmaqaSeC-K1SwPnOOIfkXmS6-Jy512rmlwrMrNI4'
+// On utilise les "variables magiques" (Environment Variables)
+// Cela permet de sécuriser ton site et de le faire marcher sur Vercel
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
