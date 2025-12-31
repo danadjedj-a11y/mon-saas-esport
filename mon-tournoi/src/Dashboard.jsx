@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { Link } from 'react-router-dom';
 
 export default function Dashboard({ session }) {
   const [tournaments, setTournaments] = useState([]);
@@ -92,10 +93,10 @@ export default function Dashboard({ session }) {
         
         <div style={{ display: 'flex', gap: '10px' }}>
           <button 
-            onClick={createTournament}
-            style={{ padding: '10px 20px', background: '#3498db', border: 'none', borderRadius: '5px', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+            onClick={() => navigate('/create-tournament')} 
+            style={{ /* garde ton style actuel */ }}
           >
-            + Créer un tournoi
+            + Créer un Tournoi
           </button>
 
           <button 
@@ -105,11 +106,30 @@ export default function Dashboard({ session }) {
             Déconnexion
           </button>
           <button 
-  onClick={() => navigate('/profile')} 
-  style={{ background: '#9b59b6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
->
-  👤 Profil
-</button>
+            onClick={() => navigate('/profile')} 
+            style={{ background: '#9b59b6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            👤 Profil
+          </button>
+          <button onClick={() => navigate('/create-team')} style={{ margin: '10px', padding: '10px', background: '#2ecc71' }}>
+            🛡️ Créer une Team
+          </button>
+         <Link 
+            to="/my-team"
+            style={{ 
+              display: 'inline-block', // Important pour que ça ressemble à un bouton
+              margin: '10px', 
+              padding: '10px', 
+              background: '#2ecc71', 
+              color: 'white', 
+              textDecoration: 'none', // Enlève le soulignement du lien
+              borderRadius: '5px', 
+              fontWeight: 'bold',
+              cursor: 'pointer' 
+            }}
+          >
+            🛡️ Mon Équipe
+          </Link>
         </div>
       </div>
 

@@ -1,0 +1,123 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function CreateTournament({ session, supabase }) {
+  const [name, setName] = useState('');
+  const [game, setGame] = useState('Valorant');
+  const [format, setFormat] = useState('elimination'); // Par défaut : Arbre
+  const [date, setDate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // 1. Création du tournoi dans la base de données
+      const { data, error } = await supabase
+        .from('tournaments')
+        .insert([
+          { 
+            name, 
+            game, 
+            start_date: date, 
+            owner_id: session.user.id,
+            status: 'draft',
+            format: format // On enregistre le choix (elimination ou round_robin)
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // 2. Redirection vers la page de gestion du tournoi
+      navigate(`/tournament/${data.id}`);
+
+    } catch (error) {
+      alert('Erreur lors de la création : ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '600px', margin: '40px auto', padding: '40px', background: '#1a1a1a', borderRadius: '15px', color: 'white', border: '1px solid #333' }}>
+      <button onClick={() => navigate('/dashboard')} style={{background:'transparent', border:'none', color:'#888', cursor:'pointer', marginBottom:'20px'}}>← Annuler</button>
+      
+      <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#00d4ff' }}>Organiser un nouveau tournoi</h2>
+      
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        
+        {/* NOM */}
+        <div>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>Nom de l'événement</label>
+          <input 
+            required 
+            type="text" 
+            placeholder="Ex: Weekly Cup #42"
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+            style={{ width: '100%', padding: '12px', background: '#252525', border: '1px solid #444', color: 'white', borderRadius: '8px' }} 
+          />
+        </div>
+
+        {/* JEU */}
+        <div>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>Jeu</label>
+          <select 
+            value={game} 
+            onChange={e => setGame(e.target.value)} 
+            style={{ width: '100%', padding: '12px', background: '#252525', border: '1px solid #444', color: 'white', borderRadius: '8px' }}
+          >
+            <option value="Valorant">Valorant</option>
+            <option value="League of Legends">League of Legends</option>
+            <option value="CS2">Counter-Strike 2</option>
+            <option value="Rocket League">Rocket League</option>
+            <option value="FC 24">FC 24</option>
+          </select>
+        </div>
+
+        {/* FORMAT (LE CŒUR DU SUJET) */}
+        <div style={{background:'#2a2a2a', padding:'15px', borderRadius:'8px', border:'1px solid #8e44ad'}}>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#cd84f1'}}>Format de la compétition</label>
+          <select 
+            value={format} 
+            onChange={e => setFormat(e.target.value)} 
+            style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #8e44ad', color: 'white', borderRadius: '8px' }}
+          >
+            <option value="elimination">🏆 Arbre à Élimination Directe</option>
+            <option value="round_robin">🔄 Championnat (Round Robin)</option>
+          </select>
+          <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
+            {format === 'elimination' 
+              ? "Classique. Le perdant rentre chez lui. Idéal pour les tournois rapides." 
+              : "Tout le monde joue contre tout le monde. Classement aux points (Victoire=3, Nul=1, Défaite=0)."}
+          </p>
+        </div>
+
+        {/* DATE */}
+        <div>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>Date de début</label>
+          <input 
+            required 
+            type="datetime-local" 
+            value={date} 
+            onChange={e => setDate(e.target.value)} 
+            style={{ width: '100%', padding: '12px', background: '#252525', border: '1px solid #444', color: 'white', borderRadius: '8px' }} 
+          />
+        </div>
+
+        <button 
+          disabled={loading} 
+          type="submit" 
+          style={{ marginTop: '20px', padding: '15px', background: 'linear-gradient(45deg, #8e44ad, #3498db)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize:'1.1rem' }}
+        >
+          {loading ? 'Création en cours...' : '🚀 Lancer l\'événement'}
+        </button>
+
+      </form>
+    </div>
+  );
+}
