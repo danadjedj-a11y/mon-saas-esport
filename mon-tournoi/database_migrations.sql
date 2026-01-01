@@ -73,6 +73,31 @@ COMMENT ON COLUMN tournaments.check_in_deadline IS 'Date/heure limite pour le ch
 COMMENT ON COLUMN participants.disqualified IS 'L''équipe a-t-elle été disqualifiée pour non check-in ?';
 
 -- ============================================================
+-- Migration pour Double Elimination
+-- ============================================================
+
+-- Ajouter un champ pour identifier le bracket (winners, losers, ou null pour single elimination/round robin)
+ALTER TABLE matches 
+ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(20); -- 'winners', 'losers', ou NULL
+
+-- Ajouter un champ pour identifier si c'est un reset match (Grand Finals reset)
+ALTER TABLE matches
+ADD COLUMN IF NOT EXISTS is_reset BOOLEAN DEFAULT FALSE;
+
+-- Ajouter un champ pour référencer le match dans l'autre bracket (pour les transitions Winners -> Losers)
+ALTER TABLE matches
+ADD COLUMN IF NOT EXISTS source_match_id UUID REFERENCES matches(id); -- Match source pour les transitions
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_matches_bracket_type ON matches(tournament_id, bracket_type);
+CREATE INDEX IF NOT EXISTS idx_matches_is_reset ON matches(tournament_id, is_reset);
+
+-- Commentaires
+COMMENT ON COLUMN matches.bracket_type IS 'Type de bracket: winners, losers, ou NULL pour single elimination/round robin';
+COMMENT ON COLUMN matches.is_reset IS 'Est-ce un match de reset (Grand Finals reset en Double Elimination) ?';
+COMMENT ON COLUMN matches.source_match_id IS 'ID du match source pour les transitions entre brackets (Double Elimination)';
+
+-- ============================================================
 -- IMPORTANT : Exécutez aussi le fichier rls_policies.sql
 -- pour créer les politiques RLS nécessaires au panneau admin
 -- ============================================================

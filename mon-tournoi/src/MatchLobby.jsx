@@ -223,8 +223,17 @@ export default function MatchLobby({ session, supabase }) {
 
               alert('✅ Scores concordent ! Le match est automatiquement validé.');
               
-              // Avancer le vainqueur au round suivant (logique similaire à Tournament.jsx)
-              await advanceWinner(match, team1Report.score_team > team1Report.score_opponent ? match.player1_id : match.player2_id);
+              // Récupérer le match mis à jour avec toutes les colonnes (bracket_type, etc.)
+              const { data: updatedMatch } = await supabase
+                .from('matches')
+                .select('*')
+                .eq('id', id)
+                .single();
+              
+              if (updatedMatch) {
+                // Avancer le vainqueur au round suivant (logique similaire à Tournament.jsx)
+                await advanceWinner(updatedMatch, team1Report.score_team > team1Report.score_opponent ? updatedMatch.player1_id : updatedMatch.player2_id);
+              }
               
             } else {
               // ❌ CONFLIT - Signalement pour intervention admin
@@ -247,15 +256,44 @@ export default function MatchLobby({ session, supabase }) {
   };
 
   const advanceWinner = async (matchData, winnerTeamId) => {
-    // Récupérer tous les matchs du tournoi
-    const { data: allMatches } = await supabase
+    // Récupérer le format du tournoi
+    const { data: tournament } = await supabase
+      .from('tournaments')
+      .select('format, id')
+      .eq('id', matchData.tournament_id)
+      .single();
+
+    if (!tournament) {
+      console.error('Tournament not found');
+      return;
+    }
+
+    // Récupérer tous les matchs du tournoi (inclure bracket_type, is_reset, etc.)
+    const { data: allMatches, error: matchesError } = await supabase
       .from('matches')
       .select('*')
       .eq('tournament_id', matchData.tournament_id)
       .order('round_number, match_number');
 
-    if (!allMatches) return;
+    if (matchesError) {
+      console.error('Error fetching matches:', matchesError);
+      return;
+    }
 
+    if (!allMatches || allMatches.length === 0) {
+      console.error('No matches found');
+      return;
+    }
+
+    const loserTeamId = winnerTeamId === matchData.player1_id ? matchData.player2_id : matchData.player1_id;
+
+    // Double Elimination : Logique spéciale
+    if (tournament.format === 'double_elimination') {
+      await handleDoubleEliminationProgression(matchData, winnerTeamId, loserTeamId, allMatches, tournament.id);
+      return;
+    }
+
+    // Single Elimination ou Round Robin : Logique standard
     const currentRoundMatches = allMatches.filter(m => m.round_number === matchData.round_number).sort((a, b) => a.match_number - b.match_number);
     const myIndex = currentRoundMatches.findIndex(m => m.id === matchData.id);
     const nextRound = matchData.round_number + 1;
@@ -271,17 +309,124 @@ export default function MatchLobby({ session, supabase }) {
         .eq('id', nextMatch.id);
     } else {
       // Finale gagnée
-      const { data: tournament } = await supabase
+      await supabase
         .from('tournaments')
-        .select('id')
-        .eq('id', matchData.tournament_id)
-        .single();
+        .update({ status: 'completed' })
+        .eq('id', tournament.id);
+    }
+  };
+
+  const handleDoubleEliminationProgression = async (completedMatch, winnerTeamId, loserTeamId, matches, tournamentId) => {
+    const bracketType = completedMatch.bracket_type;
+    const roundNumber = completedMatch.round_number;
+    
+    if (bracketType === 'winners') {
+      // WINNERS BRACKET : Gagnant avance, perdant va dans Losers
       
-      if (tournament) {
-        await supabase
-          .from('tournaments')
-          .update({ status: 'completed' })
-          .eq('id', tournament.id);
+      // 1. Faire avancer le gagnant dans le bracket Winners
+      const currentWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const myIndex = currentWinnersMatches.findIndex(m => m.id === completedMatch.id);
+      const nextWinnersRound = roundNumber + 1;
+      
+      const nextWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === nextWinnersRound).sort((a,b) => a.match_number - b.match_number);
+      if (nextWinnersMatches.length > 0) {
+        const nextWinnersMatch = nextWinnersMatches[Math.floor(myIndex / 2)];
+        if (nextWinnersMatch) {
+          const isPlayer1Slot = (myIndex % 2) === 0;
+          await supabase.from('matches').update(
+            isPlayer1Slot ? { player1_id: winnerTeamId } : { player2_id: winnerTeamId }
+          ).eq('id', nextWinnersMatch.id);
+        }
+      } else {
+        // Plus de matchs Winners -> Le gagnant va en Grand Finals
+        const grandFinals = matches.find(m => !m.bracket_type && !m.is_reset);
+        if (grandFinals) {
+          await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', grandFinals.id);
+        }
+      }
+      
+      // 2. Envoyer le perdant dans le bracket Losers
+      if (roundNumber === 1) {
+        // Perdants du Round 1 Winners vont dans Losers Round 1 (par paires)
+        const losersRound1Matches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === 1).sort((a,b) => a.match_number - b.match_number);
+        if (losersRound1Matches.length > 0) {
+          // Trouver un match avec un slot vide (par ordre)
+          for (const losersMatch of losersRound1Matches) {
+            if (!losersMatch.player1_id) {
+              await supabase.from('matches').update({ player1_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            } else if (!losersMatch.player2_id) {
+              await supabase.from('matches').update({ player2_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            }
+          }
+        }
+      } else {
+        // Perdants des rounds suivants vont dans le Losers round correspondant
+        const losersRound = roundNumber;
+        const losersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === losersRound).sort((a,b) => a.match_number - b.match_number);
+        if (losersMatches.length > 0) {
+          // Trouver le premier match avec un slot vide
+          for (const losersMatch of losersMatches) {
+            if (!losersMatch.player1_id) {
+              await supabase.from('matches').update({ player1_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            } else if (!losersMatch.player2_id) {
+              await supabase.from('matches').update({ player2_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            }
+          }
+        }
+      }
+      
+    } else if (bracketType === 'losers') {
+      // LOSERS BRACKET : Gagnant avance, perdant est éliminé
+      
+      const currentLosersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const myIndex = currentLosersMatches.findIndex(m => m.id === completedMatch.id);
+      const nextLosersRound = roundNumber + 1;
+      
+      const nextLosersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === nextLosersRound).sort((a,b) => a.match_number - b.match_number);
+      if (nextLosersMatches.length > 0) {
+        // Trouver un match avec un slot vide dans le round suivant
+        const availableMatch = nextLosersMatches.find(m => !m.player1_id || !m.player2_id);
+        if (availableMatch) {
+          if (!availableMatch.player1_id) {
+            await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', availableMatch.id);
+          } else {
+            await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', availableMatch.id);
+          }
+        }
+      } else {
+        // Plus de matchs Losers -> Le gagnant va en Grand Finals
+        const grandFinals = matches.find(m => !m.bracket_type && !m.is_reset);
+        if (grandFinals) {
+          await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', grandFinals.id);
+        }
+      }
+      
+    } else if (completedMatch.is_reset) {
+      // RESET MATCH : Le gagnant est le champion final
+      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', tournamentId);
+    } else {
+      // GRAND FINALS
+      const grandFinals = completedMatch;
+      if (winnerTeamId === grandFinals.player1_id) {
+        // Le gagnant des Winners a gagné -> Champion !
+        await supabase.from('tournaments').update({ status: 'completed' }).eq('id', tournamentId);
+      } else {
+        // Le gagnant des Losers a gagné -> Reset match nécessaire
+        const resetMatch = matches.find(m => m.is_reset);
+        if (resetMatch) {
+          // Réinitialiser le reset match avec les mêmes équipes (les scores seront réinitialisés)
+          await supabase.from('matches').update({
+            player1_id: grandFinals.player1_id,
+            player2_id: grandFinals.player2_id,
+            score_p1: 0,
+            score_p2: 0,
+            status: 'pending'
+          }).eq('id', resetMatch.id);
+        }
       }
     }
   };
@@ -313,11 +458,21 @@ export default function MatchLobby({ session, supabase }) {
         .eq('match_id', id);
 
       alert("✅ Conflit résolu ! Le score a été validé.");
-      fetchMatchDetails();
       
-      // Avancer le vainqueur
-      const winnerTeamId = scoreP1 > scoreP2 ? match.player1_id : match.player2_id;
-      await advanceWinner(match, winnerTeamId);
+      // Récupérer le match mis à jour avec toutes les colonnes (bracket_type, etc.)
+      const { data: updatedMatch } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (updatedMatch) {
+        // Avancer le vainqueur
+        const winnerTeamId = scoreP1 > scoreP2 ? updatedMatch.player1_id : updatedMatch.player2_id;
+        await advanceWinner(updatedMatch, winnerTeamId);
+      }
+      
+      fetchMatchDetails();
     }
   };
 

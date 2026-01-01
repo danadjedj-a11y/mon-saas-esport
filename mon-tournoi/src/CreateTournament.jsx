@@ -106,11 +106,14 @@ export default function CreateTournament({ session, supabase }) {
             style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #8e44ad', color: 'white', borderRadius: '8px' }}
           >
             <option value="elimination">🏆 Arbre à Élimination Directe</option>
+            <option value="double_elimination">⚔️ Double Elimination</option>
             <option value="round_robin">🔄 Championnat (Round Robin)</option>
           </select>
           <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
             {format === 'elimination' 
               ? "Classique. Le perdant rentre chez lui. Idéal pour les tournois rapides." 
+              : format === 'double_elimination'
+              ? "Deux brackets : Winners et Losers. Une deuxième chance après une défaite. Format esport professionnel."
               : "Tout le monde joue contre tout le monde. Classement aux points (Victoire=3, Nul=1, Défaite=0)."}
           </p>
         </div>

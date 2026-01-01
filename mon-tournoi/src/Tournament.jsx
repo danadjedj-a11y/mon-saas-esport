@@ -180,7 +180,7 @@ useEffect(() => {
       orderedParticipants = [...participantsList].sort(() => 0.5 - Math.random());
     }
 
-    // --- CAS 1 : ARBRE (ÉLIMINATION) ---
+    // --- CAS 1 : ARBRE (ÉLIMINATION SIMPLE) ---
     if (tournoi.format === 'elimination') {
         let matchCount = 1;
         let activePlayers = orderedParticipants.map(p => p.team_id);
@@ -198,12 +198,187 @@ useEffect(() => {
                 player1_id: pair[0] || null,
                 player2_id: pair[1] || null,
                 status: pair[1] ? 'pending' : 'completed',
-                next_match_id: null
+                next_match_id: null,
+                bracket_type: null
             });
         });
     } 
     
-    // --- CAS 2 : CHAMPIONNAT (ROUND ROBIN) ---
+    // --- CAS 2 : DOUBLE ELIMINATION (Implémentation complète) ---
+    else if (tournoi.format === 'double_elimination') {
+      const teamIds = orderedParticipants.map(p => p.team_id);
+      const numTeams = teamIds.length;
+      
+      if (numTeams < 2) return;
+      
+      let matchCount = 1;
+      const winnersRounds = Math.ceil(Math.log2(numTeams));
+      
+      // Structure pour tracker les matchs créés
+      const winnersMatchesByRound = {}; // { round: [matchNumbers] }
+      const losersMatchesByRound = {}; // { round: [matchNumbers] }
+      
+      // ===========================================
+      // ÉTAPE 1 : Générer le bracket WINNERS (comme single elimination)
+      // ===========================================
+      
+      // Round 1 Winners : Paire toutes les équipes
+      const pairs = [];
+      const teams = [...teamIds];
+      while (teams.length > 0) {
+        pairs.push(teams.splice(0, 2));
+      }
+      
+      winnersMatchesByRound[1] = [];
+      pairs.forEach(pair => {
+        const matchNum = matchCount++;
+        matchesToCreate.push({
+          tournament_id: id,
+          match_number: matchNum,
+          round_number: 1,
+          player1_id: pair[0] || null,
+          player2_id: pair[1] || null,
+          status: pair[1] ? 'pending' : 'completed',
+          bracket_type: 'winners',
+          next_match_id: null,
+          source_match_id: null,
+          is_reset: false
+        });
+        winnersMatchesByRound[1].push(matchNum);
+      });
+      
+      // Rounds suivants Winners : Créer les matchs vides (seront remplis lors de la progression)
+      for (let round = 2; round <= winnersRounds; round++) {
+        winnersMatchesByRound[round] = [];
+        const prevRoundCount = winnersMatchesByRound[round - 1].length;
+        const currentRoundCount = Math.ceil(prevRoundCount / 2);
+        
+        for (let i = 0; i < currentRoundCount; i++) {
+          const matchNum = matchCount++;
+          matchesToCreate.push({
+            tournament_id: id,
+            match_number: matchNum,
+            round_number: round,
+            player1_id: null,
+            player2_id: null,
+            status: 'pending',
+            bracket_type: 'winners',
+            next_match_id: null,
+            source_match_id: null,
+            is_reset: false
+          });
+          winnersMatchesByRound[round].push(matchNum);
+        }
+      }
+      
+      // ===========================================
+      // ÉTAPE 2 : Générer le bracket LOSERS
+      // ===========================================
+      
+      // Losers Round 1 : Perdants du Winners Round 1 (on crée les matchs vides)
+      // Les perdants seront placés ici lors de la progression
+      losersMatchesByRound[1] = [];
+      const losersRound1Count = Math.ceil(winnersMatchesByRound[1].length / 2);
+      for (let i = 0; i < losersRound1Count; i++) {
+        const matchNum = matchCount++;
+        matchesToCreate.push({
+          tournament_id: id,
+          match_number: matchNum,
+          round_number: 1,
+          player1_id: null,
+          player2_id: null,
+          status: 'pending',
+          bracket_type: 'losers',
+          next_match_id: null,
+          source_match_id: null, // Référencera les matchs Winners Round 1
+          is_reset: false
+        });
+        losersMatchesByRound[1].push(matchNum);
+      }
+      
+      // Losers Rounds suivants : Créer les matchs vides
+      // Losers Round N reçoit : perdants Winners Round N+1 + gagnants Losers Round N-1
+      for (let round = 2; round < winnersRounds; round++) {
+        losersMatchesByRound[round] = [];
+        // Nombre de matchs = max(perdants Winners Round round, gagnants Losers Round round-1)
+        const losersFromWinners = winnersMatchesByRound[round].length;
+        const winnersFromLosers = Math.ceil(losersMatchesByRound[round - 1].length / 2);
+        const totalLosersMatches = Math.max(losersFromWinners, winnersFromLosers);
+        
+        for (let i = 0; i < totalLosersMatches; i++) {
+          const matchNum = matchCount++;
+          matchesToCreate.push({
+            tournament_id: id,
+            match_number: matchNum,
+            round_number: round,
+            player1_id: null,
+            player2_id: null,
+            status: 'pending',
+            bracket_type: 'losers',
+            next_match_id: null,
+            source_match_id: null,
+            is_reset: false
+          });
+          losersMatchesByRound[round].push(matchNum);
+        }
+      }
+      
+      // Losers Finals (dernier round des losers)
+      if (winnersRounds > 1) {
+        const losersFinalsRound = winnersRounds;
+        losersMatchesByRound[losersFinalsRound] = [];
+        const matchNum = matchCount++;
+        matchesToCreate.push({
+          tournament_id: id,
+          match_number: matchNum,
+          round_number: losersFinalsRound,
+          player1_id: null,
+          player2_id: null,
+          status: 'pending',
+          bracket_type: 'losers',
+          next_match_id: null,
+          source_match_id: null,
+          is_reset: false
+        });
+        losersMatchesByRound[losersFinalsRound].push(matchNum);
+      }
+      
+      // ===========================================
+      // ÉTAPE 3 : Grand Finals et Reset Match
+      // ===========================================
+      
+      // Grand Finals : Gagnant Winners vs Gagnant Losers
+      const grandFinalsNum = matchCount++;
+      matchesToCreate.push({
+        tournament_id: id,
+        match_number: grandFinalsNum,
+        round_number: winnersRounds + 1,
+        player1_id: null, // Gagnant Winners
+        player2_id: null, // Gagnant Losers
+        status: 'pending',
+        bracket_type: null, // Grand Finals n'est ni winners ni losers
+        next_match_id: null,
+        source_match_id: null,
+        is_reset: false
+      });
+      
+      // Reset Match : Si le gagnant des Losers gagne le Grand Finals
+      const resetMatchNum = matchCount++;
+      matchesToCreate.push({
+        tournament_id: id,
+        match_number: resetMatchNum,
+        round_number: winnersRounds + 2,
+        player1_id: null,
+        player2_id: null,
+        status: 'pending',
+        bracket_type: null,
+        next_match_id: null,
+        source_match_id: null, // Sera rempli après insertion si nécessaire (grandFinalsNum est un numéro, pas un UUID)
+        is_reset: true
+      });
+    }
+    
+    // --- CAS 3 : CHAMPIONNAT (ROUND ROBIN) ---
     else if (tournoi.format === 'round_robin') {
         let matchNum = 1;
         for (let i = 0; i < orderedParticipants.length; i++) {
@@ -216,7 +391,8 @@ useEffect(() => {
                     player2_id: orderedParticipants[j].team_id,
                     status: 'pending',
                     score_p1: 0,
-                    score_p2: 0
+                    score_p2: 0,
+                    bracket_type: null
                 });
             }
         }
@@ -309,7 +485,7 @@ useEffect(() => {
         alert("❌ Aucune équipe n'a fait son check-in. Impossible de lancer le tournoi.");
         setLoading(false);
         return;
-      }
+    }
     }
 
     // Utiliser uniquement les équipes check-in pour créer les matchs
@@ -331,11 +507,134 @@ useEffect(() => {
   // ------------------------------------------------------------------
 
   const handleMatchClick = (match) => {
-    // Si le match n'est pas encore prêt (pas de joueurs), on ne fait rien
-    if (!match.player1_id || !match.player2_id) return;
+    // Pour Double Elimination, permettre de cliquer même si un seul joueur est présent (match en cours de progression)
+    // Pour les autres formats, vérifier que les deux joueurs sont présents
+    if (tournoi.format !== 'double_elimination' && (!match.player1_id || !match.player2_id)) return;
+    
+    // Pour Double Elimination, on peut cliquer si au moins un joueur est présent
+    if (tournoi.format === 'double_elimination' && !match.player1_id && !match.player2_id) return;
 
     // Redirection vers le Lobby du Match
     navigate(`/match/${match.id}`);
+  };
+
+  // Fonction pour gérer la progression dans le Double Elimination
+  const handleDoubleEliminationProgression = async (completedMatch, winnerTeamId, loserTeamId) => {
+    const bracketType = completedMatch.bracket_type;
+    const roundNumber = completedMatch.round_number;
+    
+    if (bracketType === 'winners') {
+      // WINNERS BRACKET : Gagnant avance, perdant va dans Losers
+      
+      // 1. Faire avancer le gagnant dans le bracket Winners
+      const currentWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const myIndex = currentWinnersMatches.findIndex(m => m.id === completedMatch.id);
+      const nextWinnersRound = roundNumber + 1;
+      
+      const nextWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === nextWinnersRound).sort((a,b) => a.match_number - b.match_number);
+      if (nextWinnersMatches.length > 0) {
+        const nextWinnersMatch = nextWinnersMatches[Math.floor(myIndex / 2)];
+        if (nextWinnersMatch) {
+          const isPlayer1Slot = (myIndex % 2) === 0;
+          await supabase.from('matches').update(
+            isPlayer1Slot ? { player1_id: winnerTeamId } : { player2_id: winnerTeamId }
+          ).eq('id', nextWinnersMatch.id);
+        }
+      } else {
+        // Plus de matchs Winners -> Le gagnant va en Grand Finals
+        const grandFinals = matches.find(m => !m.bracket_type && !m.is_reset);
+        if (grandFinals) {
+          await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', grandFinals.id);
+        }
+      }
+      
+      // 2. Envoyer le perdant dans le bracket Losers
+      if (roundNumber === 1) {
+        // Perdants du Round 1 Winners vont dans Losers Round 1 (par paires)
+        const losersRound1Matches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === 1).sort((a,b) => a.match_number - b.match_number);
+        if (losersRound1Matches.length > 0) {
+          // Trouver un match avec un slot vide (par ordre)
+          for (const losersMatch of losersRound1Matches) {
+            if (!losersMatch.player1_id) {
+              await supabase.from('matches').update({ player1_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            } else if (!losersMatch.player2_id) {
+              await supabase.from('matches').update({ player2_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            }
+          }
+        }
+      } else {
+        // Perdants des rounds suivants vont dans le Losers round correspondant
+        const losersRound = roundNumber;
+        const losersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === losersRound).sort((a,b) => a.match_number - b.match_number);
+        if (losersMatches.length > 0) {
+          // Trouver le premier match avec un slot vide
+          for (const losersMatch of losersMatches) {
+            if (!losersMatch.player1_id) {
+              await supabase.from('matches').update({ player1_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            } else if (!losersMatch.player2_id) {
+              await supabase.from('matches').update({ player2_id: loserTeamId }).eq('id', losersMatch.id);
+              break;
+            }
+          }
+        }
+      }
+      
+    } else if (bracketType === 'losers') {
+      // LOSERS BRACKET : Gagnant avance, perdant est éliminé
+      
+      const currentLosersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const myIndex = currentLosersMatches.findIndex(m => m.id === completedMatch.id);
+      const nextLosersRound = roundNumber + 1;
+      
+      const nextLosersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === nextLosersRound).sort((a,b) => a.match_number - b.match_number);
+      if (nextLosersMatches.length > 0) {
+        // Trouver un match avec un slot vide dans le round suivant
+        const availableMatch = nextLosersMatches.find(m => !m.player1_id || !m.player2_id);
+        if (availableMatch) {
+          if (!availableMatch.player1_id) {
+            await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', availableMatch.id);
+          } else {
+            await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', availableMatch.id);
+          }
+        }
+      } else {
+        // Plus de matchs Losers -> Le gagnant va en Grand Finals
+        const grandFinals = matches.find(m => !m.bracket_type && !m.is_reset);
+        if (grandFinals) {
+          await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', grandFinals.id);
+        }
+      }
+      
+    } else if (completedMatch.is_reset) {
+      // RESET MATCH : Le gagnant est le champion final
+      triggerConfetti();
+      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+    } else {
+      // GRAND FINALS
+      const grandFinals = completedMatch;
+      if (winnerTeamId === grandFinals.player1_id) {
+        // Le gagnant des Winners a gagné -> Champion !
+        triggerConfetti();
+        await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+      } else {
+        // Le gagnant des Losers a gagné -> Reset match nécessaire
+        // Les équipes restent les mêmes pour le reset match
+        const resetMatch = matches.find(m => m.is_reset);
+        if (resetMatch) {
+          // Réinitialiser le reset match avec les mêmes équipes (les scores seront réinitialisés)
+          await supabase.from('matches').update({
+            player1_id: grandFinals.player1_id,
+            player2_id: grandFinals.player2_id,
+            score_p1: 0,
+            score_p2: 0,
+            status: 'pending'
+          }).eq('id', resetMatch.id);
+        }
+      }
+    }
   };
 
   const saveScore = async () => {
@@ -347,24 +646,30 @@ useEffect(() => {
 
     if (s1 !== s2) {
         const winnerTeamId = s1 > s2 ? currentMatch.player1_id : currentMatch.player2_id;
+        const loserTeamId = s1 > s2 ? currentMatch.player2_id : currentMatch.player1_id;
         
-        // Logique avancée tour suivant (simplifiée ici)
-        const currentRoundMatches = matches.filter(m => m.round_number === currentMatch.round_number).sort((a,b) => a.match_number - b.match_number);
-        const myIndex = currentRoundMatches.findIndex(m => m.id === currentMatch.id);
-        const nextRound = currentMatch.round_number + 1;
-        
-        const nextRoundMatches = matches.filter(m => m.round_number === nextRound).sort((a,b) => a.match_number - b.match_number);
-        // Trouver le match suivant (index / 2)
-        const nextMatch = nextRoundMatches[Math.floor(myIndex / 2)];
-        
-        if (nextMatch) {
+        if (tournoi.format === 'double_elimination') {
+          // Double Elimination : Logique spéciale
+          await handleDoubleEliminationProgression(currentMatch, winnerTeamId, loserTeamId);
+        } else if (tournoi.format === 'elimination') {
+          // Single Elimination : Logique standard
+          const currentRoundMatches = matches.filter(m => m.round_number === currentMatch.round_number).sort((a,b) => a.match_number - b.match_number);
+          const myIndex = currentRoundMatches.findIndex(m => m.id === currentMatch.id);
+          const nextRound = currentMatch.round_number + 1;
+          
+          const nextRoundMatches = matches.filter(m => m.round_number === nextRound).sort((a,b) => a.match_number - b.match_number);
+          const nextMatch = nextRoundMatches[Math.floor(myIndex / 2)];
+          
+          if (nextMatch) {
             const isPlayer1Slot = (myIndex % 2) === 0;
             await supabase.from('matches').update(isPlayer1Slot ? { player1_id: winnerTeamId } : { player2_id: winnerTeamId }).eq('id', nextMatch.id);
-        } else {
-             // Finale gagnée
-             triggerConfetti();
-             await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+          } else {
+            // Finale gagnée
+            triggerConfetti();
+            await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+          }
         }
+        // Round Robin n'a pas besoin de progression
     }
     setIsModalOpen(false);
     fetchData();
@@ -469,7 +774,7 @@ useEffect(() => {
       {isOwner && tournoi.status === 'draft' && (
         <div style={{ background: '#222', padding: '20px', borderRadius: '8px', marginBottom: '30px', borderLeft:'4px solid #8e44ad' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px' }}>
-            <span>{participants.length} équipes inscrites.</span>
+          <span>{participants.length} équipes inscrites.</span>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 onClick={() => setIsSeedingModalOpen(true)} 
@@ -601,7 +906,310 @@ useEffect(() => {
         {/* ARBRE DU TOURNOI */}
         <div style={{ flex: '3', minWidth:'300px', overflowX:'auto' }}>
            {matches.length > 0 ? (
-             <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
+             tournoi.format === 'double_elimination' ? (
+               // AFFICHAGE DOUBLE ELIMINATION : Deux brackets séparés
+               <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
+                 {/* BRACKET WINNERS */}
+                 <div style={{flex: 1}}>
+                   <h3 style={{textAlign:'center', color:'#4ade80', marginBottom:'20px', fontSize:'1.3rem', fontWeight:'bold'}}>
+                     🏆 Winners Bracket
+                   </h3>
+                   <div style={{display:'flex', gap:'40px'}}>
+                     {[...new Set(matches.filter(m => m.bracket_type === 'winners').map(m=>m.round_number))].sort().map(round => (
+                       <div key={`winners-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
+                         <h4 style={{textAlign:'center', color:'#666'}}>Round {round}</h4>
+                         {matches.filter(m => m.bracket_type === 'winners' && m.round_number === round).map(m => {
+                           const hasDisqualified = m.p1_disqualified || m.p2_disqualified;
+                           
+                           return (
+                             <div key={m.id} onClick={()=>handleMatchClick(m)} style={{
+                                 width:'240px', 
+                                 background: hasDisqualified ? '#3a1a1a' : '#252525', 
+                                 border: hasDisqualified ? '1px solid #e74c3c' : (m.status === 'completed' ? '1px solid #4ade80' : '1px solid #444'), 
+                                 borderRadius:'8px', 
+                                 cursor: isOwner ? 'pointer' : 'default', 
+                                 position:'relative',
+                                 boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                                 opacity: hasDisqualified ? 0.7 : 1
+                             }}>
+                               {/* JOUEUR 1 */}
+                               <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p1 > m.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
+                                 <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                   {m.player1_id && <img src={m.p1_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                   <span style={{
+                                     color: m.p1_disqualified ? '#e74c3c' : (m.player1_id ? 'white' : '#666'), 
+                                     fontWeight: m.score_p1 > m.score_p2 ? 'bold' : 'normal', 
+                                     fontSize:'0.9rem',
+                                     textDecoration: m.p1_disqualified ? 'line-through' : 'none',
+                                     overflow: 'hidden',
+                                     textOverflow: 'ellipsis',
+                                     whiteSpace: 'nowrap'
+                                   }}>
+                                     {m.p1_name.split(' [')[0]} 
+                                     {m.p1_name.includes('[') && (
+                                       <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p1_name.split('[')[1]}</span>
+                                     )}
+                                   </span>
+                                 </div>
+                                 <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p1}</span>
+                               </div>
+                               
+                               <div style={{height:'1px', background:'#333'}}></div>
+                               
+                               {/* JOUEUR 2 */}
+                               <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p2 > m.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px'}}>
+                                 <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                   {m.player2_id && <img src={m.p2_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                   <span style={{
+                                     color: m.p2_disqualified ? '#e74c3c' : (m.player2_id ? 'white' : '#666'), 
+                                     fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal', 
+                                     fontSize:'0.9rem',
+                                     textDecoration: m.p2_disqualified ? 'line-through' : 'none',
+                                     overflow: 'hidden',
+                                     textOverflow: 'ellipsis',
+                                     whiteSpace: 'nowrap'
+                                   }}>
+                                     {m.p2_name.split(' [')[0]} 
+                                     {m.p2_name.includes('[') && (
+                                       <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p2_name.split('[')[1]}</span>
+                                     )}
+                                   </span>
+                                 </div>
+                                 <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p2}</span>
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+                 
+                 {/* BRACKET LOSERS */}
+                 <div style={{flex: 1}}>
+                   <h3 style={{textAlign:'center', color:'#e74c3c', marginBottom:'20px', fontSize:'1.3rem', fontWeight:'bold'}}>
+                     💀 Losers Bracket
+                   </h3>
+                   <div style={{display:'flex', gap:'40px'}}>
+                     {[...new Set(matches.filter(m => m.bracket_type === 'losers').map(m=>m.round_number))].sort().map(round => (
+                       <div key={`losers-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
+                         <h4 style={{textAlign:'center', color:'#666'}}>Round {round}</h4>
+                         {matches.filter(m => m.bracket_type === 'losers' && m.round_number === round).map(m => {
+                           const hasDisqualified = m.p1_disqualified || m.p2_disqualified;
+                           
+                           return (
+                             <div key={m.id} onClick={()=>handleMatchClick(m)} style={{
+                               width:'240px', 
+                               background: hasDisqualified ? '#3a1a1a' : '#1a1a1a', 
+                               border: hasDisqualified ? '1px solid #e74c3c' : (m.status === 'completed' ? '1px solid #e74c3c' : '1px solid #555'), 
+                               borderRadius:'8px', 
+                               cursor: isOwner ? 'pointer' : 'default', 
+                               position:'relative',
+                               boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                               opacity: hasDisqualified ? 0.7 : 1
+                             }}>
+                               {/* JOUEUR 1 */}
+                               <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p1 > m.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
+                                 <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                   {m.player1_id && <img src={m.p1_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                   <span style={{
+                                     color: m.p1_disqualified ? '#e74c3c' : (m.player1_id ? 'white' : '#666'), 
+                                     fontWeight: m.score_p1 > m.score_p2 ? 'bold' : 'normal', 
+                                     fontSize:'0.9rem',
+                                     textDecoration: m.p1_disqualified ? 'line-through' : 'none',
+                                     overflow: 'hidden',
+                                     textOverflow: 'ellipsis',
+                                     whiteSpace: 'nowrap'
+                                   }}>
+                                     {m.p1_name.split(' [')[0]} 
+                                     {m.p1_name.includes('[') && (
+                                       <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p1_name.split('[')[1]}</span>
+                                     )}
+                                   </span>
+                                 </div>
+                                 <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p1}</span>
+                               </div>
+                               
+                               <div style={{height:'1px', background:'#333'}}></div>
+                               
+                               {/* JOUEUR 2 */}
+                               <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p2 > m.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px'}}>
+                                 <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                   {m.player2_id && <img src={m.p2_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                   <span style={{
+                                     color: m.p2_disqualified ? '#e74c3c' : (m.player2_id ? 'white' : '#666'), 
+                                     fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal', 
+                                     fontSize:'0.9rem',
+                                     textDecoration: m.p2_disqualified ? 'line-through' : 'none',
+                                     overflow: 'hidden',
+                                     textOverflow: 'ellipsis',
+                                     whiteSpace: 'nowrap'
+                                   }}>
+                                     {m.p2_name.split(' [')[0]} 
+                                     {m.p2_name.includes('[') && (
+                                       <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p2_name.split('[')[1]}</span>
+                                     )}
+                                   </span>
+                                 </div>
+                                 <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p2}</span>
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
+                     ))}
+                   </div>
+                   
+                   {/* GRAND FINALS (si présent) */}
+                   {matches.filter(m => !m.bracket_type && !m.is_reset).length > 0 && (
+                     <div style={{marginTop:'40px', paddingTop:'20px', borderTop:'2px solid #444'}}>
+                       <h3 style={{textAlign:'center', color:'#f1c40f', marginBottom:'20px', fontSize:'1.3rem', fontWeight:'bold'}}>
+                         🏅 Grand Finals
+                       </h3>
+                       <div style={{display:'flex', justifyContent:'center'}}>
+                         {matches.filter(m => !m.bracket_type && !m.is_reset).map(m => {
+                           const hasDisqualified = m.p1_disqualified || m.p2_disqualified;
+                           
+                           return (
+                             <div key={m.id} onClick={()=>handleMatchClick(m)} style={{
+                               width:'240px', 
+                               background: hasDisqualified ? '#3a1a1a' : '#2a2a2a', 
+                               border: hasDisqualified ? '1px solid #e74c3c' : (m.status === 'completed' ? '1px solid #f1c40f' : '1px solid #666'), 
+                               borderRadius:'8px', 
+                               cursor: isOwner ? 'pointer' : 'default', 
+                               position:'relative',
+                               boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                               opacity: hasDisqualified ? 0.7 : 1
+                             }}>
+                               {/* JOUEUR 1 */}
+                               <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p1 > m.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
+                                 <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                   {m.player1_id && <img src={m.p1_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                   <span style={{
+                                     color: m.p1_disqualified ? '#e74c3c' : (m.player1_id ? 'white' : '#666'), 
+                                     fontWeight: m.score_p1 > m.score_p2 ? 'bold' : 'normal', 
+                                     fontSize:'0.9rem',
+                                     textDecoration: m.p1_disqualified ? 'line-through' : 'none',
+                                     overflow: 'hidden',
+                                     textOverflow: 'ellipsis',
+                                     whiteSpace: 'nowrap'
+                                   }}>
+                                     {m.p1_name.split(' [')[0]} 
+                                     {m.p1_name.includes('[') && (
+                                       <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p1_name.split('[')[1]}</span>
+                                     )}
+                                   </span>
+                                 </div>
+                                 <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p1}</span>
+                               </div>
+                               
+                               <div style={{height:'1px', background:'#333'}}></div>
+                               
+                               {/* JOUEUR 2 */}
+                               <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p2 > m.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px'}}>
+                                 <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                   {m.player2_id && <img src={m.p2_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                   <span style={{
+                                     color: m.p2_disqualified ? '#e74c3c' : (m.player2_id ? 'white' : '#666'), 
+                                     fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal', 
+                                     fontSize:'0.9rem',
+                                     textDecoration: m.p2_disqualified ? 'line-through' : 'none',
+                                     overflow: 'hidden',
+                                     textOverflow: 'ellipsis',
+                                     whiteSpace: 'nowrap'
+                                   }}>
+                                     {m.p2_name.split(' [')[0]} 
+                                     {m.p2_name.includes('[') && (
+                                       <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p2_name.split('[')[1]}</span>
+                                     )}
+                                   </span>
+                                 </div>
+                                 <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p2}</span>
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
+                       
+                       {/* RESET MATCH (si présent) */}
+                       {matches.filter(m => m.is_reset).length > 0 && (
+                         <div style={{marginTop:'20px'}}>
+                           <h4 style={{textAlign:'center', color:'#f39c12', marginBottom:'10px'}}>
+                             🔄 Reset Match
+                           </h4>
+                           <div style={{display:'flex', justifyContent:'center'}}>
+                             {matches.filter(m => m.is_reset).map(m => {
+                               const hasDisqualified = m.p1_disqualified || m.p2_disqualified;
+                               
+                               return (
+                                 <div key={m.id} onClick={()=>handleMatchClick(m)} style={{
+                                   width:'240px', 
+                                   background: hasDisqualified ? '#3a1a1a' : '#2a2a2a', 
+                                   border: hasDisqualified ? '1px solid #e74c3c' : (m.status === 'completed' ? '1px solid #f39c12' : '1px solid #666'), 
+                                   borderRadius:'8px', 
+                                   cursor: isOwner ? 'pointer' : 'default', 
+                                   position:'relative',
+                                   boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                                   opacity: hasDisqualified ? 0.7 : 1
+                                 }}>
+                                   {/* JOUEUR 1 */}
+                                   <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p1 > m.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
+                                     <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                       {m.player1_id && <img src={m.p1_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                       <span style={{
+                                         color: m.p1_disqualified ? '#e74c3c' : (m.player1_id ? 'white' : '#666'), 
+                                         fontWeight: m.score_p1 > m.score_p2 ? 'bold' : 'normal', 
+                                         fontSize:'0.9rem',
+                                         textDecoration: m.p1_disqualified ? 'line-through' : 'none',
+                                         overflow: 'hidden',
+                                         textOverflow: 'ellipsis',
+                                         whiteSpace: 'nowrap'
+                                       }}>
+                                         {m.p1_name.split(' [')[0]} 
+                                         {m.p1_name.includes('[') && (
+                                           <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p1_name.split('[')[1]}</span>
+                                         )}
+                                       </span>
+                                     </div>
+                                     <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p1}</span>
+                                   </div>
+                                   
+                                   <div style={{height:'1px', background:'#333'}}></div>
+                                   
+                                   {/* JOUEUR 2 */}
+                                   <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p2 > m.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px'}}>
+                                     <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                       {m.player2_id && <img src={m.p2_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                       <span style={{
+                                         color: m.p2_disqualified ? '#e74c3c' : (m.player2_id ? 'white' : '#666'), 
+                                         fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal', 
+                                         fontSize:'0.9rem',
+                                         textDecoration: m.p2_disqualified ? 'line-through' : 'none',
+                                         overflow: 'hidden',
+                                         textOverflow: 'ellipsis',
+                                         whiteSpace: 'nowrap'
+                                       }}>
+                                         {m.p2_name.split(' [')[0]} 
+                                         {m.p2_name.includes('[') && (
+                                           <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p2_name.split('[')[1]}</span>
+                                         )}
+                                       </span>
+                                     </div>
+                                     <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p2}</span>
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   )}
+                 </div>
+               </div>
+             ) : (
+               // AFFICHAGE STANDARD (Single Elimination ou Round Robin)
+               <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
                 {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
                     <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
                         <h4 style={{textAlign:'center', color:'#666'}}>Round {round}</h4>
@@ -673,6 +1281,7 @@ useEffect(() => {
                     </div>
                 ))}
              </div>
+             )
            ) : (
              <div style={{textAlign:'center', padding:'50px', border:'2px dashed #333', borderRadius:'8px', color:'#666'}}>
                 Les brackets apparaîtront une fois le tournoi lancé.
