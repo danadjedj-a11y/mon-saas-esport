@@ -286,10 +286,25 @@ export default function MatchLobby({ session, supabase }) {
                   
                   if (!matchesError && allMatches) {
                     await handleDoubleEliminationProgression(updatedMatch, winnerTeamId, loserTeamId, allMatches, tournament.id);
+                    
+                    // SOLUTION RADICALE : Forcer Tournament.jsx à recharger via un événement personnalisé
+                    // Attendre un peu pour laisser le temps aux updates de se propager
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('tournament-match-updated', { 
+                        detail: { tournamentId: tournament.id } 
+                      }));
+                    }, 500);
                   }
                 } else {
                   // Single Elimination ou autres formats : utiliser advanceWinner
                   await advanceWinner(updatedMatch, winnerTeamId);
+                  
+                  // SOLUTION RADICALE : Forcer Tournament.jsx à recharger via un événement personnalisé
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tournament-match-updated', { 
+                      detail: { tournamentId: updatedMatch.tournament_id } 
+                    }));
+                  }, 500);
                 }
               }
             } else {
@@ -313,50 +328,15 @@ export default function MatchLobby({ session, supabase }) {
   };
 
   const advanceWinner = async (matchData, winnerTeamId) => {
-    // Récupérer le format du tournoi
-    const { data: tournament, error: tournamentError } = await supabase
-      .from('tournaments')
-      .select('format, id')
-      .eq('id', matchData.tournament_id)
-      .single();
-
-    if (tournamentError) {
-      console.error('Erreur lors de la récupération du tournoi:', tournamentError);
-      return;
-    }
-
-    if (!tournament) {
-      console.error('Tournament not found');
-      return;
-    }
-
-    // Récupérer tous les matchs du tournoi (inclure bracket_type, is_reset, etc.)
-    const { data: allMatches, error: matchesError } = await supabase
+    // Récupérer tous les matchs du tournoi (comme dans l'ancien code qui fonctionnait)
+    const { data: allMatches } = await supabase
       .from('matches')
       .select('*')
       .eq('tournament_id', matchData.tournament_id)
-      .order('round_number', { ascending: true })
-      .order('match_number', { ascending: true });
+      .order('round_number, match_number');
 
-    if (matchesError) {
-      console.error('Error fetching matches:', matchesError);
-      return;
-    }
+    if (!allMatches) return;
 
-    if (!allMatches || allMatches.length === 0) {
-      console.error('No matches found');
-      return;
-    }
-
-    const loserTeamId = winnerTeamId === matchData.player1_id ? matchData.player2_id : matchData.player1_id;
-
-    // Double Elimination : Logique spéciale
-    if (tournament.format === 'double_elimination') {
-      await handleDoubleEliminationProgression(matchData, winnerTeamId, loserTeamId, allMatches, tournament.id);
-      return;
-    }
-
-    // Single Elimination ou Round Robin : Logique standard
     const currentRoundMatches = allMatches.filter(m => m.round_number === matchData.round_number).sort((a, b) => a.match_number - b.match_number);
     const myIndex = currentRoundMatches.findIndex(m => m.id === matchData.id);
     const nextRound = matchData.round_number + 1;
@@ -372,10 +352,18 @@ export default function MatchLobby({ session, supabase }) {
         .eq('id', nextMatch.id);
     } else {
       // Finale gagnée
-      await supabase
+      const { data: tournament } = await supabase
         .from('tournaments')
-        .update({ status: 'completed' })
-        .eq('id', tournament.id);
+        .select('id')
+        .eq('id', matchData.tournament_id)
+        .single();
+      
+      if (tournament) {
+        await supabase
+          .from('tournaments')
+          .update({ status: 'completed' })
+          .eq('id', tournament.id);
+      }
     }
   };
 
@@ -505,7 +493,7 @@ export default function MatchLobby({ session, supabase }) {
 
     const { error } = await supabase
       .from('matches')
-      .update({
+      .update({ 
         score_p1: scoreP1,
         score_p2: scoreP2,
         score_p1_reported: scoreP1,
@@ -599,29 +587,29 @@ export default function MatchLobby({ session, supabase }) {
               <p style={{margin: '5px 0 0 0', fontSize: '0.9rem'}}>Les scores ont été validés automatiquement.</p>
             </div>
           )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', margin: '30px 0' }}>
-            {/* TEAM 1 */}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', margin: '30px 0' }}>
+                {/* TEAM 1 */}
             <div style={{textAlign:'center', flex: 1}}>
               <img 
                 src={match.team1?.logo_url || `https://ui-avatars.com/api/?name=${match.team1?.tag}&background=random&size=128`} 
                 style={{width:'80px', height:'80px', borderRadius:'10px', objectFit:'cover', border: isTeam1 ? '3px solid #00d4ff' : '2px solid #555'}} 
                 alt=""
               />
-              <h3 style={{marginTop:'10px'}}>{match.team1?.name}</h3>
+                    <h3 style={{marginTop:'10px'}}>{match.team1?.name}</h3>
               {isTeam1 && <span style={{fontSize:'0.8rem', color:'#00d4ff'}}>👤 Mon équipe</span>}
               {reportedByMe && isTeam1 && (
                 <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#4ade80'}}>✅ Score déclaré</div>
               )}
-            </div>
+                </div>
 
-            {/* SCORE */}
+                {/* SCORE */}
             <div style={{display:'flex', flexDirection:'column', gap:'10px', alignItems:'center', padding: '0 30px'}}>
               {isConfirmed ? (
                 // Score final confirmé
                 <div style={{display:'flex', gap:'15px', alignItems:'center'}}>
                   <span style={{fontSize:'3rem', fontWeight:'bold', color: match.score_p1 > match.score_p2 ? '#4ade80' : '#666'}}>{match.score_p1}</span>
-                  <span style={{fontSize:'2rem', fontWeight:'bold'}}>:</span>
+                    <span style={{fontSize:'2rem', fontWeight:'bold'}}>:</span>
                   <span style={{fontSize:'3rem', fontWeight:'bold', color: match.score_p2 > match.score_p1 ? '#4ade80' : '#666'}}>{match.score_p2}</span>
                 </div>
               ) : (
@@ -632,22 +620,22 @@ export default function MatchLobby({ session, supabase }) {
                   <span style={{fontSize:'2.5rem', fontWeight:'bold'}}>{match.score_p2_reported ?? '-'}</span>
                 </div>
               )}
-            </div>
+                </div>
 
-            {/* TEAM 2 */}
+                {/* TEAM 2 */}
             <div style={{textAlign:'center', flex: 1}}>
               <img 
                 src={match.team2?.logo_url || `https://ui-avatars.com/api/?name=${match.team2?.tag}&background=random&size=128`} 
                 style={{width:'80px', height:'80px', borderRadius:'10px', objectFit:'cover', border: !isTeam1 && myTeamId ? '3px solid #00d4ff' : '2px solid #555'}} 
                 alt=""
               />
-              <h3 style={{marginTop:'10px'}}>{match.team2?.name}</h3>
+                    <h3 style={{marginTop:'10px'}}>{match.team2?.name}</h3>
               {!isTeam1 && myTeamId && <span style={{fontSize:'0.8rem', color:'#00d4ff'}}>👤 Mon équipe</span>}
               {reportedByMe && !isTeam1 && (
                 <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#4ade80'}}>✅ Score déclaré</div>
               )}
+                </div>
             </div>
-          </div>
 
           {/* ZONE DE DÉCLARATION DE SCORE */}
           {myTeamId && !reportedByMe && !isConfirmed && (
@@ -740,7 +728,7 @@ export default function MatchLobby({ session, supabase }) {
                 }}
               >
                 ✅ Valider ce score
-              </button>
+                </button>
             </div>
           )}
 
@@ -753,17 +741,17 @@ export default function MatchLobby({ session, supabase }) {
 
         {/* SECTION PREUVES */}
         <div style={{ marginTop: '20px', background: '#1a1a1a', padding: '20px', borderRadius: '15px', border: '1px solid #333' }}>
-          <h3>📷 Preuve du résultat (Screenshot)</h3>
-          {proofUrl ? (
-            <a href={proofUrl} target="_blank" rel="noreferrer">
-              <img src={proofUrl} style={{maxWidth:'100%', maxHeight:'300px', borderRadius:'5px', border:'1px solid #555'}} alt="Preuve" />
-            </a>
-          ) : (
-            <p style={{color:'#666'}}>Aucune preuve envoyée.</p>
-          )}
-          
-          {myTeamId && (
-            <div style={{marginTop:'10px'}}>
+            <h3>📷 Preuve du résultat (Screenshot)</h3>
+            {proofUrl ? (
+                <a href={proofUrl} target="_blank" rel="noreferrer">
+                    <img src={proofUrl} style={{maxWidth:'100%', maxHeight:'300px', borderRadius:'5px', border:'1px solid #555'}} alt="Preuve" />
+                </a>
+            ) : (
+                <p style={{color:'#666'}}>Aucune preuve envoyée.</p>
+            )}
+            
+            {myTeamId && (
+                <div style={{marginTop:'10px'}}>
               <input type="file" accept="image/*" onChange={uploadProof} disabled={uploading} style={{color:'white'}} />
               {uploading && <span style={{marginLeft: '10px', color: '#aaa'}}>Upload en cours...</span>}
             </div>
@@ -801,9 +789,9 @@ export default function MatchLobby({ session, supabase }) {
                   {report.profiles?.username && (
                     <div style={{fontSize: '0.75rem', color: '#aaa', marginTop: '5px'}}>
                       Déclaré par {report.profiles.username}
-                    </div>
-                  )}
                 </div>
+            )}
+        </div>
               ))}
             </div>
           </div>
@@ -813,7 +801,7 @@ export default function MatchLobby({ session, supabase }) {
       {/* COLONNE DROITE : CHAT */}
       <div style={{ height: '600px', background: '#1a1a1a', borderRadius: '15px', border: '1px solid #333', overflow: 'hidden' }}>
         <div style={{padding:'15px', borderBottom:'1px solid #333', background:'#222'}}>
-          <h3 style={{margin:0}}>💬 Chat du Match</h3>
+            <h3 style={{margin:0}}>💬 Chat du Match</h3>
         </div>
         <Chat matchId={id} session={session} supabase={supabase} />
       </div>

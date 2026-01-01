@@ -39,9 +39,8 @@ useEffect(() => {
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` },
         (payload) => {
-          // Appeler fetchData() immédiatement pour chaque changement
-          // (comme dans saveScore qui appelle fetchData() directement après handleDoubleEliminationProgression)
-          fetchData();
+          console.log('Changement Match détecté !', payload);
+          fetchData(); // On recharge tout pour avoir les logos/noms à jour
         }
       )
 
@@ -49,7 +48,8 @@ useEffect(() => {
       .on(
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` },
-        () => {
+        (payload) => {
+          console.log('Changement Participant détecté !', payload);
           fetchData();
         }
       )
@@ -58,15 +58,30 @@ useEffect(() => {
       .on(
         'postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` },
-        () => {
+        (payload) => {
+          console.log('Statut Tournoi changé !', payload);
           fetchData();
         }
       )
       .subscribe();
 
+    // SOLUTION RADICALE : Écouter un événement personnalisé émis par MatchLobby après les updates
+    const handleMatchUpdate = (event) => {
+      if (event.detail.tournamentId === id) {
+        console.log('Événement tournament-match-updated reçu, rechargement...');
+        // Petit délai pour laisser le temps aux updates de se propager dans Supabase
+        setTimeout(() => {
+          fetchData();
+        }, 300);
+      }
+    };
+    
+    window.addEventListener('tournament-match-updated', handleMatchUpdate);
+
     // Nettoyage quand on quitte la page
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('tournament-match-updated', handleMatchUpdate);
     };
   }, [id]);
 
@@ -84,45 +99,14 @@ useEffect(() => {
     
     setParticipants(pData || []);
 
-    // 3. Charger les matchs
-    // Pour Double Elimination : ordonner par bracket_type (winners, losers, null), puis round_number, puis match_number
-    // Pour Single Elimination/Round Robin : ordonner par round_number, puis match_number
-    // Note: Supabase permet de chaîner plusieurs .order(), mais on peut aussi trier en JS après
-    const { data: mData, error: mError } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('tournament_id', id)
-      .order('round_number', { ascending: true })
-      .order('match_number', { ascending: true });
-    
-    if (mError) {
-      console.error('Erreur lors du chargement des matchs:', mError);
-    }
-    
-    // Trier en JavaScript pour gérer bracket_type (Supabase peut avoir des problèmes avec nullsLast)
-    let sortedMatches = mData || [];
-    
-    if (sortedMatches.length > 0) {
-      sortedMatches = [...sortedMatches].sort((a, b) => {
-        // Trier par bracket_type d'abord (winners avant losers, nulls en dernier)
-        const bracketOrder = { 'winners': 0, 'losers': 1, null: 2, undefined: 2 };
-        const bracketA = bracketOrder[a.bracket_type] ?? 2;
-        const bracketB = bracketOrder[b.bracket_type] ?? 2;
-        if (bracketA !== bracketB) return bracketA - bracketB;
-        
-        // Puis par round_number
-        if (a.round_number !== b.round_number) return a.round_number - b.round_number;
-        
-        // Puis par match_number
-        return a.match_number - b.match_number;
-      });
-    }
+    // 3. Charger les matchs (comme dans l'ancien code qui fonctionnait)
+    const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
 
-    if (sortedMatches && sortedMatches.length > 0 && pData) {
+    if (mData && mData.length > 0 && pData) {
       // Créer une map pour accès rapide aux participants
       const participantsMap = new Map(pData.map(p => [p.team_id, p]));
       
-      const enrichedMatches = sortedMatches.map(match => {
+      const enrichedMatches = mData.map(match => {
         // On trouve l'équipe via son ID stocké dans le match
         const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
         const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
