@@ -111,6 +111,12 @@ export default function Dashboard({ session }) {
           >
             👤 Profil
           </button>
+          <button 
+            onClick={() => navigate('/stats')} 
+            style={{ background: '#3498db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            📊 Statistiques
+          </button>
           <button onClick={() => navigate('/create-team')} style={{ margin: '10px', padding: '10px', background: '#2ecc71' }}>
             🛡️ Créer une Team
           </button>

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import confetti from 'canvas-confetti';
-import TeamJoinButton from './TeamJoinButton'; // <--- NOUVEAU BOUTON
+import TeamJoinButton from './TeamJoinButton';
 import CheckInButton from './CheckInButton';
 import Chat from './Chat';
+import AdminPanel from './AdminPanel';
+import SeedingModal from './SeedingModal';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -21,6 +23,7 @@ export default function Tournament({ session }) {
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [winnerName, setWinnerName] = useState(null);
+  const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
 
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
 
@@ -78,7 +81,7 @@ useEffect(() => {
       .from('participants')
       .select('*, teams(*)') // On récupère tout ce qu'il y a dans 'teams' (nom, tag, logo...)
       .eq('tournament_id', id)
-      .order('created_at');
+      .order('seed_order', { ascending: true, nullsLast: true }); // Trier par seed_order si disponible
     
     setParticipants(pData || []);
 
@@ -86,22 +89,41 @@ useEffect(() => {
     const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
 
     if (mData && mData.length > 0 && pData) {
+      // Créer une map pour accès rapide aux participants
+      const participantsMap = new Map(pData.map(p => [p.team_id, p]));
+      
       const enrichedMatches = mData.map(match => {
         // On trouve l'équipe via son ID stocké dans le match
-        const p1 = pData.find(p => p.team_id === match.player1_id);
-        const p2 = pData.find(p => p.team_id === match.player2_id);
+        const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
+        const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
         
-        const getTeamName = (p) => p ? `${p.teams.name} [${p.teams.tag}]` : 'En attente';
+        // Vérifier si les équipes sont disqualifiées ou non check-in
+        const p1Disqualified = p1?.disqualified || false;
+        const p2Disqualified = p2?.disqualified || false;
+        const p1NotCheckedIn = p1 && !p1.checked_in;
+        const p2NotCheckedIn = p2 && !p2.checked_in;
+        
+        const getTeamName = (p, isDisqualified, notCheckedIn) => {
+          if (!p) return 'En attente';
+          let name = `${p.teams.name} [${p.teams.tag}]`;
+          if (isDisqualified) name += ' ❌ DQ';
+          if (notCheckedIn && !isDisqualified) name += ' ⏳';
+          return name;
+        };
         
         // NOUVEAU : On utilise le logo_url s'il existe, sinon l'avatar par défaut
         const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
 
         return {
           ...match,
-          p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
-          p1_avatar: getTeamLogo(p1), // <-- C'est ici que la magie opère
-          p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
-          p2_avatar: getTeamLogo(p2), // <-- Ici aussi
+          p1_name: match.player1_id ? getTeamName(p1, p1Disqualified, p1NotCheckedIn) : 'En attente',
+          p1_avatar: getTeamLogo(p1),
+          p1_disqualified: p1Disqualified,
+          p1_not_checked_in: p1NotCheckedIn,
+          p2_name: match.player2_id ? getTeamName(p2, p2Disqualified, p2NotCheckedIn) : 'En attente',
+          p2_avatar: getTeamLogo(p2),
+          p2_disqualified: p2Disqualified,
+          p2_not_checked_in: p2NotCheckedIn,
         };
       });
       setMatches(enrichedMatches);
@@ -121,62 +143,64 @@ useEffect(() => {
     fetchData(); // Force refresh
   };
 
-  // --- LOGIQUE DE GÉNÉRATION DES MATCHS (Mise à jour pour V2 Teams) ---
-  const startTournament = async () => {
-    // Sécurité de base
-    if (participants.length < 2) return alert("Il faut au moins 2 équipes pour lancer !");
-    if (!confirm("Lancer le tournoi ? Plus aucune inscription ne sera possible.")) return;
-    
-    setLoading(true);
+  // Fonction interne pour générer l'arbre (réutilisée par startTournament et regenerateBracketIfNeeded)
+  const generateBracketInternal = async (participantsList) => {
+    if (!tournoi || participantsList.length < 2) return;
 
-    // 1. Préparer les matchs
     let matchesToCreate = [];
-    const shuffled = [...participants].sort(() => 0.5 - Math.random()); // On mélange toujours un peu
+    
+    // Utiliser l'ordre de seeding si disponible, sinon mélanger aléatoirement
+    let orderedParticipants = [...participantsList];
+    
+    // Vérifier si un seeding existe
+    const hasSeeding = participantsList.some(p => p.seed_order !== null && p.seed_order !== undefined);
+    
+    if (hasSeeding) {
+      // Trier par seed_order
+      orderedParticipants = [...participantsList].sort((a, b) => {
+        const seedA = a.seed_order ?? 999;
+        const seedB = b.seed_order ?? 999;
+        return seedA - seedB;
+      });
+    } else {
+      // Pas de seeding, mélange aléatoire
+      orderedParticipants = [...participantsList].sort(() => 0.5 - Math.random());
+    }
 
     // --- CAS 1 : ARBRE (ÉLIMINATION) ---
     if (tournoi.format === 'elimination') {
-        // Ta logique existante (simplifiée pour l'exemple, mais garde la tienne si elle est complexe)
-        // Ici je remets une logique standard d'arbre binaire pour être sûr que ça marche
-        let roundCount = 1;
         let matchCount = 1;
-        let activePlayers = shuffled.map(p => p.team_id);
+        let activePlayers = orderedParticipants.map(p => p.team_id);
         
-        // Création du Round 1 (Les matchs joués tout de suite)
-        // Note: Pour un vrai arbre parfait, il faudrait gérer les "Byes", mais restons simple pour le MVP
         const pairs = [];
         while (activePlayers.length > 0) {
             pairs.push(activePlayers.splice(0, 2));
         }
 
-        // On crée les matchs du Round 1
         pairs.forEach(pair => {
             matchesToCreate.push({
                 tournament_id: id,
                 match_number: matchCount++,
                 round_number: 1,
-                player1_id: pair[0] || null, // Peut être null si nombre impair (Bye)
+                player1_id: pair[0] || null,
                 player2_id: pair[1] || null,
-                status: pair[1] ? 'pending' : 'completed', // Si pas d'adversaire, victoire auto
-                next_match_id: null // Sera calculé si on fait un arbre complet (complexe)
+                status: pair[1] ? 'pending' : 'completed',
+                next_match_id: null
             });
         });
-        
-        // NOTE: Pour un MVP Round Robin, cette partie Arbre est "bonus". 
-        // Si ton ancien code Arbre marchait bien, tu peux juste coller la partie "else if" ci-dessous.
     } 
     
     // --- CAS 2 : CHAMPIONNAT (ROUND ROBIN) ---
     else if (tournoi.format === 'round_robin') {
         let matchNum = 1;
-        // Double boucle : Chaque équipe rencontre toutes les autres une seule fois
-        for (let i = 0; i < shuffled.length; i++) {
-            for (let j = i + 1; j < shuffled.length; j++) {
+        for (let i = 0; i < orderedParticipants.length; i++) {
+            for (let j = i + 1; j < orderedParticipants.length; j++) {
                 matchesToCreate.push({
                     tournament_id: id,
                     match_number: matchNum++,
-                    round_number: 1, // En championnat, tout est souvent affiché dans un "Groupe unique"
-                    player1_id: shuffled[i].team_id,
-                    player2_id: shuffled[j].team_id,
+                    round_number: 1,
+                    player1_id: orderedParticipants[i].team_id,
+                    player2_id: orderedParticipants[j].team_id,
                     status: 'pending',
                     score_p1: 0,
                     score_p2: 0
@@ -185,18 +209,105 @@ useEffect(() => {
         }
     }
 
-    // 2. Envoyer les matchs dans la base
+    // Insérer les nouveaux matchs
     const { error: matchError } = await supabase
       .from('matches')
       .insert(matchesToCreate);
 
     if (matchError) {
         alert("Erreur création matchs : " + matchError.message);
-        setLoading(false);
         return;
     }
 
-    // 3. Passer le tournoi en "En cours" (ongoing)
+    // Recharger les données
+    await fetchData();
+  };
+
+  // Fonction pour régénérer l'arbre si nécessaire (quand une équipe est réintégrée)
+  const regenerateBracketIfNeeded = async () => {
+    // Ne régénérer que si le tournoi est en cours
+    if (tournoi?.status !== 'ongoing' || matches.length === 0) return;
+
+    // Vérifier si au moins un match a été joué (completed)
+    const hasPlayedMatches = matches.some(m => m.status === 'completed');
+    if (hasPlayedMatches) {
+      // Des matchs ont déjà été joués, on ne peut pas régénérer
+      return;
+    }
+
+    // Recharger les participants pour avoir les dernières données
+    const { data: pData } = await supabase
+      .from('participants')
+      .select('*, teams(*)')
+      .eq('tournament_id', id)
+      .order('created_at');
+    
+    const activeParticipants = (pData || []).filter(p => p.checked_in && !p.disqualified);
+    const teamsInMatches = new Set([
+      ...matches.map(m => m.player1_id).filter(Boolean),
+      ...matches.map(m => m.player2_id).filter(Boolean)
+    ]);
+    
+    const teamsNotInBracket = activeParticipants.filter(p => !teamsInMatches.has(p.team_id));
+    
+    // Si des équipes actives ne sont pas dans l'arbre, on peut régénérer
+    if (teamsNotInBracket.length > 0) {
+      if (!confirm(`⚠️ Des équipes actives (${teamsNotInBracket.length}) ne sont pas dans l'arbre. Voulez-vous régénérer l'arbre ? (Les matchs non joués seront supprimés)`)) {
+        return;
+      }
+
+      // Supprimer tous les matchs existants
+      const { error: deleteError } = await supabase
+        .from('matches')
+        .delete()
+        .eq('tournament_id', id);
+      
+      if (deleteError) {
+        alert("Erreur lors de la suppression des matchs : " + deleteError.message);
+        return;
+      }
+
+      // Régénérer l'arbre avec les équipes actives
+      await generateBracketInternal(activeParticipants);
+    }
+  };
+
+  // Fonction wrapper pour fetchData qui vérifie aussi si l'arbre doit être régénéré
+  const fetchDataAndRegenerateIfNeeded = async () => {
+    await fetchData();
+    // Attendre un peu pour que fetchData soit terminé
+    setTimeout(async () => {
+      await regenerateBracketIfNeeded();
+    }, 500);
+  };
+
+  // --- LOGIQUE DE GÉNÉRATION DES MATCHS (Mise à jour pour V2 Teams) ---
+  const startTournament = async () => {
+    // Sécurité de base
+    if (participants.length < 2) return alert("Il faut au moins 2 équipes pour lancer !");
+    if (!confirm("Lancer le tournoi ? Plus aucune inscription ne sera possible.")) return;
+    
+    setLoading(true);
+
+    // Filtrer les participants : on ne garde que ceux qui ont check-in et ne sont pas disqualifiés
+    const checkedInParticipants = participants.filter(p => p.checked_in && !p.disqualified);
+    
+    if (checkedInParticipants.length < 2) {
+      alert("⚠️ Attention : Moins de 2 équipes ont fait leur check-in. Le tournoi sera lancé avec les équipes présentes.");
+      if (checkedInParticipants.length < 1) {
+        alert("❌ Aucune équipe n'a fait son check-in. Impossible de lancer le tournoi.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Utiliser uniquement les équipes check-in pour créer les matchs
+    const participantsForMatches = checkedInParticipants.length > 0 ? checkedInParticipants : participants;
+
+    // Générer l'arbre avec les équipes actives
+    await generateBracketInternal(participantsForMatches);
+
+    // Passer le tournoi en "En cours" (ongoing)
     const { error: updateError } = await supabase
       .from('tournaments')
       .update({ status: 'ongoing' })
@@ -204,8 +315,7 @@ useEffect(() => {
 
     if (updateError) alert("Erreur update statut : " + updateError.message);
     
-    // 4. Recharger la page pour voir les matchs
-    fetchData();
+    setLoading(false);
   };
   // ------------------------------------------------------------------
 
@@ -258,7 +368,6 @@ useEffect(() => {
 // --- CALCUL DU CLASSEMENT (Pour le format Championnat) ---
   const getStandings = () => {
     if (!participants || !matches) return [];
-
     // 1. On initialise les scores à 0 pour tout le monde
     const stats = participants.map(p => ({
       ...p,
@@ -335,10 +444,65 @@ useEffect(() => {
       )}
 
       {/* ADMIN PANEL */}
+      {isOwner && tournoi.status === 'ongoing' && (
+        <AdminPanel 
+          tournamentId={id} 
+          supabase={supabase} 
+          session={session} 
+          participants={participants} 
+          matches={matches} 
+          onUpdate={fetchDataAndRegenerateIfNeeded} 
+        />
+      )}
+      
       {isOwner && tournoi.status === 'draft' && (
-        <div style={{ background: '#222', padding: '20px', borderRadius: '8px', marginBottom: '30px', borderLeft:'4px solid #8e44ad', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <span>{participants.length} équipes inscrites.</span>
-          <button onClick={startTournament} style={{ padding: '10px 20px', background: '#8e44ad', color: 'white', border: 'none', borderRadius: '4px', cursor:'pointer' }}>Générer l'Arbre et Lancer</button>
+        <div style={{ background: '#222', padding: '20px', borderRadius: '8px', marginBottom: '30px', borderLeft:'4px solid #8e44ad' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px' }}>
+            <span>{participants.length} équipes inscrites.</span>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setIsSeedingModalOpen(true)} 
+                style={{ 
+                  padding: '10px 20px', 
+                  background: 'linear-gradient(135deg, #f1c40f, #e67e22)', 
+                  color: '#000', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor:'pointer',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)'
+                }}
+              >
+                🎯 God Mode - Seeding
+              </button>
+              <button 
+                onClick={startTournament} 
+                style={{ 
+                  padding: '10px 20px', 
+                  background: '#8e44ad', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor:'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Générer l'Arbre et Lancer
+              </button>
+            </div>
+          </div>
+          {participants.some(p => p.seed_order !== null && p.seed_order !== undefined) && (
+            <div style={{ 
+              background: '#2a2a2a', 
+              padding: '10px', 
+              borderRadius: '5px', 
+              fontSize: '0.9rem', 
+              color: '#4ade80',
+              borderLeft: '3px solid #4ade80'
+            }}>
+              ✅ Seeding configuré : Les équipes seront placées selon l'ordre défini.
+            </div>
+          )}
         </div>
       )}
 
@@ -430,40 +594,71 @@ useEffect(() => {
                 {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
                     <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
                         <h4 style={{textAlign:'center', color:'#666'}}>Round {round}</h4>
-                        {matches.filter(m=>m.round_number === round).map(m => (
+                        {matches.filter(m=>m.round_number === round).map(m => {
+                          // Marquer le match comme ayant une équipe disqualifiée
+                          const hasDisqualified = m.p1_disqualified || m.p2_disqualified;
+                          
+                          return (
                             <div key={m.id} onClick={()=>handleMatchClick(m)} style={{
-                                width:'240px', background:'#252525', 
-                                border: m.status === 'completed' ? '1px solid #4ade80' : '1px solid #444', 
-                                borderRadius:'8px', cursor: isOwner ? 'pointer' : 'default', position:'relative',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                                width:'240px', 
+                                background: hasDisqualified ? '#3a1a1a' : '#252525', 
+                                border: hasDisqualified ? '1px solid #e74c3c' : (m.status === 'completed' ? '1px solid #4ade80' : '1px solid #444'), 
+                                borderRadius:'8px', 
+                                cursor: isOwner ? 'pointer' : 'default', 
+                                position:'relative',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                                opacity: hasDisqualified ? 0.7 : 1
                             }}>
                                 {/* JOUEUR 1 */}
                                 <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p1 > m.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
                                         {/* Avatar J1 */}
-                                        {m.player1_id && <img src={m.p1_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555'}} alt="" />}
-                                        <span style={{color: m.player1_id ? 'white' : '#666', fontWeight: m.score_p1 > m.score_p2 ? 'bold' : 'normal', fontSize:'0.9rem'}}>
-                                            {m.p1_name.split(' [')[0]} <span style={{fontSize:'0.7rem', color:'#aaa'}}>{m.p1_name.includes('[') ? `[${m.p1_name.split('[')[1]}` : ''}</span>
+                                        {m.player1_id && <img src={m.p1_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                        <span style={{
+                                          color: m.p1_disqualified ? '#e74c3c' : (m.player1_id ? 'white' : '#666'), 
+                                          fontWeight: m.score_p1 > m.score_p2 ? 'bold' : 'normal', 
+                                          fontSize:'0.9rem',
+                                          textDecoration: m.p1_disqualified ? 'line-through' : 'none',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap'
+                                        }}>
+                                            {m.p1_name.split(' [')[0]} 
+                                            {m.p1_name.includes('[') && (
+                                              <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p1_name.split('[')[1]}</span>
+                                            )}
                                         </span>
                                     </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.1rem'}}>{m.score_p1}</span>
+                                    <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p1}</span>
                                 </div>
                                 
                                 <div style={{height:'1px', background:'#333'}}></div>
                                 
                                 {/* JOUEUR 2 */}
                                 <div style={{padding:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', background: m.score_p2 > m.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px'}}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
                                         {/* Avatar J2 */}
-                                        {m.player2_id && <img src={m.p2_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555'}} alt="" />}
-                                        <span style={{color: m.player2_id ? 'white' : '#666', fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal', fontSize:'0.9rem'}}>
-                                            {m.p2_name.split(' [')[0]} <span style={{fontSize:'0.7rem', color:'#aaa'}}>{m.p2_name.includes('[') ? `[${m.p2_name.split('[')[1]}` : ''}</span>
+                                        {m.player2_id && <img src={m.p2_avatar} style={{width:'24px', height:'24px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                        <span style={{
+                                          color: m.p2_disqualified ? '#e74c3c' : (m.player2_id ? 'white' : '#666'), 
+                                          fontWeight: m.score_p2 > m.score_p1 ? 'bold' : 'normal', 
+                                          fontSize:'0.9rem',
+                                          textDecoration: m.p2_disqualified ? 'line-through' : 'none',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap'
+                                        }}>
+                                            {m.p2_name.split(' [')[0]} 
+                                            {m.p2_name.includes('[') && (
+                                              <span style={{fontSize:'0.7rem', color:'#aaa'}}> [{m.p2_name.split('[')[1]}</span>
+                                            )}
                                         </span>
                                     </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.1rem'}}>{m.score_p2}</span>
+                                    <span style={{fontWeight:'bold', fontSize:'1.1rem', marginLeft: '8px', flexShrink: 0}}>{m.score_p2}</span>
                                 </div>
                             </div>
-                        ))}
+                          );
+                        })}
                     </div>
                 ))}
              </div>
@@ -491,6 +686,16 @@ useEffect(() => {
             </div>
         </div>
       )}
+
+      {/* MODALE SEEDING */}
+      <SeedingModal
+        isOpen={isSeedingModalOpen}
+        onClose={() => setIsSeedingModalOpen(false)}
+        participants={participants}
+        tournamentId={id}
+        supabase={supabase}
+        onSave={() => fetchData()} // Recharger les données après sauvegarde
+      />
     </div>
   );
 }

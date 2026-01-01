@@ -14,6 +14,24 @@ export default function CreateTournament({ session, supabase }) {
     setLoading(true);
 
     try {
+      // Convertir la date locale en ISO string pour éviter le décalage d'heure
+      // datetime-local renvoie "YYYY-MM-DDTHH:mm" sans timezone
+      // On doit construire la date en considérant qu'elle est en heure locale
+      let startDateISO = null;
+      if (date) {
+        // Parser la date datetime-local (format: "YYYY-MM-DDTHH:mm")
+        const [datePart, timePart] = date.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        
+        // Créer la date en utilisant le constructeur avec paramètres numériques
+        // Ce constructeur interprète toujours en heure locale
+        const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+        
+        // Convertir en ISO string (UTC) pour Supabase
+        startDateISO = localDate.toISOString();
+      }
+
       // 1. Création du tournoi dans la base de données
       const { data, error } = await supabase
         .from('tournaments')
@@ -21,7 +39,7 @@ export default function CreateTournament({ session, supabase }) {
           { 
             name, 
             game, 
-            start_date: date, 
+            start_date: startDateISO, 
             owner_id: session.user.id,
             status: 'draft',
             format: format // On enregistre le choix (elimination ou round_robin)

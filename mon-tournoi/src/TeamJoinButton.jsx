@@ -51,7 +51,9 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
       .from('participants')
       .insert([{ 
         tournament_id: tournamentId, 
-        team_id: selectedTeamId 
+        team_id: selectedTeamId,
+        checked_in: false,
+        disqualified: false
       }]);
 
     if (error) {

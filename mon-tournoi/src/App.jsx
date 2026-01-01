@@ -10,6 +10,8 @@ import MyTeam from './MyTeam';
 import JoinTeam from './JoinTeam';
 import MatchLobby from './MatchLobby';
 import CreateTournament from './CreateTournament';
+import PublicTournament from './PublicTournament';
+import StatsDashboard from './StatsDashboard';
 
 function App() {
   const [session, setSession] = useState(null)
@@ -28,38 +30,26 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (!session) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1a1a1a', color: 'white' }}>
-        <Auth />
-      </div>
-    )
-  }
-
   return (
     <Router>
       <Routes>
-        {/* Route par défaut : Le Dashboard */}
-        <Route path="/" element={<Dashboard session={session} />} />
+        {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
+        <Route path="/tournament/:id/public" element={<PublicTournament />} />
         
-        {/* Route Dashboard explicite */}
-        <Route path="/dashboard" element={<Dashboard session={session} />} />
-        
-        {/* Route Tournoi */}
-        <Route path="/tournament/:id" element={<Tournament session={session} />} />
-        
-        {/* --- TES NOUVELLES ROUTES (DOIVENT ÊTRE AVANT LE "*") --- */}
-        <Route path="/profile" element={<Profile session={session} />} />
-        <Route path="/create-team" element={<CreateTeam session={session} supabase={supabase} />} />
-        <Route path="/my-team" element={<MyTeam session={session} supabase={supabase} />} />
-        <Route path="/join-team/:teamId" element={<JoinTeam session={session} supabase={supabase} />} />
-        <Route path="/match/:id" element={<MatchLobby session={session} supabase={supabase} />} />
-        <Route path="/create-tournament" element={<CreateTournament session={session} supabase={supabase} />} />
+        {/* Routes protégées nécessitant une authentification */}
+        <Route path="/" element={session ? <Dashboard session={session} /> : <Auth />} />
+        <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Auth />} />
+        <Route path="/tournament/:id" element={session ? <Tournament session={session} /> : <Auth />} />
+        <Route path="/profile" element={session ? <Profile session={session} /> : <Auth />} />
+        <Route path="/create-team" element={session ? <CreateTeam session={session} supabase={supabase} /> : <Auth />} />
+        <Route path="/my-team" element={session ? <MyTeam session={session} supabase={supabase} /> : <Auth />} />
+        <Route path="/join-team/:teamId" element={session ? <JoinTeam session={session} supabase={supabase} /> : <Auth />} />
+        <Route path="/match/:id" element={session ? <MatchLobby session={session} supabase={supabase} /> : <Auth />} />
+        <Route path="/create-tournament" element={session ? <CreateTournament session={session} supabase={supabase} /> : <Auth />} />
+        <Route path="/stats" element={session ? <StatsDashboard session={session} supabase={supabase} /> : <Auth />} />
 
-        {/* --- LE "CATCH-ALL" DOIT ÊTRE EN DERNIER --- */}
-        {/* Redirection si route inconnue */}
-        <Route path="*" element={<Navigate to="/" />} />
-        
+        {/* Catch-all pour les routes non définies */}
+        <Route path="*" element={session ? <Navigate to="/" /> : <Auth />} />
       </Routes>
     </Router>
   )
