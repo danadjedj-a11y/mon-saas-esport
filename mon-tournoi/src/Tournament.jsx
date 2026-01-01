@@ -27,6 +27,9 @@ export default function Tournament({ session }) {
 
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
 
+  // Ref pour le debounce des updates de matches (pour regrouper plusieurs updates rapides)
+  const matchesUpdateTimeoutRef = useRef(null);
+
 useEffect(() => {
     // 1. Chargement initial
     fetchData();
@@ -39,9 +42,14 @@ useEffect(() => {
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` },
         (payload) => {
-          // Appeler fetchData() immédiatement, comme dans saveScore (admin), sans debounce
-          // Cela garantit que les données sont rechargées dès qu'un changement est détecté
-          fetchData();
+          // Debounce pour regrouper plusieurs updates rapides (ex: progression Double Elimination fait plusieurs updates)
+          // Cela permet de laisser le temps à tous les updates de se terminer avant de recharger
+          if (matchesUpdateTimeoutRef.current) {
+            clearTimeout(matchesUpdateTimeoutRef.current);
+          }
+          matchesUpdateTimeoutRef.current = setTimeout(() => {
+            fetchData();
+          }, 500); // 500ms de délai pour regrouper les updates
         }
       )
 
@@ -67,6 +75,9 @@ useEffect(() => {
     // Nettoyage quand on quitte la page
     return () => {
       supabase.removeChannel(channel);
+      if (matchesUpdateTimeoutRef.current) {
+        clearTimeout(matchesUpdateTimeoutRef.current);
+      }
     };
   }, [id]);
 
