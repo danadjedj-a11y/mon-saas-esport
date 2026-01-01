@@ -228,19 +228,12 @@ useEffect(() => {
     // Ne régénérer que si le tournoi est en cours
     if (tournoi?.status !== 'ongoing' || matches.length === 0) return;
 
-    // Vérifier si au moins un match a été joué (completed)
-    const hasPlayedMatches = matches.some(m => m.status === 'completed');
-    if (hasPlayedMatches) {
-      // Des matchs ont déjà été joués, on ne peut pas régénérer
-      return;
-    }
-
     // Recharger les participants pour avoir les dernières données
     const { data: pData } = await supabase
       .from('participants')
       .select('*, teams(*)')
       .eq('tournament_id', id)
-      .order('created_at');
+      .order('seed_order', { ascending: true, nullsLast: true });
     
     const activeParticipants = (pData || []).filter(p => p.checked_in && !p.disqualified);
     const teamsInMatches = new Set([
@@ -248,27 +241,137 @@ useEffect(() => {
       ...matches.map(m => m.player2_id).filter(Boolean)
     ]);
     
+    // Équipes actives qui ne sont pas dans l'arbre
     const teamsNotInBracket = activeParticipants.filter(p => !teamsInMatches.has(p.team_id));
     
-    // Si des équipes actives ne sont pas dans l'arbre, on peut régénérer
-    if (teamsNotInBracket.length > 0) {
-      if (!confirm(`⚠️ Des équipes actives (${teamsNotInBracket.length}) ne sont pas dans l'arbre. Voulez-vous régénérer l'arbre ? (Les matchs non joués seront supprimés)`)) {
+    // Équipes dans l'arbre mais disqualifiées (à retirer)
+    const disqualifiedTeamsInBracket = matches.filter(m => {
+      const p1 = pData.find(p => p.team_id === m.player1_id);
+      const p2 = pData.find(p => p.team_id === m.player2_id);
+      return (p1 && (p1.disqualified || !p1.checked_in)) || (p2 && (p2.disqualified || !p2.checked_in));
+    });
+
+    // Vérifier si au moins un match a été joué (completed)
+    const hasPlayedMatches = matches.some(m => m.status === 'completed');
+    
+    // Si aucun match n'a été joué, on peut régénérer complètement
+    if (!hasPlayedMatches) {
+      // Si des équipes actives ne sont pas dans l'arbre OU si des équipes disqualifiées sont dans l'arbre
+      if (teamsNotInBracket.length > 0 || disqualifiedTeamsInBracket.length > 0) {
+        if (!confirm(`⚠️ ${teamsNotInBracket.length > 0 ? `${teamsNotInBracket.length} équipe(s) active(s) ne sont pas dans l'arbre. ` : ''}${disqualifiedTeamsInBracket.length > 0 ? `${disqualifiedTeamsInBracket.length} match(s) contiennent des équipes disqualifiées. ` : ''}Voulez-vous régénérer l'arbre ? (Les matchs non joués seront supprimés)`)) {
+          return;
+        }
+
+        // Supprimer tous les matchs existants
+        const { error: deleteError } = await supabase
+          .from('matches')
+          .delete()
+          .eq('tournament_id', id);
+        
+        if (deleteError) {
+          alert("Erreur lors de la suppression des matchs : " + deleteError.message);
+          return;
+        }
+
+        // Régénérer l'arbre avec les équipes actives
+        await generateBracketInternal(activeParticipants);
         return;
       }
+    } else {
+      // Des matchs ont été joués, on essaie d'ajouter les équipes dans des branches vides
+      if (teamsNotInBracket.length > 0 && tournoi.format === 'elimination') {
+        // Chercher des matchs avec des slots vides (player1_id ou player2_id null)
+        const emptyMatches = matches.filter(m => 
+          (m.player1_id === null || m.player2_id === null) && 
+          m.status === 'pending' &&
+          m.round_number === 1 // Seulement dans le premier round
+        );
+        
+        if (emptyMatches.length > 0) {
+          // Remplir les slots vides avec les équipes à ajouter
+          let teamsToAdd = [...teamsNotInBracket];
+          for (const match of emptyMatches) {
+            if (teamsToAdd.length === 0) break;
+            
+            const teamToAdd = teamsToAdd.shift();
+            const updateData = match.player1_id === null 
+              ? { player1_id: teamToAdd.team_id }
+              : { player2_id: teamToAdd.team_id };
+            
+            await supabase
+              .from('matches')
+              .update(updateData)
+              .eq('id', match.id);
+          }
+          
+          // S'il reste des équipes à ajouter, créer de nouveaux matchs
+          if (teamsToAdd.length > 0) {
+            // Créer des paires avec les équipes restantes
+            let matchCount = Math.max(...matches.map(m => m.match_number), 0) + 1;
+            const pairs = [];
+            while (teamsToAdd.length > 0) {
+              const pair = teamsToAdd.splice(0, 2);
+              pairs.push(pair);
+            }
+            
+            const newMatches = pairs.map(pair => ({
+              tournament_id: id,
+              match_number: matchCount++,
+              round_number: 1,
+              player1_id: pair[0]?.team_id || null,
+              player2_id: pair[1]?.team_id || null,
+              status: pair[1] ? 'pending' : 'completed',
+              next_match_id: null
+            }));
+            
+            if (newMatches.length > 0) {
+              await supabase.from('matches').insert(newMatches);
+            }
+          }
+          
+          await fetchData();
+          return;
+        } else {
+          // Pas de slots vides, proposer de régénérer (avec warning)
+          if (confirm(`⚠️ ${teamsNotInBracket.length} équipe(s) active(s) ne peuvent pas être ajoutées automatiquement. Voulez-vous régénérer complètement l'arbre ? ⚠️ ATTENTION : Cela supprimera tous les matchs existants, y compris ceux déjà joués !`)) {
+            // Supprimer tous les matchs existants
+            const { error: deleteError } = await supabase
+              .from('matches')
+              .delete()
+              .eq('tournament_id', id);
+            
+            if (deleteError) {
+              alert("Erreur lors de la suppression des matchs : " + deleteError.message);
+              return;
+            }
 
-      // Supprimer tous les matchs existants
-      const { error: deleteError } = await supabase
-        .from('matches')
-        .delete()
-        .eq('tournament_id', id);
+            // Régénérer l'arbre avec les équipes actives
+            await generateBracketInternal(activeParticipants);
+            return;
+          }
+        }
+      }
       
-      if (deleteError) {
-        alert("Erreur lors de la suppression des matchs : " + deleteError.message);
-        return;
+      // Pour les équipes disqualifiées dans l'arbre, on peut les retirer en mettant null
+      if (disqualifiedTeamsInBracket.length > 0 && tournoi.format === 'elimination') {
+        for (const match of disqualifiedTeamsInBracket) {
+          const p1 = pData.find(p => p.team_id === match.player1_id);
+          const p2 = pData.find(p => p.team_id === match.player2_id);
+          
+          if (p1 && (p1.disqualified || !p1.checked_in)) {
+            await supabase.from('matches').update({ player1_id: null }).eq('id', match.id);
+          }
+          if (p2 && (p2.disqualified || !p2.checked_in)) {
+            await supabase.from('matches').update({ player2_id: null }).eq('id', match.id);
+          }
+          
+          // Si les deux joueurs sont null, marquer le match comme completed
+          if ((!p1 || p1.disqualified || !p1.checked_in) && (!p2 || p2.disqualified || !p2.checked_in)) {
+            await supabase.from('matches').update({ status: 'completed', score_p1: 0, score_p2: 0 }).eq('id', match.id);
+          }
+        }
+        await fetchData();
       }
-
-      // Régénérer l'arbre avec les équipes actives
-      await generateBracketInternal(activeParticipants);
     }
   };
 
@@ -518,7 +621,7 @@ useEffect(() => {
             onJoinSuccess={fetchData} // Recharge la liste après inscription
           />
 
-          <CheckInButton tournamentId={id} supabase={supabase} session={session} />
+          <CheckInButton tournamentId={id} supabase={supabase} session={session} tournament={tournoi} />
         </div>
       )}
 
