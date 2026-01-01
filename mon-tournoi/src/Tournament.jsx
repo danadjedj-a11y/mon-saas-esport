@@ -27,9 +27,6 @@ export default function Tournament({ session }) {
 
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
 
-  // Ref pour le debounce des updates de matches (pour regrouper plusieurs updates rapides)
-  const matchesUpdateTimeoutRef = useRef(null);
-
 useEffect(() => {
     // 1. Chargement initial
     fetchData();
@@ -42,14 +39,9 @@ useEffect(() => {
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` },
         (payload) => {
-          // Debounce pour regrouper plusieurs updates rapides (ex: progression Double Elimination fait plusieurs updates)
-          // Cela permet de laisser le temps à tous les updates de se terminer avant de recharger
-          if (matchesUpdateTimeoutRef.current) {
-            clearTimeout(matchesUpdateTimeoutRef.current);
-          }
-          matchesUpdateTimeoutRef.current = setTimeout(() => {
-            fetchData();
-          }, 500); // 500ms de délai pour regrouper les updates
+          // Appeler fetchData() immédiatement pour chaque changement
+          // (comme dans saveScore qui appelle fetchData() directement après handleDoubleEliminationProgression)
+          fetchData();
         }
       )
 
@@ -75,9 +67,6 @@ useEffect(() => {
     // Nettoyage quand on quitte la page
     return () => {
       supabase.removeChannel(channel);
-      if (matchesUpdateTimeoutRef.current) {
-        clearTimeout(matchesUpdateTimeoutRef.current);
-      }
     };
   }, [id]);
 
@@ -224,18 +213,30 @@ useEffect(() => {
 
     // --- CAS 1 : ARBRE (ÉLIMINATION SIMPLE) ---
     if (tournoi.format === 'elimination') {
-        let matchCount = 1;
-        let activePlayers = orderedParticipants.map(p => p.team_id);
+        const teamIds = orderedParticipants.map(p => p.team_id);
+        const numTeams = teamIds.length;
         
+        if (numTeams < 2) return;
+        
+        let matchCount = 1;
+        const totalRounds = Math.ceil(Math.log2(numTeams));
+        
+        // Structure pour tracker les matchs créés par round
+        const matchesByRound = {}; // { round: [matchNumbers] }
+        
+        // Round 1 : Créer les matchs avec les équipes
         const pairs = [];
-        while (activePlayers.length > 0) {
-            pairs.push(activePlayers.splice(0, 2));
+        const teams = [...teamIds];
+        while (teams.length > 0) {
+            pairs.push(teams.splice(0, 2));
         }
-
+        
+        matchesByRound[1] = [];
         pairs.forEach(pair => {
+            const matchNum = matchCount++;
             matchesToCreate.push({
                 tournament_id: id,
-                match_number: matchCount++,
+                match_number: matchNum,
                 round_number: 1,
                 player1_id: pair[0] || null,
                 player2_id: pair[1] || null,
@@ -243,7 +244,30 @@ useEffect(() => {
                 next_match_id: null,
                 bracket_type: null
             });
+            matchesByRound[1].push(matchNum);
         });
+        
+        // Rounds suivants : Créer les matchs vides (seront remplis lors de la progression)
+        for (let round = 2; round <= totalRounds; round++) {
+            matchesByRound[round] = [];
+            const prevRoundCount = matchesByRound[round - 1].length;
+            const currentRoundCount = Math.ceil(prevRoundCount / 2);
+            
+            for (let i = 0; i < currentRoundCount; i++) {
+                const matchNum = matchCount++;
+                matchesToCreate.push({
+                    tournament_id: id,
+                    match_number: matchNum,
+                    round_number: round,
+                    player1_id: null,
+                    player2_id: null,
+                    status: 'pending',
+                    next_match_id: null,
+                    bracket_type: null
+                });
+                matchesByRound[round].push(matchNum);
+            }
+        }
     } 
     
     // --- CAS 2 : DOUBLE ELIMINATION (Implémentation complète) ---
@@ -548,6 +572,113 @@ useEffect(() => {
   };
   // ------------------------------------------------------------------
 
+  // Fonction pour régénérer l'arbre complet (en conservant les matchs joués)
+  const regenerateBracket = async () => {
+    if (!confirm("⚠️ Régénérer l'arbre complet ? Les matchs déjà joués seront conservés avec leurs scores, mais les matchs non joués seront réinitialisés. Cette action est irréversible.")) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 1. Sauvegarder tous les matchs complétés avec leurs informations
+      const { data: completedMatches } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('tournament_id', id)
+        .eq('status', 'completed');
+
+      // Sauvegarder les matchs complétés dans un format qu'on pourra réappliquer
+      const savedMatches = (completedMatches || []).map(m => ({
+        player1_id: m.player1_id,
+        player2_id: m.player2_id,
+        score_p1: m.score_p1,
+        score_p2: m.score_p2,
+        round_number: m.round_number,
+        match_number: m.match_number,
+        bracket_type: m.bracket_type,
+        is_reset: m.is_reset
+      }));
+
+      // 2. Supprimer tous les matchs existants
+      const { error: deleteError } = await supabase
+        .from('matches')
+        .delete()
+        .eq('tournament_id', id);
+
+      if (deleteError) {
+        alert("Erreur lors de la suppression des matchs : " + deleteError.message);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Régénérer l'arbre avec les participants actuels (check-in uniquement)
+      const checkedInParticipants = participants.filter(p => p.checked_in && !p.disqualified);
+      const participantsForMatches = checkedInParticipants.length >= 2 ? checkedInParticipants : participants;
+
+      if (participantsForMatches.length < 2) {
+        alert("❌ Il faut au moins 2 équipes pour générer un arbre.");
+        setLoading(false);
+        return;
+      }
+
+      // Appeler generateBracketInternal avec deleteExisting = false (on a déjà supprimé)
+      await generateBracketInternal(participantsForMatches, false);
+
+      // 4. Récupérer le nouvel arbre généré
+      await fetchData();
+      
+      // 5. Réappliquer les matchs complétés dans le nouvel arbre
+      // On doit faire correspondre les matchs sauvegardés avec les nouveaux matchs
+      // C'est complexe car les match_numbers peuvent changer
+      // Pour l'instant, on réapplique simplement en cherchant les matchs correspondants par round/position
+      if (savedMatches.length > 0) {
+        const { data: newMatches } = await supabase
+          .from('matches')
+          .select('*')
+          .eq('tournament_id', id)
+          .order('round_number', { ascending: true })
+          .order('match_number', { ascending: true });
+
+        if (newMatches) {
+          // Pour chaque match sauvegardé, trouver le match correspondant dans le nouvel arbre
+          for (const savedMatch of savedMatches) {
+            // Trouver le match correspondant dans le nouvel arbre (même round, même bracket_type, même position)
+            const correspondingMatch = newMatches.find(m => 
+              m.round_number === savedMatch.round_number &&
+              m.bracket_type === savedMatch.bracket_type &&
+              m.is_reset === savedMatch.is_reset
+            );
+
+            if (correspondingMatch && 
+                correspondingMatch.player1_id === savedMatch.player1_id && 
+                correspondingMatch.player2_id === savedMatch.player2_id) {
+              // Réappliquer les scores et le status
+              await supabase
+                .from('matches')
+                .update({
+                  score_p1: savedMatch.score_p1,
+                  score_p2: savedMatch.score_p2,
+                  status: 'completed'
+                })
+                .eq('id', correspondingMatch.id);
+            }
+          }
+        }
+      }
+
+      // Recharger les données finales
+      await fetchData();
+
+      alert("✅ Arbre régénéré avec succès ! Les matchs joués ont été conservés.");
+    } catch (error) {
+      console.error("Erreur lors de la régénération de l'arbre:", error);
+      alert("Erreur lors de la régénération de l'arbre : " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleMatchClick = (match) => {
     // Pour Double Elimination, permettre de cliquer même si un seul joueur est présent (match en cours de progression)
     // Pour les autres formats, vérifier que les deux joueurs sont présents
@@ -747,8 +878,134 @@ useEffect(() => {
       const loserTeamId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
       
       if (tournoi.format === 'double_elimination') {
-        // Double Elimination : Logique spéciale
-        await handleDoubleEliminationProgression(updatedMatch, winnerTeamId, loserTeamId);
+        // Double Elimination : Logique spéciale (inline comme single elimination)
+        // Récupérer tous les matchs depuis la DB pour avoir les données à jour
+        const { data: allMatches } = await supabase
+          .from('matches')
+          .select('*')
+          .eq('tournament_id', id)
+          .order('round_number', { ascending: true })
+          .order('match_number', { ascending: true });
+
+        if (allMatches) {
+          const bracketType = updatedMatch.bracket_type;
+          const roundNumber = updatedMatch.round_number;
+          
+          if (bracketType === 'winners') {
+            // WINNERS BRACKET : Gagnant avance, perdant va dans Losers
+            
+            // 1. Faire avancer le gagnant dans le bracket Winners
+            const currentWinnersMatches = allMatches.filter(m => m.bracket_type === 'winners' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+            const myIndex = currentWinnersMatches.findIndex(m => m.id === updatedMatch.id);
+            
+            if (myIndex !== -1) {
+              const nextWinnersRound = roundNumber + 1;
+              const nextWinnersMatches = allMatches.filter(m => m.bracket_type === 'winners' && m.round_number === nextWinnersRound).sort((a,b) => a.match_number - b.match_number);
+              
+              if (nextWinnersMatches.length > 0) {
+                const nextWinnersMatch = nextWinnersMatches[Math.floor(myIndex / 2)];
+                if (nextWinnersMatch) {
+                  const isPlayer1Slot = (myIndex % 2) === 0;
+                  await supabase.from('matches').update(
+                    isPlayer1Slot ? { player1_id: winnerTeamId } : { player2_id: winnerTeamId }
+                  ).eq('id', nextWinnersMatch.id);
+                }
+              } else {
+                // Plus de matchs Winners -> Le gagnant va en Grand Finals
+                const grandFinals = allMatches.find(m => !m.bracket_type && !m.is_reset);
+                if (grandFinals) {
+                  await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', grandFinals.id);
+                }
+              }
+              
+              // 2. Envoyer le perdant dans le bracket Losers
+              if (roundNumber === 1) {
+                // Perdants du Round 1 Winners vont dans Losers Round 1 (par paires)
+                const losersRound1Matches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === 1).sort((a,b) => a.match_number - b.match_number);
+                if (losersRound1Matches.length > 0) {
+                  // Trouver un match avec un slot vide (par ordre)
+                  for (const losersMatch of losersRound1Matches) {
+                    if (!losersMatch.player1_id) {
+                      await supabase.from('matches').update({ player1_id: loserTeamId }).eq('id', losersMatch.id);
+                      break;
+                    } else if (!losersMatch.player2_id) {
+                      await supabase.from('matches').update({ player2_id: loserTeamId }).eq('id', losersMatch.id);
+                      break;
+                    }
+                  }
+                }
+              } else {
+                // Perdants des rounds suivants vont dans le Losers round correspondant
+                const losersRound = roundNumber;
+                const losersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === losersRound).sort((a,b) => a.match_number - b.match_number);
+                if (losersMatches.length > 0) {
+                  // Trouver le premier match avec un slot vide
+                  for (const losersMatch of losersMatches) {
+                    if (!losersMatch.player1_id) {
+                      await supabase.from('matches').update({ player1_id: loserTeamId }).eq('id', losersMatch.id);
+                      break;
+                    } else if (!losersMatch.player2_id) {
+                      await supabase.from('matches').update({ player2_id: loserTeamId }).eq('id', losersMatch.id);
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+            
+          } else if (bracketType === 'losers') {
+            // LOSERS BRACKET : Gagnant avance, perdant est éliminé
+            
+            const currentLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+            const myIndex = currentLosersMatches.findIndex(m => m.id === updatedMatch.id);
+            const nextLosersRound = roundNumber + 1;
+            
+            const nextLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === nextLosersRound).sort((a,b) => a.match_number - b.match_number);
+            if (nextLosersMatches.length > 0) {
+              // Trouver un match avec un slot vide dans le round suivant
+              const availableMatch = nextLosersMatches.find(m => !m.player1_id || !m.player2_id);
+              if (availableMatch) {
+                if (!availableMatch.player1_id) {
+                  await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', availableMatch.id);
+                } else {
+                  await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', availableMatch.id);
+                }
+              }
+            } else {
+              // Plus de matchs Losers -> Le gagnant va en Grand Finals
+              const grandFinals = allMatches.find(m => !m.bracket_type && !m.is_reset);
+              if (grandFinals) {
+                await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', grandFinals.id);
+              }
+            }
+            
+          } else if (updatedMatch.is_reset) {
+            // RESET MATCH : Le gagnant est le champion final
+            triggerConfetti();
+            await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+          } else {
+            // GRAND FINALS
+            const grandFinals = updatedMatch;
+            if (winnerTeamId === grandFinals.player1_id) {
+              // Le gagnant des Winners a gagné -> Champion !
+              triggerConfetti();
+              await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+            } else {
+              // Le gagnant des Losers a gagné -> Reset match nécessaire
+              const resetMatch = allMatches.find(m => m.is_reset);
+              if (resetMatch) {
+                // Réinitialiser le reset match avec les mêmes équipes (les scores seront réinitialisés)
+                await supabase.from('matches').update({
+                  player1_id: grandFinals.player1_id,
+                  player2_id: grandFinals.player2_id,
+                  score_p1: 0,
+                  score_p2: 0,
+                  status: 'pending'
+                }).eq('id', resetMatch.id);
+              }
+            }
+          }
+        }
       } else if (tournoi.format === 'elimination') {
         // Single Elimination : Logique standard
         // Récupérer tous les matchs depuis la DB pour avoir les données à jour
@@ -870,14 +1127,39 @@ useEffect(() => {
 
       {/* ADMIN PANEL */}
       {isOwner && tournoi.status === 'ongoing' && (
-        <AdminPanel 
-          tournamentId={id} 
-          supabase={supabase} 
-          session={session} 
-          participants={participants} 
-          matches={matches} 
-          onUpdate={fetchDataAndRegenerateIfNeeded} 
-        />
+        <>
+          <div style={{ background: '#1a1a1a', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: '4px solid #e74c3c' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#fff' }}>🔧 Outils Admin</span>
+              <button 
+                onClick={regenerateBracket}
+                style={{ 
+                  padding: '8px 16px', 
+                  background: '#e74c3c', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.9rem'
+                }}
+              >
+                🔄 Régénérer l'arbre complet
+              </button>
+            </div>
+            <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#aaa' }}>
+              Attention : Cette action supprimera tous les matchs et régénèrera un nouvel arbre avec les équipes actuelles.
+            </p>
+          </div>
+          <AdminPanel 
+            tournamentId={id} 
+            supabase={supabase} 
+            session={session} 
+            participants={participants} 
+            matches={matches} 
+            onUpdate={fetchDataAndRegenerateIfNeeded} 
+          />
+        </>
       )}
       
       {isOwner && tournoi.status === 'draft' && (

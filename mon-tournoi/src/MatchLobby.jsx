@@ -241,7 +241,8 @@ export default function MatchLobby({ session, supabase }) {
 
               alert('✅ Scores concordent ! Le match est automatiquement validé.');
               
-              // Récupérer le match mis à jour avec toutes les colonnes (bracket_type, etc.)
+              // Récupérer le match mis à jour avec toutes les colonnes (bracket_type, score_p1, score_p2, etc.)
+              // EXACTEMENT comme dans Tournament.jsx saveScore
               const { data: updatedMatch, error: fetchError } = await supabase
                 .from('matches')
                 .select('*')
@@ -253,9 +254,43 @@ export default function MatchLobby({ session, supabase }) {
                 return;
               }
               
-              if (updatedMatch) {
-                const winnerTeamId = team1Report.score_team > team1Report.score_opponent ? updatedMatch.player1_id : updatedMatch.player2_id;
-                await advanceWinner(updatedMatch, winnerTeamId);
+              if (!updatedMatch) {
+                console.error('Match mis à jour non trouvé');
+                return;
+              }
+
+              // Calculer winnerTeamId et loserTeamId à partir des scores finaux (comme dans Tournament.jsx)
+              const s1 = updatedMatch.score_p1;
+              const s2 = updatedMatch.score_p2;
+              
+              if (s1 !== s2) {
+                const winnerTeamId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
+                const loserTeamId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
+                
+                // Récupérer le format du tournoi pour savoir quelle progression utiliser
+                const { data: tournament } = await supabase
+                  .from('tournaments')
+                  .select('format, id')
+                  .eq('id', updatedMatch.tournament_id)
+                  .single();
+                
+                if (tournament && tournament.format === 'double_elimination') {
+                  // Double Elimination : utiliser handleDoubleEliminationProgression directement
+                  // Récupérer tous les matchs depuis la DB (comme dans Tournament.jsx)
+                  const { data: allMatches, error: matchesError } = await supabase
+                    .from('matches')
+                    .select('*')
+                    .eq('tournament_id', updatedMatch.tournament_id)
+                    .order('round_number', { ascending: true })
+                    .order('match_number', { ascending: true });
+                  
+                  if (!matchesError && allMatches) {
+                    await handleDoubleEliminationProgression(updatedMatch, winnerTeamId, loserTeamId, allMatches, tournament.id);
+                  }
+                } else {
+                  // Single Elimination ou autres formats : utiliser advanceWinner
+                  await advanceWinner(updatedMatch, winnerTeamId);
+                }
               }
             } else {
               // ❌ CONFLIT - Signalement pour intervention admin
