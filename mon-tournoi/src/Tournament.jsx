@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import confetti from 'canvas-confetti';
@@ -39,8 +39,9 @@ useEffect(() => {
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` },
         (payload) => {
-          console.log('Changement Match détecté !', payload);
-          fetchData(); // On recharge tout pour avoir les logos/noms à jour
+          // Appeler fetchData() immédiatement, comme dans saveScore (admin), sans debounce
+          // Cela garantit que les données sont rechargées dès qu'un changement est détecté
+          fetchData();
         }
       )
 
@@ -48,8 +49,7 @@ useEffect(() => {
       .on(
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` },
-        (payload) => {
-          console.log('Changement Participant détecté !', payload);
+        () => {
           fetchData();
         }
       )
@@ -58,8 +58,7 @@ useEffect(() => {
       .on(
         'postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` },
-        (payload) => {
-          console.log('Statut Tournoi changé !', payload);
+        () => {
           fetchData();
         }
       )
@@ -86,13 +85,44 @@ useEffect(() => {
     setParticipants(pData || []);
 
     // 3. Charger les matchs
-    const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
+    // Pour Double Elimination : ordonner par bracket_type (winners, losers, null), puis round_number, puis match_number
+    // Pour Single Elimination/Round Robin : ordonner par round_number, puis match_number
+    // Note: Supabase permet de chaîner plusieurs .order(), mais on peut aussi trier en JS après
+    const { data: mData, error: mError } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('tournament_id', id)
+      .order('round_number', { ascending: true })
+      .order('match_number', { ascending: true });
+    
+    if (mError) {
+      console.error('Erreur lors du chargement des matchs:', mError);
+    }
+    
+    // Trier en JavaScript pour gérer bracket_type (Supabase peut avoir des problèmes avec nullsLast)
+    let sortedMatches = mData || [];
+    
+    if (sortedMatches.length > 0) {
+      sortedMatches = [...sortedMatches].sort((a, b) => {
+        // Trier par bracket_type d'abord (winners avant losers, nulls en dernier)
+        const bracketOrder = { 'winners': 0, 'losers': 1, null: 2, undefined: 2 };
+        const bracketA = bracketOrder[a.bracket_type] ?? 2;
+        const bracketB = bracketOrder[b.bracket_type] ?? 2;
+        if (bracketA !== bracketB) return bracketA - bracketB;
+        
+        // Puis par round_number
+        if (a.round_number !== b.round_number) return a.round_number - b.round_number;
+        
+        // Puis par match_number
+        return a.match_number - b.match_number;
+      });
+    }
 
-    if (mData && mData.length > 0 && pData) {
+    if (sortedMatches && sortedMatches.length > 0 && pData) {
       // Créer une map pour accès rapide aux participants
       const participantsMap = new Map(pData.map(p => [p.team_id, p]));
       
-      const enrichedMatches = mData.map(match => {
+      const enrichedMatches = sortedMatches.map(match => {
         // On trouve l'équipe via son ID stocké dans le match
         const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
         const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
@@ -126,6 +156,7 @@ useEffect(() => {
           p2_not_checked_in: p2NotCheckedIn,
         };
       });
+      
       setMatches(enrichedMatches);
       
       const lastMatch = enrichedMatches[enrichedMatches.length - 1];
@@ -514,12 +545,39 @@ useEffect(() => {
     // Pour Double Elimination, on peut cliquer si au moins un joueur est présent
     if (tournoi.format === 'double_elimination' && !match.player1_id && !match.player2_id) return;
 
-    // Redirection vers le Lobby du Match
-    navigate(`/match/${match.id}`);
+    // Si admin : ouvrir la modale de score, sinon rediriger vers MatchLobby
+    if (isOwner) {
+      setCurrentMatch(match);
+      setScoreA(match.score_p1 || 0);
+      setScoreB(match.score_p2 || 0);
+      setIsModalOpen(true);
+    } else {
+      // Redirection vers le Lobby du Match pour les non-admins
+      navigate(`/match/${match.id}`);
+    }
   };
 
   // Fonction pour gérer la progression dans le Double Elimination
   const handleDoubleEliminationProgression = async (completedMatch, winnerTeamId, loserTeamId) => {
+    // IMPORTANT: Récupérer les matches depuis la DB pour avoir les données à jour
+    // (le state 'matches' peut ne pas être à jour si plusieurs matchs sont complétés rapidement)
+    const { data: allMatches, error: matchesError } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('tournament_id', id)
+      .order('round_number', { ascending: true })
+      .order('match_number', { ascending: true });
+    
+    if (matchesError) {
+      console.error('Error fetching matches:', matchesError);
+      return;
+    }
+    
+    if (!allMatches || allMatches.length === 0) {
+      console.error('No matches found');
+      return;
+    }
+    
     const bracketType = completedMatch.bracket_type;
     const roundNumber = completedMatch.round_number;
     
@@ -527,11 +585,17 @@ useEffect(() => {
       // WINNERS BRACKET : Gagnant avance, perdant va dans Losers
       
       // 1. Faire avancer le gagnant dans le bracket Winners
-      const currentWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const currentWinnersMatches = allMatches.filter(m => m.bracket_type === 'winners' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
       const myIndex = currentWinnersMatches.findIndex(m => m.id === completedMatch.id);
-      const nextWinnersRound = roundNumber + 1;
       
-      const nextWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === nextWinnersRound).sort((a,b) => a.match_number - b.match_number);
+      if (myIndex === -1) {
+        console.error('Match not found in currentWinnersMatches!', completedMatch.id);
+        return;
+      }
+      
+      const nextWinnersRound = roundNumber + 1;
+      const nextWinnersMatches = allMatches.filter(m => m.bracket_type === 'winners' && m.round_number === nextWinnersRound).sort((a,b) => a.match_number - b.match_number);
+      
       if (nextWinnersMatches.length > 0) {
         const nextWinnersMatch = nextWinnersMatches[Math.floor(myIndex / 2)];
         if (nextWinnersMatch) {
@@ -542,7 +606,7 @@ useEffect(() => {
         }
       } else {
         // Plus de matchs Winners -> Le gagnant va en Grand Finals
-        const grandFinals = matches.find(m => !m.bracket_type && !m.is_reset);
+        const grandFinals = allMatches.find(m => !m.bracket_type && !m.is_reset);
         if (grandFinals) {
           await supabase.from('matches').update({ player1_id: winnerTeamId }).eq('id', grandFinals.id);
         }
@@ -551,7 +615,7 @@ useEffect(() => {
       // 2. Envoyer le perdant dans le bracket Losers
       if (roundNumber === 1) {
         // Perdants du Round 1 Winners vont dans Losers Round 1 (par paires)
-        const losersRound1Matches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === 1).sort((a,b) => a.match_number - b.match_number);
+        const losersRound1Matches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === 1).sort((a,b) => a.match_number - b.match_number);
         if (losersRound1Matches.length > 0) {
           // Trouver un match avec un slot vide (par ordre)
           for (const losersMatch of losersRound1Matches) {
@@ -567,7 +631,7 @@ useEffect(() => {
       } else {
         // Perdants des rounds suivants vont dans le Losers round correspondant
         const losersRound = roundNumber;
-        const losersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === losersRound).sort((a,b) => a.match_number - b.match_number);
+        const losersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === losersRound).sort((a,b) => a.match_number - b.match_number);
         if (losersMatches.length > 0) {
           // Trouver le premier match avec un slot vide
           for (const losersMatch of losersMatches) {
@@ -585,11 +649,11 @@ useEffect(() => {
     } else if (bracketType === 'losers') {
       // LOSERS BRACKET : Gagnant avance, perdant est éliminé
       
-      const currentLosersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const currentLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
       const myIndex = currentLosersMatches.findIndex(m => m.id === completedMatch.id);
       const nextLosersRound = roundNumber + 1;
       
-      const nextLosersMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === nextLosersRound).sort((a,b) => a.match_number - b.match_number);
+      const nextLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === nextLosersRound).sort((a,b) => a.match_number - b.match_number);
       if (nextLosersMatches.length > 0) {
         // Trouver un match avec un slot vide dans le round suivant
         const availableMatch = nextLosersMatches.find(m => !m.player1_id || !m.player2_id);
@@ -602,7 +666,7 @@ useEffect(() => {
         }
       } else {
         // Plus de matchs Losers -> Le gagnant va en Grand Finals
-        const grandFinals = matches.find(m => !m.bracket_type && !m.is_reset);
+        const grandFinals = allMatches.find(m => !m.bracket_type && !m.is_reset);
         if (grandFinals) {
           await supabase.from('matches').update({ player2_id: winnerTeamId }).eq('id', grandFinals.id);
         }
@@ -622,7 +686,7 @@ useEffect(() => {
       } else {
         // Le gagnant des Losers a gagné -> Reset match nécessaire
         // Les équipes restent les mêmes pour le reset match
-        const resetMatch = matches.find(m => m.is_reset);
+        const resetMatch = allMatches.find(m => m.is_reset);
         if (resetMatch) {
           // Réinitialiser le reset match avec les mêmes équipes (les scores seront réinitialisés)
           await supabase.from('matches').update({
@@ -642,22 +706,54 @@ useEffect(() => {
     const s1 = parseInt(scoreA);
     const s2 = parseInt(scoreB);
 
-    await supabase.from('matches').update({ score_p1: s1, score_p2: s2, status: 'completed' }).eq('id', currentMatch.id);
+    // Mettre à jour le match avec les scores
+    const { error: updateError } = await supabase
+      .from('matches')
+      .update({ score_p1: s1, score_p2: s2, status: 'completed' })
+      .eq('id', currentMatch.id);
+
+    if (updateError) {
+      alert('Erreur lors de la mise à jour du score : ' + updateError.message);
+      return;
+    }
 
     if (s1 !== s2) {
-        const winnerTeamId = s1 > s2 ? currentMatch.player1_id : currentMatch.player2_id;
-        const loserTeamId = s1 > s2 ? currentMatch.player2_id : currentMatch.player1_id;
-        
-        if (tournoi.format === 'double_elimination') {
-          // Double Elimination : Logique spéciale
-          await handleDoubleEliminationProgression(currentMatch, winnerTeamId, loserTeamId);
-        } else if (tournoi.format === 'elimination') {
-          // Single Elimination : Logique standard
-          const currentRoundMatches = matches.filter(m => m.round_number === currentMatch.round_number).sort((a,b) => a.match_number - b.match_number);
-          const myIndex = currentRoundMatches.findIndex(m => m.id === currentMatch.id);
-          const nextRound = currentMatch.round_number + 1;
+      // Récupérer le match mis à jour depuis la DB pour avoir toutes les propriétés (bracket_type, etc.)
+      const { data: updatedMatch } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('id', currentMatch.id)
+        .single();
+
+      if (!updatedMatch) {
+        alert('Erreur : Impossible de récupérer le match mis à jour.');
+        setIsModalOpen(false);
+        fetchData();
+        return;
+      }
+
+      const winnerTeamId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
+      const loserTeamId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
+      
+      if (tournoi.format === 'double_elimination') {
+        // Double Elimination : Logique spéciale
+        await handleDoubleEliminationProgression(updatedMatch, winnerTeamId, loserTeamId);
+      } else if (tournoi.format === 'elimination') {
+        // Single Elimination : Logique standard
+        // Récupérer tous les matchs depuis la DB pour avoir les données à jour
+        const { data: allMatches } = await supabase
+          .from('matches')
+          .select('*')
+          .eq('tournament_id', id)
+          .order('round_number', { ascending: true })
+          .order('match_number', { ascending: true });
+
+        if (allMatches) {
+          const currentRoundMatches = allMatches.filter(m => m.round_number === updatedMatch.round_number).sort((a,b) => a.match_number - b.match_number);
+          const myIndex = currentRoundMatches.findIndex(m => m.id === updatedMatch.id);
+          const nextRound = updatedMatch.round_number + 1;
           
-          const nextRoundMatches = matches.filter(m => m.round_number === nextRound).sort((a,b) => a.match_number - b.match_number);
+          const nextRoundMatches = allMatches.filter(m => m.round_number === nextRound).sort((a,b) => a.match_number - b.match_number);
           const nextMatch = nextRoundMatches[Math.floor(myIndex / 2)];
           
           if (nextMatch) {
@@ -669,8 +765,10 @@ useEffect(() => {
             await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
           }
         }
-        // Round Robin n'a pas besoin de progression
+      }
+      // Round Robin n'a pas besoin de progression
     }
+    
     setIsModalOpen(false);
     fetchData();
   };

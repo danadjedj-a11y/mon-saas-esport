@@ -118,6 +118,8 @@ export default function MatchLobby({ session, supabase }) {
     const isTeam1 = myTeamId === match.player1_id;
     const scoreForTeam1 = isTeam1 ? myScore : opponentScore;
     const scoreForTeam2 = isTeam1 ? opponentScore : myScore;
+    
+    console.log('[MatchLobby.jsx] isTeam1:', isTeam1, 'scoreForTeam1:', scoreForTeam1, 'scoreForTeam2:', scoreForTeam2);
 
     try {
       // 1. Enregistrer dans score_reports (historique)
@@ -187,25 +189,33 @@ export default function MatchLobby({ session, supabase }) {
         // Vérifier dans score_reports si les deux équipes ont déclaré les mêmes scores
         const { data: reports } = await supabase
           .from('score_reports')
-          .select('team_id, score_team, score_opponent')
+          .select('id, team_id, score_team, score_opponent')
           .eq('match_id', id)
           .eq('is_resolved', false)
           .order('created_at', { ascending: false })
           .limit(2);
 
+        console.log('📊 Score reports récupérés:', reports);
+
         if (reports && reports.length === 2) {
           const team1Report = reports.find(r => r.team_id === match.player1_id);
           const team2Report = reports.find(r => r.team_id === match.player2_id);
+
+          console.log('🔍 Team1 report:', team1Report);
+          console.log('🔍 Team2 report:', team2Report);
 
           if (team1Report && team2Report) {
             // Vérifier concordance : team1 déclare (X, Y) et team2 déclare (Y, X)
             const scoresConcord = 
               team1Report.score_team === team2Report.score_opponent &&
               team1Report.score_opponent === team2Report.score_team;
+            
+            console.log('🔍 Scores concordent?', scoresConcord);
 
             if (scoresConcord) {
+              console.log('[MatchLobby.jsx] ✅ SCORES CONCORDENT - Validation automatique');
               // ✅ CONCORDANCE - Validation automatique
-              await supabase
+              const updateResult = await supabase
                 .from('matches')
                 .update({
                   score_p1: team1Report.score_team,
@@ -215,26 +225,38 @@ export default function MatchLobby({ session, supabase }) {
                 })
                 .eq('id', id);
 
+              if (updateResult.error) {
+                console.error('[MatchLobby.jsx] Erreur lors de la mise à jour du match:', updateResult.error);
+                return;
+              }
+
               // Marquer les rapports comme résolus
-              await supabase
-                .from('score_reports')
-                .update({ is_resolved: true })
-                .in('id', reports.map(r => r.id));
+              const reportIds = reports.map(r => r.id).filter(id => id); // Filtrer les undefined au cas où
+              if (reportIds.length > 0) {
+                await supabase
+                  .from('score_reports')
+                  .update({ is_resolved: true })
+                  .in('id', reportIds);
+              }
 
               alert('✅ Scores concordent ! Le match est automatiquement validé.');
               
               // Récupérer le match mis à jour avec toutes les colonnes (bracket_type, etc.)
-              const { data: updatedMatch } = await supabase
+              const { data: updatedMatch, error: fetchError } = await supabase
                 .from('matches')
                 .select('*')
                 .eq('id', id)
                 .single();
               
-              if (updatedMatch) {
-                // Avancer le vainqueur au round suivant (logique similaire à Tournament.jsx)
-                await advanceWinner(updatedMatch, team1Report.score_team > team1Report.score_opponent ? updatedMatch.player1_id : updatedMatch.player2_id);
+              if (fetchError) {
+                console.error('Erreur lors de la récupération du match:', fetchError);
+                return;
               }
               
+              if (updatedMatch) {
+                const winnerTeamId = team1Report.score_team > team1Report.score_opponent ? updatedMatch.player1_id : updatedMatch.player2_id;
+                await advanceWinner(updatedMatch, winnerTeamId);
+              }
             } else {
               // ❌ CONFLIT - Signalement pour intervention admin
               await supabase
@@ -257,11 +279,16 @@ export default function MatchLobby({ session, supabase }) {
 
   const advanceWinner = async (matchData, winnerTeamId) => {
     // Récupérer le format du tournoi
-    const { data: tournament } = await supabase
+    const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
       .select('format, id')
       .eq('id', matchData.tournament_id)
       .single();
+
+    if (tournamentError) {
+      console.error('Erreur lors de la récupération du tournoi:', tournamentError);
+      return;
+    }
 
     if (!tournament) {
       console.error('Tournament not found');
@@ -273,7 +300,8 @@ export default function MatchLobby({ session, supabase }) {
       .from('matches')
       .select('*')
       .eq('tournament_id', matchData.tournament_id)
-      .order('round_number, match_number');
+      .order('round_number', { ascending: true })
+      .order('match_number', { ascending: true });
 
     if (matchesError) {
       console.error('Error fetching matches:', matchesError);
@@ -326,9 +354,15 @@ export default function MatchLobby({ session, supabase }) {
       // 1. Faire avancer le gagnant dans le bracket Winners
       const currentWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
       const myIndex = currentWinnersMatches.findIndex(m => m.id === completedMatch.id);
-      const nextWinnersRound = roundNumber + 1;
       
+      if (myIndex === -1) {
+        console.error('Match not found in currentWinnersMatches!', completedMatch.id);
+        return;
+      }
+      
+      const nextWinnersRound = roundNumber + 1;
       const nextWinnersMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === nextWinnersRound).sort((a,b) => a.match_number - b.match_number);
+      
       if (nextWinnersMatches.length > 0) {
         const nextWinnersMatch = nextWinnersMatches[Math.floor(myIndex / 2)];
         if (nextWinnersMatch) {
