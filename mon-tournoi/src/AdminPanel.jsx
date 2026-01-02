@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { calculateMatchWinner } from './bofUtils';
 
 export default function AdminPanel({ tournamentId, supabase, session, participants, matches, onUpdate, onScheduleMatch }) {
   const [activeTab, setActiveTab] = useState('participants'); // 'participants', 'conflicts', 'stats', 'schedule'
   const [conflicts, setConflicts] = useState([]);
+  const [gameConflicts, setGameConflicts] = useState([]);
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
@@ -11,6 +13,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
   }, [activeTab, matches, participants]);
 
   const fetchConflicts = async () => {
+    // Récupérer les conflits de matchs (single game)
     const { data: matchesData } = await supabase
       .from('matches')
       .select('*')
@@ -18,8 +21,9 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('score_status', 'disputed');
     
     // Enrichir avec les noms des équipes
+    let enriched = [];
     if (matchesData) {
-      const enriched = await Promise.all(matchesData.map(async (match) => {
+      enriched = await Promise.all(matchesData.map(async (match) => {
         const { data: team1 } = await supabase.from('teams').select('name, tag').eq('id', match.player1_id).single();
         const { data: team2 } = await supabase.from('teams').select('name, tag').eq('id', match.player2_id).single();
         return {
@@ -28,9 +32,72 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
           team2: team2 || { name: 'Équipe 2', tag: 'T2' }
         };
       }));
-      setConflicts(enriched);
-    } else {
-      setConflicts([]);
+    }
+    setConflicts(enriched || []);
+    console.log('AdminPanel: Conflits matchs:', enriched?.length || 0);
+    
+    // Récupérer les conflits de manches (Best-of-X)
+    try {
+      const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('best_of')
+        .eq('id', tournamentId)
+        .single();
+      
+      if (tournament?.best_of > 1) {
+        // Récupérer tous les matchs du tournoi pour trouver ceux qui ont des manches en conflit
+        const { data: allMatches } = await supabase
+          .from('matches')
+          .select('id')
+          .eq('tournament_id', tournamentId);
+        
+        if (allMatches && allMatches.length > 0) {
+          const matchIds = allMatches.map(m => m.id);
+          
+          const { data: gamesData } = await supabase
+            .from('match_games')
+            .select('*')
+            .in('match_id', matchIds)
+            .eq('score_status', 'disputed');
+          
+          if (gamesData && gamesData.length > 0) {
+            // Enrichir avec les infos du match et des équipes
+            const enrichedGames = await Promise.all(gamesData.map(async (game) => {
+              const { data: matchData } = await supabase
+                .from('matches')
+                .select('*')
+                .eq('id', game.match_id)
+                .single();
+              
+              if (!matchData) return null;
+              
+              const { data: team1 } = await supabase.from('teams').select('name, tag').eq('id', matchData.player1_id).single();
+              const { data: team2 } = await supabase.from('teams').select('name, tag').eq('id', matchData.player2_id).single();
+              
+              return {
+                ...game,
+                match: matchData,
+                team1: team1 || { name: 'Équipe 1', tag: 'T1' },
+                team2: team2 || { name: 'Équipe 2', tag: 'T2' }
+              };
+            }));
+            
+            const filtered = enrichedGames.filter(g => g !== null);
+            setGameConflicts(filtered);
+            console.log('AdminPanel: Conflits manches:', filtered.length);
+          } else {
+            setGameConflicts([]);
+            console.log('AdminPanel: Aucun conflit de manche trouvé');
+          }
+        } else {
+          setGameConflicts([]);
+        }
+      } else {
+        setGameConflicts([]);
+      }
+    } catch (error) {
+      console.warn('Erreur récupération conflits manches:', error);
+      setGameConflicts([]);
     }
   };
 
@@ -141,13 +208,97 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
     }
   };
 
+  const resolveGameConflict = async (gameId, matchId, scoreTeam1, scoreTeam2) => {
+    if (!confirm(`Confirmer le score de la manche : ${scoreTeam1} - ${scoreTeam2} ?`)) return;
+
+    // Récupérer le match pour avoir les IDs des équipes
+    const { data: matchData } = await supabase
+      .from('matches')
+      .select('player1_id, player2_id, tournament_id')
+      .eq('id', matchId)
+      .single();
+
+    if (!matchData) {
+      alert("Erreur : Match non trouvé");
+      return;
+    }
+
+    const winnerTeamId = scoreTeam1 > scoreTeam2 ? matchData.player1_id : (scoreTeam2 > scoreTeam1 ? matchData.player2_id : null);
+
+    // Mettre à jour la manche
+    const { error: gameError } = await supabase
+      .from('match_games')
+      .update({
+        team1_score: scoreTeam1,
+        team2_score: scoreTeam2,
+        team1_score_reported: scoreTeam1,
+        team2_score_reported: scoreTeam2,
+        winner_team_id: winnerTeamId,
+        score_status: 'confirmed',
+        status: 'completed',
+        reported_by_team1: true,
+        reported_by_team2: true,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', gameId);
+
+    if (gameError) {
+      alert("Erreur : " + gameError.message);
+      return;
+    }
+
+    // Résoudre les rapports de score
+    await supabase
+      .from('game_score_reports')
+      .update({ is_resolved: true })
+      .eq('game_id', gameId);
+
+    // Vérifier si le match est terminé (toutes les manches jouées)
+    const { data: allGames } = await supabase
+      .from('match_games')
+      .select('*')
+      .eq('match_id', matchId)
+      .order('game_number', { ascending: true });
+
+    if (allGames) {
+      // Récupérer le best_of du tournoi
+      const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('best_of, format')
+        .eq('id', matchData.tournament_id)
+        .single();
+
+      if (tournament?.best_of) {
+        // Calculer le gagnant du match
+        const matchResult = calculateMatchWinner(allGames, tournament.best_of, matchData.player1_id, matchData.player2_id);
+
+        if (matchResult.isCompleted && matchResult.winner) {
+          // Mettre à jour le match principal
+          await supabase
+            .from('matches')
+            .update({
+              score_p1: matchResult.team1Wins,
+              score_p2: matchResult.team2Wins,
+              status: 'completed',
+              score_status: 'confirmed'
+            })
+            .eq('id', matchId);
+        }
+      }
+    }
+
+    alert("✅ Conflit de manche résolu");
+    fetchConflicts();
+    if (onUpdate) onUpdate();
+  };
+
   return (
     <div style={{ background: '#1a1a1a', borderRadius: '8px', border: '1px solid #333', marginTop: '20px' }}>
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #333' }}>
         {[
           { id: 'participants', label: '👥 Participants', count: participants.length },
-          { id: 'conflicts', label: '⚠️ Conflits', count: conflicts.length },
+          { id: 'conflicts', label: '⚠️ Conflits', count: conflicts.length + gameConflicts.length },
           { id: 'schedule', label: '📅 Planning', count: matches.filter(m => m.scheduled_at).length },
           { id: 'stats', label: '📊 Statistiques' }
         ].map(tab => (
@@ -257,65 +408,138 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
         {activeTab === 'conflicts' && (
           <div>
             <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Résolution de Conflits</h3>
-            {conflicts.length === 0 ? (
+            {conflicts.length === 0 && gameConflicts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#4ade80' }}>
                 ✅ Aucun conflit en cours
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: '15px' }}>
-                {conflicts.map(match => (
-                  <div
-                    key={match.id}
-                    style={{
-                      background: '#2a2a2a',
-                      padding: '15px',
-                      borderRadius: '5px',
-                      border: '1px solid #e74c3c'
-                    }}
-                  >
-                    <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>
-                      {match.team1?.name || 'Équipe 1'} [{match.team1?.tag}] vs {match.team2?.name || 'Équipe 2'} [{match.team2?.tag}]
-                    </div>
-                    <div style={{ marginBottom: '15px', fontSize: '0.9rem', color: '#aaa' }}>
-                      Scores déclarés : {match.score_p1_reported || '?'} - {match.score_p2_reported || '?'}
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <input
-                        type="number"
-                        placeholder="Score 1"
-                        defaultValue={match.score_p1_reported || 0}
-                        style={{ padding: '5px', width: '60px', background: '#1a1a1a', border: '1px solid #444', color: 'white', borderRadius: '3px' }}
-                        id={`score1-${match.id}`}
-                      />
-                      <span>-</span>
-                      <input
-                        type="number"
-                        placeholder="Score 2"
-                        defaultValue={match.score_p2_reported || 0}
-                        style={{ padding: '5px', width: '60px', background: '#1a1a1a', border: '1px solid #444', color: 'white', borderRadius: '3px' }}
-                        id={`score2-${match.id}`}
-                      />
-                      <button
-                        onClick={() => {
-                          const score1 = parseInt(document.getElementById(`score1-${match.id}`).value);
-                          const score2 = parseInt(document.getElementById(`score2-${match.id}`).value);
-                          resolveConflict(match.id, score1, score2);
-                        }}
-                        style={{
-                          padding: '8px 15px',
-                          background: '#8e44ad',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        Résoudre
-                      </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Conflits de matchs (single game) */}
+                {conflicts.length > 0 && (
+                  <div>
+                    <h4 style={{ marginBottom: '10px', color: '#aaa', fontSize: '0.9rem' }}>Conflits de Matchs</h4>
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                      {conflicts.map(match => (
+                        <div
+                          key={match.id}
+                          style={{
+                            background: '#2a2a2a',
+                            padding: '15px',
+                            borderRadius: '5px',
+                            border: '1px solid #e74c3c'
+                          }}
+                        >
+                          <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>
+                            {match.team1?.name || 'Équipe 1'} [{match.team1?.tag}] vs {match.team2?.name || 'Équipe 2'} [{match.team2?.tag}]
+                          </div>
+                          <div style={{ marginBottom: '15px', fontSize: '0.9rem', color: '#aaa' }}>
+                            Scores déclarés : {match.score_p1_reported || '?'} - {match.score_p2_reported || '?'}
+                          </div>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <input
+                              type="number"
+                              placeholder="Score 1"
+                              defaultValue={match.score_p1_reported || 0}
+                              style={{ padding: '5px', width: '60px', background: '#1a1a1a', border: '1px solid #444', color: 'white', borderRadius: '3px' }}
+                              id={`score1-${match.id}`}
+                            />
+                            <span>-</span>
+                            <input
+                              type="number"
+                              placeholder="Score 2"
+                              defaultValue={match.score_p2_reported || 0}
+                              style={{ padding: '5px', width: '60px', background: '#1a1a1a', border: '1px solid #444', color: 'white', borderRadius: '3px' }}
+                              id={`score2-${match.id}`}
+                            />
+                            <button
+                              onClick={() => {
+                                const score1 = parseInt(document.getElementById(`score1-${match.id}`).value);
+                                const score2 = parseInt(document.getElementById(`score2-${match.id}`).value);
+                                resolveConflict(match.id, score1, score2);
+                              }}
+                              style={{
+                                padding: '8px 15px',
+                                background: '#8e44ad',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Résoudre
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+                
+                {/* Conflits de manches (Best-of-X) */}
+                {gameConflicts.length > 0 && (
+                  <div>
+                    <h4 style={{ marginBottom: '10px', color: '#aaa', fontSize: '0.9rem' }}>Conflits de Manches (Best-of-X)</h4>
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                      {gameConflicts.map(game => (
+                        <div
+                          key={game.id}
+                          style={{
+                            background: '#2a2a2a',
+                            padding: '15px',
+                            borderRadius: '5px',
+                            border: '1px solid #e74c3c'
+                          }}
+                        >
+                          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>
+                            {game.team1?.name || 'Équipe 1'} [{game.team1?.tag}] vs {game.team2?.name || 'Équipe 2'} [{game.team2?.tag}]
+                          </div>
+                          <div style={{ marginBottom: '10px', fontSize: '0.85rem', color: '#888' }}>
+                            Match #{game.match?.match_number} - Round {game.match?.round_number} - Manche {game.game_number}
+                          </div>
+                          <div style={{ marginBottom: '15px', fontSize: '0.9rem', color: '#aaa' }}>
+                            Scores déclarés : {game.team1_score_reported || '?'} - {game.team2_score_reported || '?'}
+                          </div>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <input
+                              type="number"
+                              placeholder="Score 1"
+                              defaultValue={game.team1_score_reported || 0}
+                              style={{ padding: '5px', width: '60px', background: '#1a1a1a', border: '1px solid #444', color: 'white', borderRadius: '3px' }}
+                              id={`game-score1-${game.id}`}
+                            />
+                            <span>-</span>
+                            <input
+                              type="number"
+                              placeholder="Score 2"
+                              defaultValue={game.team2_score_reported || 0}
+                              style={{ padding: '5px', width: '60px', background: '#1a1a1a', border: '1px solid #444', color: 'white', borderRadius: '3px' }}
+                              id={`game-score2-${game.id}`}
+                            />
+                            <button
+                              onClick={() => {
+                                const score1 = parseInt(document.getElementById(`game-score1-${game.id}`).value);
+                                const score2 = parseInt(document.getElementById(`game-score2-${game.id}`).value);
+                                resolveGameConflict(game.id, game.match_id, score1, score2);
+                              }}
+                              style={{
+                                padding: '8px 15px',
+                                background: '#8e44ad',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Résoudre
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

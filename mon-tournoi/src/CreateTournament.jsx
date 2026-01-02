@@ -6,6 +6,8 @@ export default function CreateTournament({ session, supabase }) {
   const [game, setGame] = useState('Valorant');
   const [format, setFormat] = useState('elimination'); // Par défaut : Arbre
   const [date, setDate] = useState('');
+  const [bestOf, setBestOf] = useState(1); // Best-of-X : 1 = single game, 3 = BO3, 5 = BO5, 7 = BO7
+  const [mapsPool, setMapsPool] = useState(''); // Liste de cartes séparées par des virgules
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -32,6 +34,12 @@ export default function CreateTournament({ session, supabase }) {
         startDateISO = localDate.toISOString();
       }
 
+      // Préparer le maps_pool (JSON array)
+      let mapsPoolArray = [];
+      if (mapsPool.trim()) {
+        mapsPoolArray = mapsPool.split(',').map(m => m.trim()).filter(m => m.length > 0);
+      }
+
       // 1. Création du tournoi dans la base de données
       const { data, error } = await supabase
         .from('tournaments')
@@ -42,7 +50,9 @@ export default function CreateTournament({ session, supabase }) {
             start_date: startDateISO, 
             owner_id: session.user.id,
             status: 'draft',
-            format: format // On enregistre le choix (elimination ou round_robin)
+            format: format, // On enregistre le choix (elimination ou round_robin)
+            best_of: bestOf,
+            maps_pool: mapsPoolArray.length > 0 ? mapsPoolArray : null
           }
         ])
         .select()
@@ -120,6 +130,44 @@ export default function CreateTournament({ session, supabase }) {
               : "Plusieurs rounds où les équipes sont appariées selon leur score. Pas d'élimination, classement final par victoires et tie-breaks."}
           </p>
         </div>
+
+        {/* BEST-OF-X */}
+        <div style={{background:'#2a2a2a', padding:'15px', borderRadius:'8px', border:'1px solid #3498db'}}>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#5dade2'}}>Format des Matchs (Best-of-X)</label>
+          <select 
+            value={bestOf} 
+            onChange={e => setBestOf(parseInt(e.target.value))} 
+            style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #3498db', color: 'white', borderRadius: '8px' }}
+          >
+            <option value={1}>Single Game (1 manche)</option>
+            <option value={3}>Best-of-3 (3 manches, premier à 2 victoires)</option>
+            <option value={5}>Best-of-5 (5 manches, premier à 3 victoires)</option>
+            <option value={7}>Best-of-7 (7 manches, premier à 4 victoires)</option>
+          </select>
+          <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
+            Détermine le nombre de manches par match. Le gagnant est la première équipe à remporter {Math.ceil(bestOf / 2)} manche{Math.ceil(bestOf / 2) > 1 ? 's' : ''}.
+          </p>
+        </div>
+
+        {/* MAPS POOL */}
+        {bestOf > 1 && (
+          <div style={{background:'#2a2a2a', padding:'15px', borderRadius:'8px', border:'1px solid #f39c12'}}>
+            <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#f7dc6f'}}>Pool de Cartes (Optionnel)</label>
+            <input 
+              type="text" 
+              placeholder="Ex: Bind, Haven, Split, Ascent, Icebox (séparées par des virgules)"
+              value={mapsPool} 
+              onChange={e => setMapsPool(e.target.value)} 
+              style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #f39c12', color: 'white', borderRadius: '8px' }} 
+            />
+            <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
+              Liste les cartes disponibles pour le tournoi. Les équipes pourront bannir/picker des cartes avant chaque match.
+              {game === 'Valorant' && ' Exemples: Bind, Haven, Split, Ascent, Icebox, Breeze, Fracture'}
+              {game === 'CS2' && ' Exemples: Dust2, Mirage, Inferno, Nuke, Overpass, Vertigo, Ancient'}
+              {game === 'League of Legends' && ' (Non applicable - carte unique)'}
+            </p>
+          </div>
+        )}
 
         {/* DATE */}
         <div>

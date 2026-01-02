@@ -187,6 +187,201 @@ CREATE TRIGGER trigger_update_swiss_scores_updated_at
     EXECUTE FUNCTION update_swiss_scores_updated_at();
 
 -- ============================================================
+-- Migration pour Best-of-X & Maps Pool
+-- ============================================================
+
+-- Ajouter la colonne best_of dans tournaments (1 = single game, 3 = BO3, 5 = BO5, 7 = BO7)
+ALTER TABLE tournaments
+ADD COLUMN IF NOT EXISTS best_of INTEGER DEFAULT 1;
+
+-- Ajouter la colonne maps_pool dans tournaments (JSON array de cartes disponibles)
+ALTER TABLE tournaments
+ADD COLUMN IF NOT EXISTS maps_pool JSONB DEFAULT '[]'::jsonb;
+
+-- Créer la table match_games pour les manches individuelles d'un match
+CREATE TABLE IF NOT EXISTS match_games (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    game_number INTEGER NOT NULL, -- Numéro de la manche (1, 2, 3, etc.)
+    map_name VARCHAR(255), -- Nom de la carte jouée (après veto)
+    team1_score INTEGER DEFAULT 0, -- Score final de l'équipe 1 pour cette manche (après validation)
+    team2_score INTEGER DEFAULT 0, -- Score final de l'équipe 2 pour cette manche (après validation)
+    team1_score_reported INTEGER, -- Score déclaré par l'équipe 1
+    team2_score_reported INTEGER, -- Score déclaré par l'équipe 2
+    reported_by_team1 BOOLEAN DEFAULT FALSE, -- L'équipe 1 a-t-elle déclaré son score ?
+    reported_by_team2 BOOLEAN DEFAULT FALSE, -- L'équipe 2 a-t-elle déclaré son score ?
+    score_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'confirmed', 'disputed'
+    winner_team_id UUID REFERENCES teams(id), -- Équipe gagnante de cette manche (NULL si pas encore joué)
+    status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'in_progress', 'completed'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(match_id, game_number)
+);
+
+-- Ajouter les colonnes de déclaration de scores aux match_games (si elles n'existent pas déjà)
+ALTER TABLE match_games 
+ADD COLUMN IF NOT EXISTS team1_score_reported INTEGER,
+ADD COLUMN IF NOT EXISTS team2_score_reported INTEGER,
+ADD COLUMN IF NOT EXISTS reported_by_team1 BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS reported_by_team2 BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS score_status VARCHAR(20) DEFAULT 'pending';
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_match_games_match_id ON match_games(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_games_status ON match_games(status);
+CREATE INDEX IF NOT EXISTS idx_match_games_match_game_number ON match_games(match_id, game_number);
+CREATE INDEX IF NOT EXISTS idx_match_games_score_status ON match_games(score_status);
+
+-- Créer une table pour l'historique des déclarations de scores par manche
+CREATE TABLE IF NOT EXISTS game_score_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id UUID NOT NULL REFERENCES match_games(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    score_team INTEGER NOT NULL,
+    score_opponent INTEGER NOT NULL,
+    reported_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_resolved BOOLEAN DEFAULT FALSE
+);
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_game_score_reports_game_id ON game_score_reports(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_score_reports_team_id ON game_score_reports(team_id);
+
+-- Créer la table match_vetos pour le système de veto
+CREATE TABLE IF NOT EXISTS match_vetos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    map_name VARCHAR(255) NOT NULL, -- Carte bannie
+    veto_phase VARCHAR(20) NOT NULL, -- 'ban1', 'ban2', 'pick1', 'pick2', etc.
+    veto_order INTEGER NOT NULL, -- Ordre du veto (1, 2, 3, etc.)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(match_id, map_name) -- Une carte ne peut être bannie qu'une fois
+);
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_match_vetos_match_id ON match_vetos(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_vetos_team_id ON match_vetos(team_id);
+CREATE INDEX IF NOT EXISTS idx_match_vetos_veto_order ON match_vetos(match_id, veto_order);
+
+-- RLS pour match_games
+ALTER TABLE match_games ENABLE ROW LEVEL SECURITY;
+
+-- Politique pour permettre la lecture à tous (pour affichage public)
+DROP POLICY IF EXISTS "Match games are viewable by everyone." ON match_games;
+CREATE POLICY "Match games are viewable by everyone."
+ON match_games FOR SELECT
+USING (true);
+
+-- Politique pour permettre aux participants et organisateurs de modifier
+DROP POLICY IF EXISTS "Participants and owners can manage match games." ON match_games;
+CREATE POLICY "Participants and owners can manage match games."
+ON match_games FOR ALL
+USING (
+    EXISTS (
+        SELECT 1 FROM matches
+        WHERE matches.id = match_games.match_id
+        AND (
+            matches.player1_id IN (
+                SELECT team_id FROM team_members WHERE user_id = auth.uid()
+                UNION
+                SELECT id FROM teams WHERE captain_id = auth.uid()
+            )
+            OR matches.player2_id IN (
+                SELECT team_id FROM team_members WHERE user_id = auth.uid()
+                UNION
+                SELECT id FROM teams WHERE captain_id = auth.uid()
+            )
+            OR EXISTS (
+                SELECT 1 FROM tournaments
+                WHERE tournaments.id = matches.tournament_id
+                AND tournaments.owner_id = auth.uid()
+            )
+        )
+    )
+);
+
+-- RLS pour game_score_reports
+ALTER TABLE game_score_reports ENABLE ROW LEVEL SECURITY;
+
+-- Politique pour permettre la lecture à tous
+DROP POLICY IF EXISTS "Game score reports are viewable by everyone." ON game_score_reports;
+CREATE POLICY "Game score reports are viewable by everyone."
+ON game_score_reports FOR SELECT
+USING (true);
+
+-- Politique pour permettre aux participants de créer des rapports
+DROP POLICY IF EXISTS "Participants can create game score reports." ON game_score_reports;
+CREATE POLICY "Participants can create game score reports."
+ON game_score_reports FOR INSERT
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM match_games
+        JOIN matches ON matches.id = match_games.match_id
+        WHERE match_games.id = game_score_reports.game_id
+        AND (
+            matches.player1_id = game_score_reports.team_id
+            OR matches.player2_id = game_score_reports.team_id
+        )
+        AND (
+            game_score_reports.team_id IN (
+                SELECT team_id FROM team_members WHERE user_id = auth.uid()
+                UNION
+                SELECT id FROM teams WHERE captain_id = auth.uid()
+            )
+        )
+    )
+);
+
+-- RLS pour match_vetos
+ALTER TABLE match_vetos ENABLE ROW LEVEL SECURITY;
+
+-- Politique pour permettre la lecture à tous
+DROP POLICY IF EXISTS "Match vetos are viewable by everyone." ON match_vetos;
+CREATE POLICY "Match vetos are viewable by everyone."
+ON match_vetos FOR SELECT
+USING (true);
+
+-- Politique pour permettre aux participants de créer des vetos
+DROP POLICY IF EXISTS "Participants can create match vetos." ON match_vetos;
+CREATE POLICY "Participants can create match vetos."
+ON match_vetos FOR INSERT
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM matches
+        WHERE matches.id = match_vetos.match_id
+        AND (
+            matches.player1_id = match_vetos.team_id
+            OR matches.player2_id = match_vetos.team_id
+        )
+        AND (
+            match_vetos.team_id IN (
+                SELECT team_id FROM team_members WHERE user_id = auth.uid()
+                UNION
+                SELECT id FROM teams WHERE captain_id = auth.uid()
+            )
+        )
+    )
+);
+
+-- Commentaires
+COMMENT ON COLUMN tournaments.best_of IS 'Format Best-of-X : 1 = single game, 3 = BO3, 5 = BO5, 7 = BO7';
+COMMENT ON COLUMN tournaments.maps_pool IS 'Liste des cartes disponibles pour le tournoi (JSON array: ["Map1", "Map2", ...])';
+COMMENT ON TABLE match_games IS 'Manches individuelles d''un match (pour Best-of-X)';
+COMMENT ON COLUMN match_games.game_number IS 'Numéro de la manche (1, 2, 3, etc.)';
+COMMENT ON COLUMN match_games.map_name IS 'Carte jouée pour cette manche (après veto)';
+COMMENT ON COLUMN match_games.team1_score_reported IS 'Score déclaré par l''équipe 1 pour cette manche';
+COMMENT ON COLUMN match_games.team2_score_reported IS 'Score déclaré par l''équipe 2 pour cette manche';
+COMMENT ON COLUMN match_games.reported_by_team1 IS 'L''équipe 1 a-t-elle déclaré son score pour cette manche ?';
+COMMENT ON COLUMN match_games.reported_by_team2 IS 'L''équipe 2 a-t-elle déclaré son score pour cette manche ?';
+COMMENT ON COLUMN match_games.score_status IS 'Statut du score de la manche: pending, confirmed, disputed';
+COMMENT ON TABLE match_vetos IS 'Système de veto/bannissement de cartes';
+COMMENT ON COLUMN match_vetos.veto_phase IS 'Phase du veto: ban1, ban2, pick1, pick2, etc.';
+COMMENT ON COLUMN match_vetos.veto_order IS 'Ordre du veto (1 = premier veto, 2 = deuxième, etc.)';
+COMMENT ON TABLE game_score_reports IS 'Historique des déclarations de scores par manche';
+
+-- ============================================================
 -- IMPORTANT : Exécutez aussi le fichier rls_policies.sql
 -- pour créer les politiques RLS nécessaires au panneau admin
 -- ============================================================

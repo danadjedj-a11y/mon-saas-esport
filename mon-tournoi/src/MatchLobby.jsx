@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Chat from './Chat';
 import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
 import { updateSwissScores } from './swissUtils'; // <--- IMPORT AJOUTÉ
+import { calculateMatchWinner, getNextVetoTeam, generateVetoOrder, getAvailableMaps, getMapForGame } from './bofUtils'; // <--- IMPORT BEST-OF-X
 
 export default function MatchLobby({ session, supabase }) {
   const { id } = useParams();
@@ -13,9 +14,9 @@ export default function MatchLobby({ session, supabase }) {
   const [myTeamId, setMyTeamId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tournamentOwnerId, setTournamentOwnerId] = useState(null);
-  const [tournamentFormat, setTournamentFormat] = useState(null); // <--- NOUVEL ÉTAT POUR LE FORMAT
+  const [tournamentFormat, setTournamentFormat] = useState(null);
   
-  // États pour le score déclaré par MON équipe
+  // États pour le score déclaré par MON équipe (pour single game)
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   
@@ -26,6 +27,15 @@ export default function MatchLobby({ session, supabase }) {
   // Historique des déclarations
   const [scoreReports, setScoreReports] = useState([]);
 
+  // États pour Best-of-X
+  const [tournamentBestOf, setTournamentBestOf] = useState(1);
+  const [tournamentMapsPool, setTournamentMapsPool] = useState([]);
+  const [matchGames, setMatchGames] = useState([]);
+  const [vetos, setVetos] = useState([]);
+  
+  // États pour la déclaration de score par manche
+  const [gameScores, setGameScores] = useState({}); // { gameNumber: { team1Score, team2Score } }
+
   useEffect(() => {
     fetchMatchDetails();
     // Realtime pour voir les changements de scores
@@ -34,29 +44,70 @@ export default function MatchLobby({ session, supabase }) {
       () => fetchMatchDetails())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'score_reports', filter: `match_id=eq.${id}` }, 
       () => fetchScoreReports())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games', filter: `match_id=eq.${id}` }, 
+      () => fetchMatchDetails())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_vetos', filter: `match_id=eq.${id}` }, 
+      () => fetchMatchDetails())
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [id]);
 
   const fetchMatchDetails = async () => {
-    const { data: matchData } = await supabase.from('matches').select('*').eq('id', id).single();
-    
-    if (!matchData) {
-      setLoading(false);
-      return;
-    }
+    try {
+      const { data: matchData, error: matchError } = await supabase.from('matches').select('*').eq('id', id).single();
+      
+      if (matchError) {
+        console.error('Erreur lors du chargement du match:', matchError);
+        setLoading(false);
+        return;
+      }
+      
+      if (!matchData) {
+        console.warn('Match non trouvé pour l\'ID:', id);
+        setLoading(false);
+        return;
+      }
 
-    // Récupérer le tournoi pour vérifier si on est admin ET LE FORMAT
+    // Récupérer le tournoi pour vérifier si on est admin, le format, best_of et maps_pool
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('owner_id, format')
+      .select('owner_id, format, best_of, maps_pool')
       .eq('id', matchData.tournament_id)
       .single();
     
     if (tournament) {
       setTournamentOwnerId(tournament.owner_id);
       setIsAdmin(session?.user?.id === tournament.owner_id);
-      setTournamentFormat(tournament.format); // <--- SAUVEGARDE DU FORMAT
+      setTournamentFormat(tournament.format);
+      setTournamentBestOf(tournament.best_of || 1);
+      setTournamentMapsPool(tournament.maps_pool || []);
+    }
+    
+    // Récupérer les manches (match_games) si Best-of-X > 1
+    if (tournament?.best_of > 1) {
+      try {
+        const { data: gamesData } = await supabase
+          .from('match_games')
+          .select('*')
+          .eq('match_id', id)
+          .order('game_number', { ascending: true });
+        
+        setMatchGames(gamesData || []);
+        
+        // Récupérer les vetos
+        const { data: vetosData } = await supabase
+          .from('match_vetos')
+          .select('*')
+          .eq('match_id', id)
+          .order('veto_order', { ascending: true });
+        
+        setVetos(vetosData || []);
+      } catch (error) {
+        // Si les tables n'existent pas encore, ignorer l'erreur
+        console.warn('Tables match_games/match_vetos non disponibles:', error);
+        setMatchGames([]);
+        setVetos([]);
+      }
     }
     
     // Récupérer les noms/logos des équipes
@@ -101,8 +152,12 @@ export default function MatchLobby({ session, supabase }) {
       setOpponentScore(matchData.score_p1_reported || 0);
     }
     
-    fetchScoreReports();
-    setLoading(false);
+      fetchScoreReports();
+      setLoading(false);
+    } catch (error) {
+      console.error('Erreur dans fetchMatchDetails:', error);
+      setLoading(false);
+    }
   };
 
   const fetchScoreReports = async () => {
@@ -456,6 +511,281 @@ export default function MatchLobby({ session, supabase }) {
     fetchMatchDetails();
   };
 
+  // ========== FONCTIONS BEST-OF-X ==========
+  
+  // Initialiser les manches si elles n'existent pas
+  const initializeGames = async () => {
+    if (tournamentBestOf <= 1 || !match) return;
+    
+    try {
+      const existingGames = await supabase
+        .from('match_games')
+        .select('*')
+        .eq('match_id', id);
+      
+      if (existingGames.data && existingGames.data.length > 0) return; // Déjà initialisées
+      
+      // Créer les manches
+      const gamesToCreate = [];
+      for (let i = 1; i <= tournamentBestOf; i++) {
+        gamesToCreate.push({
+          match_id: id,
+          game_number: i,
+          status: 'pending'
+        });
+      }
+      
+      await supabase.from('match_games').insert(gamesToCreate);
+      fetchMatchDetails();
+    } catch (error) {
+      // Si la table n'existe pas encore, ignorer l'erreur
+      console.warn('Table match_games non disponible:', error);
+    }
+  };
+
+  // Déclarer le score d'une manche (avec système de validation)
+  const submitGameScore = async (gameNumber, myTeamScore, opponentScore) => {
+    if (!myTeamId || !session) return alert("Tu dois être connecté et membre d'une équipe pour déclarer un score.");
+    if (myTeamScore < 0 || opponentScore < 0) return alert("Les scores ne peuvent pas être négatifs.");
+    
+    const isTeam1 = myTeamId === match.player1_id;
+    const scoreForTeam1 = isTeam1 ? myTeamScore : opponentScore;
+    const scoreForTeam2 = isTeam1 ? opponentScore : myTeamScore;
+    
+    try {
+      // Chercher si la manche existe déjà
+      let existingGame = null;
+      const { data: gameData } = await supabase
+        .from('match_games')
+        .select('*')
+        .eq('match_id', id)
+        .eq('game_number', gameNumber)
+        .single();
+      
+      existingGame = gameData;
+      
+      // Si la manche n'existe pas, la créer
+      if (!existingGame) {
+        const { data: newGame } = await supabase
+          .from('match_games')
+          .insert([{
+            match_id: id,
+            game_number: gameNumber,
+            status: 'pending'
+          }])
+          .select()
+          .single();
+        existingGame = newGame;
+      }
+      
+      if (!existingGame) {
+        alert('Erreur : Impossible de créer/récupérer la manche.');
+        return;
+      }
+      
+      // 1. Enregistrer dans game_score_reports
+      const { error: reportError } = await supabase
+        .from('game_score_reports')
+        .insert([{
+          game_id: existingGame.id,
+          team_id: myTeamId,
+          score_team: myTeamScore,
+          score_opponent: opponentScore,
+          reported_by: session.user.id
+        }]);
+
+      if (reportError) throw reportError;
+
+      // 2. Mettre à jour la manche avec les scores déclarés
+      const updateData = isTeam1
+        ? { team1_score_reported: scoreForTeam1, team2_score_reported: scoreForTeam2, reported_by_team1: true }
+        : { team1_score_reported: scoreForTeam1, team2_score_reported: scoreForTeam2, reported_by_team2: true };
+
+      const { error: gameError } = await supabase.from('match_games').update(updateData).eq('id', existingGame.id);
+
+      if (gameError) throw gameError;
+
+      // 3. Vérifier concordance
+      const { data: currentGame } = await supabase.from('match_games').select('*').eq('id', existingGame.id).single();
+
+      if (currentGame?.reported_by_team1 && currentGame?.reported_by_team2) {
+        
+        // Récupérer les rapports pour comparer
+        const { data: reports } = await supabase
+          .from('game_score_reports')
+          .select('*')
+          .eq('game_id', existingGame.id)
+          .eq('is_resolved', false)
+          .order('created_at', { ascending: false })
+          .limit(2);
+
+        if (reports && reports.length === 2) {
+          const team1Report = reports.find(r => r.team_id === match.player1_id);
+          const team2Report = reports.find(r => r.team_id === match.player2_id);
+
+          if (team1Report && team2Report) {
+            const scoresConcord = 
+              team1Report.score_team === team2Report.score_opponent &&
+              team1Report.score_opponent === team2Report.score_team;
+            
+            if (scoresConcord) {
+              // ✅ SUCCESS : Validation de la manche
+              const finalTeam1Score = team1Report.score_team;
+              const finalTeam2Score = team1Report.score_opponent;
+              const winnerTeamId = finalTeam1Score > finalTeam2Score ? match.player1_id : (finalTeam2Score > finalTeam1Score ? match.player2_id : null);
+              
+              // A. Mettre à jour la manche comme TERMINÉE
+              await supabase.from('match_games').update({
+                team1_score: finalTeam1Score,
+                team2_score: finalTeam2Score,
+                winner_team_id: winnerTeamId,
+                score_status: 'confirmed',
+                status: 'completed',
+                completed_at: new Date().toISOString()
+              }).eq('id', existingGame.id);
+
+              // B. Résoudre les rapports
+              const reportIds = reports.map(r => r.id);
+              if (reportIds.length > 0) {
+                await supabase.from('game_score_reports').update({ is_resolved: true }).in('id', reportIds);
+              }
+
+              // C. Vérifier si le match est terminé
+              const { data: allGames } = await supabase
+                .from('match_games')
+                .select('*')
+                .eq('match_id', id)
+                .order('game_number', { ascending: true });
+              
+              if (allGames) {
+                const matchResult = calculateMatchWinner(allGames, tournamentBestOf, match.player1_id, match.player2_id);
+                
+                if (matchResult.isCompleted && matchResult.winner) {
+                  // Le match est terminé
+                  const finalScore1 = matchResult.team1Wins;
+                  const finalScore2 = matchResult.team2Wins;
+                  
+                  await supabase
+                    .from('matches')
+                    .update({
+                      score_p1: finalScore1,
+                      score_p2: finalScore2,
+                      status: 'completed',
+                      score_status: 'confirmed'
+                    })
+                    .eq('id', id);
+                  
+                  // Avancer le bracket
+                  const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', id).single();
+                  if (updatedMatch && tournamentFormat) {
+                    if (tournamentFormat === 'swiss') {
+                      await updateSwissScores(supabase, updatedMatch.tournament_id, updatedMatch);
+                    } else if (tournamentFormat === 'double_elimination') {
+                      const loserTeamId = matchResult.winner === match.player1_id ? match.player2_id : match.player1_id;
+                      await handleDoubleEliminationProgression(updatedMatch, matchResult.winner, loserTeamId);
+                    } else if (tournamentFormat === 'elimination') {
+                      await advanceWinner(updatedMatch, matchResult.winner);
+                    }
+                    
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('tournament-match-updated', { detail: { tournamentId: updatedMatch.tournament_id } }));
+                    }, 1000);
+                  }
+                  
+                  alert(`✅ Match terminé ! ${finalScore1} - ${finalScore2}`);
+                } else {
+                  alert('✅ Manche validée ! Les scores concordent.');
+                }
+              }
+              
+            } else {
+              // ❌ CONFLIT
+              await supabase.from('match_games').update({ score_status: 'disputed' }).eq('id', existingGame.id);
+              
+              alert('⚠️ Conflit : Les scores ne correspondent pas. Un admin doit intervenir.');
+            }
+          }
+        }
+      } else {
+        alert('✅ Score déclaré ! En attente de la déclaration de l\'adversaire.');
+      }
+      
+      fetchMatchDetails();
+    } catch (error) {
+      alert('Erreur : ' + error.message);
+    }
+  };
+  
+  // Résoudre un conflit de score pour une manche (Admin)
+  const resolveGameConflict = async (gameId, scoreTeam1, scoreTeam2) => {
+    if (!isAdmin) return alert("Seul l'administrateur peut résoudre un conflit.");
+
+    const winnerTeamId = scoreTeam1 > scoreTeam2 ? match.player1_id : (scoreTeam2 > scoreTeam1 ? match.player2_id : null);
+    
+    // 1. Update Game
+    await supabase.from('match_games').update({ 
+      team1_score: scoreTeam1, 
+      team2_score: scoreTeam2,
+      team1_score_reported: scoreTeam1,
+      team2_score_reported: scoreTeam2,
+      winner_team_id: winnerTeamId,
+      score_status: 'confirmed', 
+      status: 'completed',
+      reported_by_team1: true, 
+      reported_by_team2: true,
+      completed_at: new Date().toISOString()
+    }).eq('id', gameId);
+
+    // 2. Resolve reports
+    await supabase.from('game_score_reports').update({ is_resolved: true }).eq('game_id', gameId);
+
+    alert("✅ Conflit résolu !");
+    
+    // 3. Vérifier si le match est terminé
+    const { data: allGames } = await supabase
+      .from('match_games')
+      .select('*')
+      .eq('match_id', id)
+      .order('game_number', { ascending: true });
+    
+    if (allGames) {
+      const matchResult = calculateMatchWinner(allGames, tournamentBestOf, match.player1_id, match.player2_id);
+      
+      if (matchResult.isCompleted && matchResult.winner) {
+        const finalScore1 = matchResult.team1Wins;
+        const finalScore2 = matchResult.team2Wins;
+        
+        await supabase
+          .from('matches')
+          .update({
+            score_p1: finalScore1,
+            score_p2: finalScore2,
+            status: 'completed',
+            score_status: 'confirmed'
+          })
+          .eq('id', id);
+        
+        const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', id).single();
+        if (updatedMatch && tournamentFormat) {
+          if (tournamentFormat === 'swiss') {
+            await updateSwissScores(supabase, updatedMatch.tournament_id, updatedMatch);
+          } else if (tournamentFormat === 'double_elimination') {
+            const loserTeamId = matchResult.winner === match.player1_id ? match.player2_id : match.player1_id;
+            await handleDoubleEliminationProgression(updatedMatch, matchResult.winner, loserTeamId);
+          } else if (tournamentFormat === 'elimination') {
+            await advanceWinner(updatedMatch, matchResult.winner);
+          }
+          
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('tournament-match-updated', { detail: { tournamentId: updatedMatch.tournament_id } }));
+          }, 1000);
+        }
+      }
+    }
+    
+    fetchMatchDetails();
+  };
+
   const uploadProof = async (e) => {
     try {
       setUploading(true);
@@ -477,12 +807,28 @@ export default function MatchLobby({ session, supabase }) {
     }
   };
 
+  // Initialiser les manches si nécessaire (doit être avant le return)
+  useEffect(() => {
+    if (tournamentBestOf > 1 && match && matchGames.length === 0 && match.status === 'pending') {
+      initializeGames().catch(err => {
+        console.error('Erreur lors de l\'initialisation des manches:', err);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentBestOf, match?.id, matchGames.length]);
+
   if (loading || !match) return <div style={{color:'white', padding:'20px'}}>Chargement du Lobby...</div>;
 
   const isTeam1 = myTeamId === match.player1_id;
   const reportedByMe = isTeam1 ? match.reported_by_team1 : match.reported_by_team2;
   const hasConflict = match.score_status === 'disputed';
   const isConfirmed = match.score_status === 'confirmed';
+  
+  // Calculer le score global pour Best-of-X
+  let matchResult = null;
+  if (tournamentBestOf > 1 && matchGames.length > 0) {
+    matchResult = calculateMatchWinner(matchGames, tournamentBestOf, match.player1_id, match.player2_id);
+  }
 
   return (
     <div style={{ padding: '20px', color: 'white', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
@@ -555,8 +901,158 @@ export default function MatchLobby({ session, supabase }) {
                 </div>
             </div>
 
-          {/* ZONE DE DÉCLARATION DE SCORE */}
-          {myTeamId && !reportedByMe && !isConfirmed && (
+          {/* SECTION MANCHES BEST-OF-X */}
+          {tournamentBestOf > 1 && (
+            <div style={{background: '#2a2a2a', padding: '20px', borderRadius: '10px', marginTop: '20px', border: '1px solid #444'}}>
+              <h3 style={{marginTop: 0, marginBottom: '15px'}}>🎮 Manches (Best-of-{tournamentBestOf})</h3>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                {Array.from({ length: tournamentBestOf }, (_, i) => i + 1).map((gameNum) => {
+                  const game = matchGames.find(g => g.game_number === gameNum);
+                  const isCompleted = game?.status === 'completed';
+                  const isConfirmed = game?.score_status === 'confirmed';
+                  const hasConflict = game?.score_status === 'disputed';
+                  const gameReportedByMe = isTeam1 ? game?.reported_by_team1 : game?.reported_by_team2;
+                  const mapName = game?.map_name || getMapForGame(matchGames, gameNum, tournamentMapsPool, vetos) || `Manche ${gameNum}`;
+                  
+                  return (
+                    <div key={gameNum} style={{
+                      background: isConfirmed ? '#1a3a1a' : (hasConflict ? '#3a1a1a' : '#1a1a1a'),
+                      padding: '15px',
+                      borderRadius: '8px',
+                      border: isConfirmed ? '1px solid #27ae60' : (hasConflict ? '1px solid #e74c3c' : '1px solid #555')
+                    }}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                        <div>
+                          <strong>Manche {gameNum}</strong>
+                          {mapName && <span style={{marginLeft: '10px', fontSize: '0.9rem', color: '#888'}}>🗺️ {mapName}</span>}
+                        </div>
+                        {isConfirmed && <span style={{color: '#4ade80', fontSize: '0.9rem'}}>✅ Terminée</span>}
+                        {hasConflict && <span style={{color: '#e74c3c', fontSize: '0.9rem'}}>⚠️ Conflit</span>}
+                      </div>
+                      
+                      {hasConflict && isAdmin && game ? (
+                        // Conflit - Zone Admin (priorité pour l'admin)
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                          <div style={{color: '#e74c3c', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold'}}>⚠️ Conflit détecté. Résoudre :</div>
+                          <div style={{display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center'}}>
+                            <input
+                              type="number"
+                              defaultValue={game.team1_score_reported || 0}
+                              id={`admin-game-${gameNum}-team1`}
+                              min="0"
+                              style={{width: '80px', padding: '8px', background: '#fff', color: '#000', border: '2px solid #e74c3c', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold'}}
+                            />
+                            <span style={{fontSize: '1.2rem', fontWeight: 'bold'}}>:</span>
+                            <input
+                              type="number"
+                              defaultValue={game.team2_score_reported || 0}
+                              id={`admin-game-${gameNum}-team2`}
+                              min="0"
+                              style={{width: '80px', padding: '8px', background: '#fff', color: '#000', border: '2px solid #e74c3c', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold'}}
+                            />
+                            <button
+                              onClick={() => {
+                                const score1 = parseInt(document.getElementById(`admin-game-${gameNum}-team1`).value) || 0;
+                                const score2 = parseInt(document.getElementById(`admin-game-${gameNum}-team2`).value) || 0;
+                                resolveGameConflict(game.id, score1, score2);
+                              }}
+                              style={{
+                                padding: '8px 15px',
+                                background: '#e74c3c',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem'
+                              }}
+                            >
+                              ✅ Valider
+                            </button>
+                          </div>
+                          <div style={{fontSize: '0.8rem', color: '#888', textAlign: 'center', marginTop: '5px'}}>
+                            Scores déclarés: {match.team1?.name} = {game.team1_score_reported || '-'}, {match.team2?.name} = {game.team2_score_reported || '-'}
+                          </div>
+                        </div>
+                      ) : isConfirmed && isCompleted && game ? (
+                        // Manche confirmée et terminée
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                          <span style={{fontSize: '1.2rem', fontWeight: 'bold', color: game.team1_score > game.team2_score ? '#4ade80' : '#aaa'}}>
+                            {match.team1?.name}: {game.team1_score}
+                          </span>
+                          <span style={{fontSize: '1.5rem'}}>:</span>
+                          <span style={{fontSize: '1.2rem', fontWeight: 'bold', color: game.team2_score > game.team1_score ? '#4ade80' : '#aaa'}}>
+                            {game.team2_score} : {match.team2?.name}
+                          </span>
+                        </div>
+                      ) : hasConflict && !isAdmin && game ? (
+                        // Conflit - Vue joueur (attente admin)
+                        <div style={{color: '#e74c3c', fontSize: '0.9rem', textAlign: 'center', padding: '10px'}}>
+                          ⚠️ Conflit détecté. Les scores déclarés ne correspondent pas. Un administrateur doit intervenir.
+                        </div>
+                      ) : !isConfirmed && myTeamId && !gameReportedByMe && !matchResult?.isCompleted ? (
+                        // Zone de déclaration (si pas encore déclaré par mon équipe)
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                          {game && game.team1_score_reported !== null && game.team1_score_reported !== undefined && game.team2_score_reported !== null && game.team2_score_reported !== undefined && (
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px', fontSize: '0.9rem', color: '#888'}}>
+                              <span>{game.team1_score_reported ?? '-'}</span>
+                              <span>:</span>
+                              <span>{game.team2_score_reported ?? '-'}</span>
+                            </div>
+                          )}
+                          <div style={{display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center'}}>
+                            <input
+                              type="number"
+                              placeholder="Mon score"
+                              min="0"
+                              id={`game-${gameNum}-my`}
+                              style={{width: '80px', padding: '8px', background: '#111', color: 'white', border: '2px solid #f1c40f', borderRadius: '4px', textAlign: 'center'}}
+                            />
+                            <span>:</span>
+                            <input
+                              type="number"
+                              placeholder="Adverse"
+                              min="0"
+                              id={`game-${gameNum}-opp`}
+                              style={{width: '80px', padding: '8px', background: '#111', color: 'white', border: '2px solid #f1c40f', borderRadius: '4px', textAlign: 'center'}}
+                            />
+                            <button
+                              onClick={() => {
+                                const myScore = parseInt(document.getElementById(`game-${gameNum}-my`).value) || 0;
+                                const oppScore = parseInt(document.getElementById(`game-${gameNum}-opp`).value) || 0;
+                                submitGameScore(gameNum, myScore, oppScore);
+                              }}
+                              style={{
+                                padding: '8px 15px',
+                                background: '#f1c40f',
+                                color: '#000',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              ✉️ Envoyer
+                            </button>
+                          </div>
+                          {gameReportedByMe && (
+                            <div style={{fontSize: '0.75rem', color: '#4ade80', textAlign: 'center'}}>✅ Score déclaré</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{color: '#888', fontSize: '0.9rem'}}>
+                          {gameReportedByMe ? '✅ Score déclaré, en attente de l\'adversaire...' : 'En attente...'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ZONE DE DÉCLARATION DE SCORE (pour single game seulement) */}
+          {tournamentBestOf === 1 && myTeamId && !reportedByMe && !isConfirmed && (
             <div style={{background: '#2a2a2a', padding: '20px', borderRadius: '10px', marginTop: '20px', border: '2px solid #f1c40f'}}>
               <h3 style={{marginTop: 0, marginBottom: '15px', color: '#f1c40f'}}>📝 Déclarer mon score</h3>
               <div style={{display: 'flex', gap: '15px', alignItems: 'center', justifyContent: 'center'}}>
@@ -640,8 +1136,149 @@ export default function MatchLobby({ session, supabase }) {
           )}
         </div>
 
-        {/* HISTORIQUE DES DÉCLARATIONS */}
-        {scoreReports.length > 0 && (
+          {/* SECTION ADMIN - DÉTAILS AVANCÉS */}
+          {isAdmin && (
+            <div style={{ marginTop: '20px', background: '#2a1a3a', padding: '20px', borderRadius: '15px', border: '2px solid #8e44ad' }}>
+              <h3 style={{marginTop: 0, color: '#8e44ad'}}>👑 Panneau Admin - Détails du Match</h3>
+              
+              {/* Informations générales */}
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px'}}>
+                <div style={{background: '#1a1a1a', padding: '12px', borderRadius: '8px'}}>
+                  <div style={{fontSize: '0.8rem', color: '#aaa', marginBottom: '5px'}}>Statut du match</div>
+                  <div style={{fontSize: '1rem', fontWeight: 'bold', color: match.status === 'completed' ? '#4ade80' : match.status === 'pending' ? '#f39c12' : '#e74c3c'}}>
+                    {match.status === 'completed' ? '✅ Terminé' : match.status === 'pending' ? '⏳ En attente' : '❌ Annulé'}
+                  </div>
+                </div>
+                <div style={{background: '#1a1a1a', padding: '12px', borderRadius: '8px'}}>
+                  <div style={{fontSize: '0.8rem', color: '#aaa', marginBottom: '5px'}}>Statut des scores</div>
+                  <div style={{fontSize: '1rem', fontWeight: 'bold', color: match.score_status === 'confirmed' ? '#4ade80' : match.score_status === 'disputed' ? '#e74c3c' : '#f39c12'}}>
+                    {match.score_status === 'confirmed' ? '✅ Confirmé' : match.score_status === 'disputed' ? '⚠️ Conflit' : '⏳ En attente'}
+                  </div>
+                </div>
+                {tournamentBestOf > 1 && (
+                  <div style={{background: '#1a1a1a', padding: '12px', borderRadius: '8px'}}>
+                    <div style={{fontSize: '0.8rem', color: '#aaa', marginBottom: '5px'}}>Format</div>
+                    <div style={{fontSize: '1rem', fontWeight: 'bold'}}>Best-of-{tournamentBestOf}</div>
+                  </div>
+                )}
+                {matchResult && tournamentBestOf > 1 && (
+                  <div style={{background: '#1a1a1a', padding: '12px', borderRadius: '8px'}}>
+                    <div style={{fontSize: '0.8rem', color: '#aaa', marginBottom: '5px'}}>Score global</div>
+                    <div style={{fontSize: '1rem', fontWeight: 'bold'}}>
+                      {matchResult.team1Wins} - {matchResult.team2Wins}
+                      {matchResult.isCompleted && matchResult.winner && (
+                        <span style={{marginLeft: '10px', color: '#4ade80'}}>✅ Terminé</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Détails des manches pour Best-of-X */}
+              {tournamentBestOf > 1 && matchGames.length > 0 && (
+                <div style={{background: '#1a1a1a', padding: '15px', borderRadius: '8px', marginBottom: '15px'}}>
+                  <h4 style={{marginTop: 0, marginBottom: '10px', fontSize: '0.9rem', color: '#aaa'}}>📊 Statut des manches</h4>
+                  <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px'}}>
+                    {matchGames.map((game) => {
+                      const isCompleted = game.status === 'completed';
+                      const isConfirmed = game.score_status === 'confirmed';
+                      const hasConflict = game.score_status === 'disputed';
+                      
+                      return (
+                        <div key={game.id} style={{
+                          background: isConfirmed ? '#1a3a1a' : (hasConflict ? '#3a1a1a' : '#2a2a2a'),
+                          padding: '10px',
+                          borderRadius: '6px',
+                          border: isConfirmed ? '1px solid #27ae60' : (hasConflict ? '1px solid #e74c3c' : '1px solid #555'),
+                          fontSize: '0.85rem'
+                        }}>
+                          <div style={{fontWeight: 'bold', marginBottom: '5px'}}>Manche {game.game_number}</div>
+                          <div style={{color: '#aaa', fontSize: '0.75rem'}}>
+                            {isConfirmed ? (
+                              <span style={{color: '#4ade80'}}>✅ {game.team1_score} - {game.team2_score}</span>
+                            ) : hasConflict ? (
+                              <span style={{color: '#e74c3c'}}>⚠️ Conflit</span>
+                            ) : game.reported_by_team1 && game.reported_by_team2 ? (
+                              <span style={{color: '#f39c12'}}>⏳ En validation</span>
+                            ) : (
+                              <span style={{color: '#888'}}>⏳ En attente</span>
+                            )}
+                          </div>
+                          {game.map_name && (
+                            <div style={{color: '#888', fontSize: '0.7rem', marginTop: '3px'}}>🗺️ {game.map_name}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Historique des rapports de manches */}
+              {tournamentBestOf > 1 && (
+                <div style={{background: '#1a1a1a', padding: '15px', borderRadius: '8px', marginBottom: '15px'}}>
+                  <h4 style={{marginTop: 0, marginBottom: '10px', fontSize: '0.9rem', color: '#aaa'}}>📋 Historique des rapports de manches</h4>
+                  <div style={{maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                    {matchGames.map((game) => {
+                      if (!game.reported_by_team1 && !game.reported_by_team2) return null;
+                      
+                      return (
+                        <div key={game.id} style={{
+                          background: '#2a2a2a',
+                          padding: '10px',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem'
+                        }}>
+                          <div style={{fontWeight: 'bold', marginBottom: '5px'}}>Manche {game.game_number}</div>
+                          <div style={{color: '#aaa'}}>
+                            {game.reported_by_team1 && (
+                              <div>{match.team1?.name}: {game.team1_score_reported ?? '?'} - {game.team2_score_reported ?? '?'}</div>
+                            )}
+                            {game.reported_by_team2 && (
+                              <div>{match.team2?.name}: {game.team2_score_reported ?? '?'} - {game.team1_score_reported ?? '?'}</div>
+                            )}
+                            {game.score_status === 'disputed' && (
+                              <div style={{color: '#e74c3c', marginTop: '5px'}}>⚠️ Conflit détecté</div>
+                            )}
+                            {game.score_status === 'confirmed' && (
+                              <div style={{color: '#4ade80', marginTop: '5px'}}>✅ Confirmé: {game.team1_score} - {game.team2_score}</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Historique des déclarations (single game) */}
+              {scoreReports.length > 0 && (
+                <div style={{background: '#1a1a1a', padding: '15px', borderRadius: '8px'}}>
+                  <h4 style={{marginTop: 0, marginBottom: '10px', fontSize: '0.9rem', color: '#aaa'}}>📋 Historique des déclarations</h4>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                    {scoreReports.map((report) => (
+                      <div key={report.id} style={{ padding: '10px', background: report.is_resolved ? '#1a3a1a' : '#2a2a2a', borderRadius: '6px', border: report.is_resolved ? '1px solid #27ae60' : '1px solid #555', opacity: report.is_resolved ? 0.7 : 1, fontSize: '0.85rem' }}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                          <div>
+                            <strong>{report.teams?.name || 'Équipe'}</strong> a déclaré : 
+                            <span style={{marginLeft: '10px', fontSize: '1rem', fontWeight: 'bold'}}>{report.score_team} - {report.score_opponent}</span>
+                          </div>
+                          <div style={{fontSize: '0.75rem', color: '#888'}}>
+                            {new Date(report.created_at).toLocaleString('fr-FR')}
+                            {report.is_resolved && <span style={{marginLeft: '10px', color: '#4ade80'}}>✅ Résolu</span>}
+                          </div>
+                        </div>
+                        {report.profiles?.username && <div style={{fontSize: '0.7rem', color: '#aaa', marginTop: '5px'}}>Déclaré par {report.profiles.username}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* HISTORIQUE DES DÉCLARATIONS (pour les joueurs) */}
+        {!isAdmin && scoreReports.length > 0 && (
           <div style={{ marginTop: '20px', background: '#1a1a1a', padding: '20px', borderRadius: '15px', border: '1px solid #333' }}>
             <h3>📋 Historique des déclarations</h3>
             <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>

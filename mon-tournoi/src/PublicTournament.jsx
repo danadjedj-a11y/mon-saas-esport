@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { getSwissScores } from './swissUtils';
+import { calculateMatchWinner } from './bofUtils';
 
 export default function PublicTournament() {
   const { id } = useParams();
@@ -9,6 +10,7 @@ export default function PublicTournament() {
   const [tournoi, setTournoi] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [matchGames, setMatchGames] = useState([]); // Pour Best-of-X
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'bracket', 'results'
   const [swissScores, setSwissScores] = useState([]);
@@ -25,6 +27,8 @@ export default function PublicTournament() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, 
       () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, 
+      () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games' }, 
       () => fetchData())
       .subscribe();
 
@@ -65,6 +69,26 @@ export default function PublicTournament() {
         };
       });
       setMatches(enrichedMatches);
+
+      // 4. Charger les manches pour les matchs Best-of-X
+      if (tData?.best_of > 1) {
+        try {
+          const matchIds = enrichedMatches.map(m => m.id);
+          const { data: gamesData } = await supabase
+            .from('match_games')
+            .select('*')
+            .in('match_id', matchIds)
+            .order('match_id', { ascending: true })
+            .order('game_number', { ascending: true });
+          
+          setMatchGames(gamesData || []);
+        } catch (error) {
+          console.warn('Erreur récupération manches:', error);
+          setMatchGames([]);
+        }
+      } else {
+        setMatchGames([]);
+      }
     }
     
     // Charger les scores suisses si format suisse
@@ -76,6 +100,239 @@ export default function PublicTournament() {
     }
     
     setLoading(false);
+  };
+
+  // Fonction helper pour obtenir le score Best-of-X d'un match en temps réel
+  const getMatchBestOfScore = (match) => {
+    if (!tournoi?.best_of || tournoi.best_of <= 1) {
+      return { team1Wins: match.score_p1 || 0, team2Wins: match.score_p2 || 0, completedGames: 0, totalGames: 1 };
+    }
+    
+    const matchGamesData = matchGames.filter(g => g.match_id === match.id);
+    if (matchGamesData.length === 0) {
+      return { team1Wins: 0, team2Wins: 0, completedGames: 0, totalGames: tournoi.best_of };
+    }
+    
+    const result = calculateMatchWinner(matchGamesData, tournoi.best_of, match.player1_id, match.player2_id);
+    const completedGames = matchGamesData.filter(g => g.status === 'completed').length;
+    return { team1Wins: result.team1Wins, team2Wins: result.team2Wins, completedGames, totalGames: tournoi.best_of };
+  };
+
+  // Composant réutilisable pour afficher un match dans l'arbre
+  const MatchCard = ({ match }) => {
+    const isCompleted = match.status === 'completed';
+    const isScheduled = match.scheduled_at && !isCompleted;
+    const isBestOf = tournoi?.best_of > 1;
+    
+    // Calculer les scores en temps réel pour Best-of-X
+    const bestOfScore = isBestOf ? getMatchBestOfScore(match) : null;
+    const displayScore1 = isBestOf && bestOfScore ? bestOfScore.team1Wins : (match.score_p1 || 0);
+    const displayScore2 = isBestOf && bestOfScore ? bestOfScore.team2Wins : (match.score_p2 || 0);
+    const isTeam1Winning = displayScore1 > displayScore2;
+    const isTeam2Winning = displayScore2 > displayScore1;
+    
+    // Récupérer les manches pour Best-of-X
+    const matchGamesData = isBestOf ? matchGames.filter(g => g.match_id === match.id) : [];
+    const completedGames = matchGamesData.filter(g => g.status === 'completed');
+    
+    return (
+      <div style={{
+        width: isBestOf ? '300px' : '260px',
+        background: '#252525',
+        border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'),
+        borderRadius: '10px',
+        position: 'relative',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+        overflow: 'hidden'
+      }}>
+        {/* Badge Best-of-X */}
+        {isBestOf && (
+          <div style={{
+            position: 'absolute',
+            top: '5px',
+            left: '5px',
+            background: 'linear-gradient(135deg, #8e44ad, #3498db)',
+            color: 'white',
+            padding: '4px 10px',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            fontWeight: 'bold',
+            zIndex: 10,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          }}>
+            🎮 Bo{tournoi.best_of}
+          </div>
+        )}
+        
+        {/* Badge Date planifiée */}
+        {isScheduled && (
+          <div style={{
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            background: '#3498db',
+            color: 'white',
+            padding: '3px 8px',
+            borderRadius: '3px',
+            fontSize: '0.7rem',
+            fontWeight: 'bold',
+            zIndex: 10
+          }}>
+            📅 {new Date(match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
+        
+        {/* JOUEUR 1 */}
+        <div style={{
+          padding: '15px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: isTeam1Winning ? '#2f3b2f' : 'transparent',
+          borderRadius: '10px 10px 0 0',
+          paddingTop: isBestOf ? '25px' : '15px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+            {match.player1_id && (
+              <img 
+                src={match.p1_avatar} 
+                style={{
+                  width: '28px', 
+                  height: '28px', 
+                  borderRadius: '50%', 
+                  objectFit: 'cover', 
+                  border: '1px solid #555', 
+                  flexShrink: 0
+                }} 
+                alt="" 
+              />
+            )}
+            <span style={{
+              color: match.player1_id ? 'white' : '#666',
+              fontWeight: isTeam1Winning ? 'bold' : 'normal',
+              fontSize: '0.9rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {match.p1_name.split(' [')[0]}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+              {displayScore1 || '-'}
+            </span>
+            {isBestOf && bestOfScore && (
+              <span style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px' }}>
+                {bestOfScore.completedGames}/{bestOfScore.totalGames}
+              </span>
+            )}
+          </div>
+        </div>
+        
+        <div style={{ height: '1px', background: '#333' }}></div>
+        
+        {/* JOUEUR 2 */}
+        <div style={{
+          padding: '15px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: isTeam2Winning ? '#2f3b2f' : 'transparent',
+          borderRadius: '0 0 10px 10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+            {match.player2_id && (
+              <img 
+                src={match.p2_avatar} 
+                style={{
+                  width: '28px', 
+                  height: '28px', 
+                  borderRadius: '50%', 
+                  objectFit: 'cover', 
+                  border: '1px solid #555', 
+                  flexShrink: 0
+                }} 
+                alt="" 
+              />
+            )}
+            <span style={{
+              color: match.player2_id ? 'white' : '#666',
+              fontWeight: isTeam2Winning ? 'bold' : 'normal',
+              fontSize: '0.9rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {match.p2_name.split(' [')[0]}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+              {displayScore2 || '-'}
+            </span>
+            {isBestOf && bestOfScore && (
+              <span style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px' }}>
+                {bestOfScore.completedGames}/{bestOfScore.totalGames}
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Section Manches Best-of-X */}
+        {isBestOf && completedGames.length > 0 && (
+          <div style={{
+            padding: '10px',
+            background: '#1a1a1a',
+            borderTop: '1px solid #333',
+            fontSize: '0.75rem'
+          }}>
+            <div style={{ color: '#888', marginBottom: '6px', fontSize: '0.7rem' }}>
+              📊 Manches terminées:
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {completedGames
+                .sort((a, b) => a.game_number - b.game_number)
+                .map((game) => (
+                  <div 
+                    key={game.id} 
+                    style={{
+                      background: '#2a2a2a',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid #444',
+                      fontSize: '0.65rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <span style={{ color: '#888' }}>#{game.game_number}</span>
+                    <span style={{ 
+                      fontWeight: 'bold', 
+                      color: game.team1_score > game.team2_score ? '#4ade80' : '#aaa' 
+                    }}>
+                      {game.team1_score}
+                    </span>
+                    <span style={{ color: '#666' }}>-</span>
+                    <span style={{ 
+                      fontWeight: 'bold', 
+                      color: game.team2_score > game.team1_score ? '#4ade80' : '#aaa' 
+                    }}>
+                      {game.team2_score}
+                    </span>
+                    {game.map_name && (
+                      <span style={{ color: '#888', fontSize: '0.6rem', marginLeft: '2px' }}>
+                        🗺️ {game.map_name}
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Calcul du classement pour Round Robin
@@ -226,6 +483,11 @@ export default function PublicTournament() {
                 <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>
                   {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat (Round Robin)' : tournoi.format === 'double_elimination' ? 'Double Elimination' : tournoi.format === 'swiss' ? 'Système Suisse' : tournoi.format}
                 </div>
+                {tournoi.best_of > 1 && (
+                  <div style={{ fontSize: '0.9rem', color: '#00d4ff', marginTop: '5px' }}>
+                    🎮 Best-of-{tournoi.best_of}
+                  </div>
+                )}
               </div>
               
               <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
@@ -378,90 +640,9 @@ export default function PublicTournament() {
                         {[...new Set(matches.filter(m => m.bracket_type === 'winners').map(m=>m.round_number))].sort().map(round => (
                           <div key={`winners-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
                             <h4 style={{textAlign:'center', color:'#666', marginBottom: '15px'}}>Round {round}</h4>
-                            {matches.filter(m => m.bracket_type === 'winners' && m.round_number === round).map(m => {
-                              const isCompleted = m.status === 'completed';
-                              const isScheduled = m.scheduled_at && !isCompleted;
-                              
-                              return (
-                                <div key={m.id} style={{
-                                  width:'260px', 
-                                  background:'#252525', 
-                                  border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'), 
-                                  borderRadius:'10px', 
-                                  position:'relative',
-                                  boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                                }}>
-                                  {/* Badge Date planifiée */}
-                                  {isScheduled && (
-                                    <div style={{
-                                      position: 'absolute',
-                                      top: '5px',
-                                      right: '5px',
-                                      background: '#3498db',
-                                      color: 'white',
-                                      padding: '3px 8px',
-                                      borderRadius: '3px',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 'bold',
-                                      zIndex: 10
-                                    }}>
-                                      📅 {new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                  )}
-                                  {/* JOUEUR 1 */}
-                                  <div style={{
-                                    padding:'15px', 
-                                    display:'flex', 
-                                    justifyContent:'space-between', 
-                                    alignItems:'center', 
-                                    background: (m.score_p1 || 0) > (m.score_p2 || 0) ? '#2f3b2f' : 'transparent', 
-                                    borderRadius:'10px 10px 0 0'
-                                  }}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                      <span style={{
-                                        color: m.player1_id ? 'white' : '#666', 
-                                        fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
-                                        fontSize:'0.9rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {m.p1_name.split(' [')[0]}
-                                      </span>
-                                    </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p1 || '-'}</span>
-                                  </div>
-                                  
-                                  <div style={{height:'1px', background:'#333'}}></div>
-                                  
-                                  {/* JOUEUR 2 */}
-                                  <div style={{
-                                    padding:'15px', 
-                                    display:'flex', 
-                                    justifyContent:'space-between', 
-                                    alignItems:'center', 
-                                    background: (m.score_p2 || 0) > (m.score_p1 || 0) ? '#2f3b2f' : 'transparent', 
-                                    borderRadius:'0 0 10px 10px'
-                                  }}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                      <span style={{
-                                        color: m.player2_id ? 'white' : '#666', 
-                                        fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 
-                                        fontSize:'0.9rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {m.p2_name.split(' [')[0]}
-                                      </span>
-                                    </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p2 || '-'}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            {matches.filter(m => m.bracket_type === 'winners' && m.round_number === round).map(m => (
+                              <MatchCard key={m.id} match={m} />
+                            ))}
                           </div>
                         ))}
                       </div>
@@ -474,90 +655,9 @@ export default function PublicTournament() {
                         {[...new Set(matches.filter(m => m.bracket_type === 'losers').map(m=>m.round_number))].sort().map(round => (
                           <div key={`losers-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
                             <h4 style={{textAlign:'center', color:'#666', marginBottom: '15px'}}>Round {round}</h4>
-                            {matches.filter(m => m.bracket_type === 'losers' && m.round_number === round).map(m => {
-                              const isCompleted = m.status === 'completed';
-                              const isScheduled = m.scheduled_at && !isCompleted;
-                              
-                              return (
-                                <div key={m.id} style={{
-                                  width:'260px', 
-                                  background:'#1a1a1a', 
-                                  border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'), 
-                                  borderRadius:'10px', 
-                                  position:'relative',
-                                  boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                                }}>
-                                  {/* Badge Date planifiée */}
-                                  {isScheduled && (
-                                    <div style={{
-                                      position: 'absolute',
-                                      top: '5px',
-                                      right: '5px',
-                                      background: '#3498db',
-                                      color: 'white',
-                                      padding: '3px 8px',
-                                      borderRadius: '3px',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 'bold',
-                                      zIndex: 10
-                                    }}>
-                                      📅 {new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                  )}
-                                  {/* JOUEUR 1 */}
-                                  <div style={{
-                                    padding:'15px', 
-                                    display:'flex', 
-                                    justifyContent:'space-between', 
-                                    alignItems:'center', 
-                                    background: (m.score_p1 || 0) > (m.score_p2 || 0) ? '#2f3b2f' : 'transparent', 
-                                    borderRadius:'10px 10px 0 0'
-                                  }}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                      <span style={{
-                                        color: m.player1_id ? 'white' : '#666', 
-                                        fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
-                                        fontSize:'0.9rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {m.p1_name.split(' [')[0]}
-                                      </span>
-                                    </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p1 || '-'}</span>
-                                  </div>
-                                  
-                                  <div style={{height:'1px', background:'#333'}}></div>
-                                  
-                                  {/* JOUEUR 2 */}
-                                  <div style={{
-                                    padding:'15px', 
-                                    display:'flex', 
-                                    justifyContent:'space-between', 
-                                    alignItems:'center', 
-                                    background: (m.score_p2 || 0) > (m.score_p1 || 0) ? '#2f3b2f' : 'transparent', 
-                                    borderRadius:'0 0 10px 10px'
-                                  }}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                      <span style={{
-                                        color: m.player2_id ? 'white' : '#666', 
-                                        fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 
-                                        fontSize:'0.9rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {m.p2_name.split(' [')[0]}
-                                      </span>
-                                    </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p2 || '-'}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            {matches.filter(m => m.bracket_type === 'losers' && m.round_number === round).map(m => (
+                              <MatchCard key={m.id} match={m} />
+                            ))}
                           </div>
                         ))}
                       </div>
@@ -660,90 +760,9 @@ export default function PublicTournament() {
                         <div style={{marginTop:'20px', paddingTop:'20px', borderTop:'2px solid #444'}}>
                           <h4 style={{textAlign:'center', color:'#f39c12', marginBottom:'10px'}}>🔄 Reset Match</h4>
                           <div style={{display:'flex', justifyContent:'center'}}>
-                            {matches.filter(m => m.is_reset).map(m => {
-                              const isCompleted = m.status === 'completed';
-                              const isScheduled = m.scheduled_at && !isCompleted;
-                              
-                              return (
-                                <div key={m.id} style={{
-                                  width:'260px', 
-                                  background:'#252525', 
-                                  border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'), 
-                                  borderRadius:'10px', 
-                                  position:'relative',
-                                  boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                                }}>
-                                  {/* Badge Date planifiée */}
-                                  {isScheduled && (
-                                    <div style={{
-                                      position: 'absolute',
-                                      top: '5px',
-                                      right: '5px',
-                                      background: '#3498db',
-                                      color: 'white',
-                                      padding: '3px 8px',
-                                      borderRadius: '3px',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 'bold',
-                                      zIndex: 10
-                                    }}>
-                                      📅 {new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                  )}
-                                  {/* JOUEUR 1 */}
-                                  <div style={{
-                                    padding:'15px', 
-                                    display:'flex', 
-                                    justifyContent:'space-between', 
-                                    alignItems:'center', 
-                                    background: (m.score_p1 || 0) > (m.score_p2 || 0) ? '#2f3b2f' : 'transparent', 
-                                    borderRadius:'10px 10px 0 0'
-                                  }}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                      <span style={{
-                                        color: m.player1_id ? 'white' : '#666', 
-                                        fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
-                                        fontSize:'0.9rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {m.p1_name.split(' [')[0]}
-                                      </span>
-                                    </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p1 || '-'}</span>
-                                  </div>
-                                  
-                                  <div style={{height:'1px', background:'#333'}}></div>
-                                  
-                                  {/* JOUEUR 2 */}
-                                  <div style={{
-                                    padding:'15px', 
-                                    display:'flex', 
-                                    justifyContent:'space-between', 
-                                    alignItems:'center', 
-                                    background: (m.score_p2 || 0) > (m.score_p1 || 0) ? '#2f3b2f' : 'transparent', 
-                                    borderRadius:'0 0 10px 10px'
-                                  }}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                      <span style={{
-                                        color: m.player2_id ? 'white' : '#666', 
-                                        fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 
-                                        fontSize:'0.9rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {m.p2_name.split(' [')[0]}
-                                      </span>
-                                    </div>
-                                    <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p2 || '-'}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            {matches.filter(m => m.is_reset).map(m => (
+                              <MatchCard key={m.id} match={m} />
+                            ))}
                           </div>
                         </div>
                       )}
@@ -910,90 +929,9 @@ export default function PublicTournament() {
                     {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
                       <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
                         <h4 style={{textAlign:'center', color:'#666', marginBottom: '15px'}}>Round {round}</h4>
-                        {matches.filter(m=>m.round_number === round).map(m => {
-                          const isCompleted = m.status === 'completed';
-                          const isScheduled = m.scheduled_at && !isCompleted;
-                          
-                          return (
-                          <div key={m.id} style={{
-                            width:'260px', 
-                            background:'#252525', 
-                            border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'), 
-                            borderRadius:'10px', 
-                            position:'relative',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-                          }}>
-                            {/* Badge Date planifiée */}
-                            {isScheduled && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '5px',
-                                right: '5px',
-                                background: '#3498db',
-                                color: 'white',
-                                padding: '3px 8px',
-                                borderRadius: '3px',
-                                fontSize: '0.7rem',
-                                fontWeight: 'bold',
-                                zIndex: 10
-                              }}>
-                                📅 {new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            )}
-                            {/* JOUEUR 1 */}
-                            <div style={{
-                              padding:'15px', 
-                              display:'flex', 
-                              justifyContent:'space-between', 
-                              alignItems:'center', 
-                              background: (m.score_p1 || 0) > (m.score_p2 || 0) ? '#2f3b2f' : 'transparent', 
-                              borderRadius:'10px 10px 0 0'
-                            }}>
-                              <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                <span style={{
-                                  color: m.player1_id ? 'white' : '#666', 
-                                  fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
-                                  fontSize:'0.9rem',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {m.p1_name.split(' [')[0]}
-                                </span>
-                              </div>
-                              <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p1 || '-'}</span>
-                            </div>
-                            
-                            <div style={{height:'1px', background:'#333'}}></div>
-                            
-                            {/* JOUEUR 2 */}
-                            <div style={{
-                              padding:'15px', 
-                              display:'flex', 
-                              justifyContent:'space-between', 
-                              alignItems:'center', 
-                              background: (m.score_p2 || 0) > (m.score_p1 || 0) ? '#2f3b2f' : 'transparent', 
-                              borderRadius:'0 0 10px 10px'
-                            }}>
-                              <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
-                                <span style={{
-                                  color: m.player2_id ? 'white' : '#666', 
-                                  fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 
-                                  fontSize:'0.9rem',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {m.p2_name.split(' [')[0]}
-                                </span>
-                              </div>
-                              <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p2 || '-'}</span>
-                            </div>
-                          </div>
-                          );
-                        })}
+                        {matches.filter(m=>m.round_number === round).map(m => (
+                          <MatchCard key={m.id} match={m} />
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -1107,83 +1045,9 @@ export default function PublicTournament() {
                     if (a.round_number !== b.round_number) return a.round_number - b.round_number;
                     return a.match_number - b.match_number;
                   })
-                  .map(m => {
-                    const isScheduled = m.scheduled_at && m.status !== 'completed';
-                    
-                    return (
-                    <div 
-                      key={m.id}
-                      style={{ 
-                        background: '#2a2a2a', 
-                        padding: '20px', 
-                        borderRadius: '10px', 
-                        border: isScheduled ? '1px solid #3498db' : '1px solid #333',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '15px',
-                        position: 'relative'
-                      }}
-                    >
-                      {/* Badge Date planifiée */}
-                      {isScheduled && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '10px',
-                          right: '10px',
-                          background: '#3498db',
-                          color: 'white',
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          fontWeight: 'bold'
-                        }}>
-                          📅 {new Date(m.scheduled_at).toLocaleString('fr-FR', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </div>
-                      )}
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>
-                          Round {m.round_number} - Match #{m.match_number}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                            <img src={m.p1_avatar} style={{width:'40px', height:'40px', borderRadius:'50%', objectFit:'cover'}} alt="" />
-                            <span style={{ fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal' }}>
-                              {m.p1_name.split(' [')[0]}
-                            </span>
-                          </div>
-                          <div style={{ 
-                            fontSize: '1.5rem', 
-                            fontWeight: 'bold',
-                            minWidth: '60px',
-                            textAlign: 'center'
-                          }}>
-                            {m.score_p1 || 0} - {m.score_p2 || 0}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: 'flex-end' }}>
-                            <span style={{ fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal' }}>
-                              {m.p2_name.split(' [')[0]}
-                            </span>
-                            <img src={m.p2_avatar} style={{width:'40px', height:'40px', borderRadius:'50%', objectFit:'cover'}} alt="" />
-                          </div>
-                        </div>
-                      </div>
-                      {(m.score_p1 || 0) > (m.score_p2 || 0) ? (
-                        <div style={{ color: '#4ade80', fontWeight: 'bold' }}>✅ {m.p1_name.split(' [')[0]}</div>
-                      ) : (m.score_p2 || 0) > (m.score_p1 || 0) ? (
-                        <div style={{ color: '#4ade80', fontWeight: 'bold' }}>✅ {m.p2_name.split(' [')[0]}</div>
-                      ) : (
-                        <div style={{ color: '#f39c12', fontWeight: 'bold' }}>🤝 Match nul</div>
-                      )}
-                    </div>
-                    );
-                  })}
+                  .map(m => (
+                    <MatchCard key={m.id} match={m} />
+                  ))}
               </div>
             ) : (
               <p style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>Aucun résultat pour le moment.</p>
