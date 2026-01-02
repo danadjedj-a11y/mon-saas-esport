@@ -50,15 +50,9 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
 
     const { data, error } = await query;
 
-    // --- AJOUTE CES LIGNES ICI ---
-    console.log("🔍 DEBUG CHAT :");
-    console.log("Est-ce un Match ?", isMatchChat);
-    console.log("ID cherché :", isMatchChat ? matchId : tournamentId);
-    console.log("Données reçues de Supabase :", data);
-    console.log("Erreur éventuelle :", error);
-    // -----------------------------
-
-    if (error) console.error("Erreur chargement chat:", error);
+    if (error) {
+      console.error("Erreur chargement chat:", error);
+    }
     else setMessages(data || []);
   };
 

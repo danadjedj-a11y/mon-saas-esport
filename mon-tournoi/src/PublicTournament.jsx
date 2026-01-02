@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { getSwissScores } from './swissUtils';
 
 export default function PublicTournament() {
   const { id } = useParams();
@@ -10,6 +11,7 @@ export default function PublicTournament() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'bracket', 'results'
+  const [swissScores, setSwissScores] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -21,6 +23,8 @@ export default function PublicTournament() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, 
       () => fetchData())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, 
+      () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, 
       () => fetchData())
       .subscribe();
 
@@ -62,6 +66,15 @@ export default function PublicTournament() {
       });
       setMatches(enrichedMatches);
     }
+    
+    // Charger les scores suisses si format suisse
+    if (tData?.format === 'swiss') {
+      const scores = await getSwissScores(supabase, id);
+      setSwissScores(scores);
+    } else {
+      setSwissScores([]);
+    }
+    
     setLoading(false);
   };
 
@@ -141,7 +154,7 @@ export default function PublicTournament() {
             🎮 {tournoi.game}
           </span>
           <span style={{ background: '#2a2a2a', padding: '8px 15px', borderRadius: '20px', fontSize: '0.9rem' }}>
-            📊 {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat' : tournoi.format}
+            📊 {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat' : tournoi.format === 'double_elimination' ? 'Double Elimination' : tournoi.format === 'swiss' ? 'Système Suisse' : tournoi.format}
           </span>
           <span style={{ 
             background: tournoi.status === 'completed' ? '#27ae60' : tournoi.status === 'ongoing' ? '#3498db' : '#f39c12', 
@@ -211,7 +224,7 @@ export default function PublicTournament() {
               <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
                 <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Format</div>
                 <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>
-                  {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat (Round Robin)' : tournoi.format}
+                  {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat (Round Robin)' : tournoi.format === 'double_elimination' ? 'Double Elimination' : tournoi.format === 'swiss' ? 'Système Suisse' : tournoi.format}
                 </div>
               </div>
               
@@ -739,6 +752,152 @@ export default function PublicTournament() {
                 ) : (
                   <div style={{textAlign:'center', padding:'50px', border:'2px dashed #333', borderRadius:'8px', color:'#666'}}>
                     L'arbre apparaîtra une fois le tournoi lancé.
+                  </div>
+                )}
+              </div>
+            ) : tournoi.format === 'swiss' ? (
+              // SYSTÈME SUISSE
+              <div>
+                {/* Classement Suisse */}
+                {swissScores.length > 0 && (
+                  <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333', marginBottom: '40px' }}>
+                    <h2 style={{ marginTop: 0, color: '#3498db', marginBottom: '25px' }}>🇨🇭 Classement Suisse</h2>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
+                        <thead>
+                          <tr style={{ background: '#252525', textAlign: 'left' }}>
+                            <th style={{ padding: '12px', borderRadius:'5px 0 0 5px' }}>Rang</th>
+                            <th style={{ padding: '12px' }}>Équipe</th>
+                            <th style={{ padding: '12px', textAlign:'center' }}>Victoires</th>
+                            <th style={{ padding: '12px', textAlign:'center' }}>Défaites</th>
+                            <th style={{ padding: '12px', textAlign:'center' }}>Nuls</th>
+                            <th style={{ padding: '12px', textAlign:'center', borderRadius:'0 5px 5px 0' }}>Buchholz</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {swissScores.sort((a, b) => {
+                            if (b.wins !== a.wins) return b.wins - a.wins;
+                            if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
+                            return a.team_id.localeCompare(b.team_id);
+                          }).map((score, index) => {
+                            const team = participants.find(p => p.team_id === score.team_id);
+                            return (
+                              <tr key={score.id} style={{ borderBottom: '1px solid #333' }}>
+                                <td style={{ padding: '12px', fontWeight: index === 0 ? 'bold' : 'normal', color: index === 0 ? '#f1c40f' : 'white', fontSize: '1.1rem' }}>
+                                  #{index + 1}
+                                </td>
+                                <td style={{ padding: '12px', display:'flex', alignItems:'center', gap:'10px' }}>
+                                  <img src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} style={{width:'32px', height:'32px', borderRadius:'50%'}} alt=""/>
+                                  <span style={{ fontWeight: index === 0 ? 'bold' : 'normal' }}>{team?.teams?.name || 'Inconnu'}</span>
+                                </td>
+                                <td style={{ padding: '12px', textAlign:'center', fontWeight:'bold', fontSize:'1.1rem', color:'#2ecc71' }}>{score.wins}</td>
+                                <td style={{ padding: '12px', textAlign:'center', color:'#e74c3c' }}>{score.losses}</td>
+                                <td style={{ padding: '12px', textAlign:'center', color:'#f39c12' }}>{score.draws}</td>
+                                <td style={{ padding: '12px', textAlign:'center', color:'#3498db', fontWeight:'bold' }}>{parseFloat(score.buchholz_score || 0).toFixed(1)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rounds Suisses */}
+                {matches.length > 0 && (
+                  <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333', overflowX: 'auto' }}>
+                    <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>🇨🇭 Rounds</h2>
+                    <div style={{display:'flex', gap:'40px', paddingBottom:'20px', minWidth: 'fit-content'}}>
+                      {[...new Set(matches.filter(m => m.bracket_type === 'swiss').map(m=>m.round_number))].sort().map(round => (
+                        <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
+                          <h4 style={{textAlign:'center', color:'#3498db', fontWeight:'bold', marginBottom: '15px'}}>🇨🇭 Round {round}</h4>
+                          {matches.filter(m=>m.round_number === round && m.bracket_type === 'swiss').map(m => {
+                            const isCompleted = m.status === 'completed';
+                            const isScheduled = m.scheduled_at && !isCompleted;
+                            
+                            return (
+                              <div key={m.id} style={{
+                                width:'260px', 
+                                background:'#252525', 
+                                border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'), 
+                                borderRadius:'10px', 
+                                position:'relative',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                              }}>
+                                {/* Badge Date planifiée */}
+                                {isScheduled && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '5px',
+                                    right: '5px',
+                                    background: '#3498db',
+                                    color: 'white',
+                                    padding: '3px 8px',
+                                    borderRadius: '3px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 'bold',
+                                    zIndex: 10
+                                  }}>
+                                    📅 {new Date(m.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                )}
+                                {/* JOUEUR 1 */}
+                                <div style={{
+                                  padding:'15px', 
+                                  display:'flex', 
+                                  justifyContent:'space-between', 
+                                  alignItems:'center', 
+                                  background: (m.score_p1 || 0) > (m.score_p2 || 0) ? '#2f3b2f' : 'transparent', 
+                                  borderRadius:'10px 10px 0 0'
+                                }}>
+                                  <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                    {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                    <span style={{
+                                      color: m.player1_id ? 'white' : '#666', 
+                                      fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
+                                      fontSize:'0.9rem',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {m.p1_name.split(' [')[0]}
+                                    </span>
+                                  </div>
+                                  <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p1 || '-'}</span>
+                                </div>
+                                
+                                <div style={{height:'1px', background:'#333'}}></div>
+                                
+                                {/* JOUEUR 2 */}
+                                <div style={{
+                                  padding:'15px', 
+                                  display:'flex', 
+                                  justifyContent:'space-between', 
+                                  alignItems:'center', 
+                                  background: (m.score_p2 || 0) > (m.score_p1 || 0) ? '#2f3b2f' : 'transparent', 
+                                  borderRadius:'0 0 10px 10px'
+                                }}>
+                                  <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
+                                    {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                    <span style={{
+                                      color: m.player2_id ? 'white' : '#666', 
+                                      fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 
+                                      fontSize:'0.9rem',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {m.p2_name.split(' [')[0]}
+                                    </span>
+                                  </div>
+                                  <span style={{fontWeight:'bold', fontSize:'1.2rem', marginLeft: '10px'}}>{m.score_p2 || '-'}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

@@ -12,6 +12,7 @@ import SeedingModal from './SeedingModal';
 import SchedulingModal from './SchedulingModal';
 import { notifyMatchResult } from './notificationUtils';
 import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores, recalculateBuchholzScores } from './swissUtils';
+import { exportTournamentToPDF } from './utils/pdfExport';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -403,6 +404,76 @@ export default function Tournament({ session }) {
     });
   };
 
+  const exportToPDF = () => {
+    if (!tournoi || !participants || !matches) {
+      alert('Données incomplètes pour l\'export PDF');
+      return;
+    }
+    
+    let standings = null;
+    if (tournoi.format === 'round_robin') {
+      // Calculer le classement Round Robin
+      const stats = participants.map(p => ({
+        ...p,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        points: 0,
+        goalDiff: 0
+      }));
+      
+      matches.filter(m => m.status === 'completed').forEach(m => {
+        const p1Index = stats.findIndex(p => p.team_id === m.player1_id);
+        const p2Index = stats.findIndex(p => p.team_id === m.player2_id);
+        if (p1Index === -1 || p2Index === -1) return;
+        
+        stats[p1Index].played++;
+        stats[p2Index].played++;
+        
+        const diff = (m.score_p1 || 0) - (m.score_p2 || 0);
+        stats[p1Index].goalDiff += diff;
+        stats[p2Index].goalDiff -= diff;
+        
+        if ((m.score_p1 || 0) > (m.score_p2 || 0)) {
+          stats[p1Index].wins++;
+          stats[p1Index].points += 3;
+          stats[p2Index].losses++;
+        } else if ((m.score_p2 || 0) > (m.score_p1 || 0)) {
+          stats[p2Index].wins++;
+          stats[p2Index].points += 3;
+          stats[p1Index].losses++;
+        } else {
+          stats[p1Index].draws++;
+          stats[p1Index].points += 1;
+          stats[p2Index].draws++;
+          stats[p2Index].points += 1;
+        }
+      });
+      
+      standings = stats.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return b.goalDiff - a.goalDiff;
+      });
+    } else if (tournoi.format === 'swiss' && swissScores.length > 0) {
+      // Utiliser les scores suisses
+      standings = swissScores.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
+        return a.team_id.localeCompare(b.team_id);
+      }).map(score => {
+        const team = participants.find(p => p.team_id === score.team_id);
+        return {
+          ...score,
+          teams: team?.teams,
+          name: team?.teams?.name
+        };
+      });
+    }
+    
+    exportTournamentToPDF(tournoi, participants, matches, standings);
+  };
+
   // Générer le round suivant pour le système suisse
   const generateNextSwissRound = async () => {
     if (tournoi.format !== 'swiss') return;
@@ -661,21 +732,40 @@ export default function Tournament({ session }) {
            <div style={{fontWeight:'bold', color: tournoi.status === 'draft' ? 'orange' : '#4ade80'}}>
              {winnerName ? '🏆 TERMINÉ' : (tournoi.status === 'draft' ? '🟠 Inscriptions Ouvertes' : '🟢 En cours')}
            </div>
-           <button 
-             onClick={copyPublicLink} 
-             style={{
-               background:'#3498db', 
-               color:'white', 
-               border:'none', 
-               padding:'8px 16px', 
-               borderRadius:'4px', 
-               cursor:'pointer', 
-               fontSize:'0.9rem',
-               fontWeight:'bold'
-             }}
-           >
-             🔗 Lien Public
-           </button>
+           <div style={{display:'flex', gap:'10px'}}>
+             <button 
+               onClick={copyPublicLink} 
+               style={{
+                 background:'#3498db', 
+                 color:'white', 
+                 border:'none', 
+                 padding:'8px 16px', 
+                 borderRadius:'4px', 
+                 cursor:'pointer', 
+                 fontSize:'0.9rem',
+                 fontWeight:'bold'
+               }}
+             >
+               🔗 Lien Public
+             </button>
+             {tournoi.status === 'completed' && (
+               <button 
+                 onClick={exportToPDF} 
+                 style={{
+                   background:'#e74c3c', 
+                   color:'white', 
+                   border:'none', 
+                   padding:'8px 16px', 
+                   borderRadius:'4px', 
+                   cursor:'pointer', 
+                   fontSize:'0.9rem',
+                   fontWeight:'bold'
+                 }}
+               >
+                 📄 Export PDF
+               </button>
+             )}
+           </div>
         </div>
       </div>
 
