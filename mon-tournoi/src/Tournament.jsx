@@ -482,6 +482,21 @@ export default function Tournament({ session }) {
     fetchData();
   };
 
+  const handleAdminCheckIn = async (participantId, currentStatus) => {
+    const { error } = await supabase
+      .from('participants')
+      .update({ checked_in: !currentStatus, disqualified: false })
+      .eq('id', participantId);
+    
+    if (error) {
+      console.error('Erreur lors du check-in:', error);
+      alert('❌ Erreur lors du check-in : ' + error.message);
+      return;
+    }
+    
+    fetchData();
+  };
+
   const copyPublicLink = () => {
     const publicUrl = `${window.location.origin}/tournament/${id}/public`;
     navigator.clipboard.writeText(publicUrl).then(() => {
@@ -957,18 +972,64 @@ export default function Tournament({ session }) {
         {/* --- COLONNE GAUCHE : ÉQUIPES & CHAT --- */}
         <div style={{ flex: '1', minWidth: '300px', maxWidth: '400px', background: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
           <div style={{padding:'15px', borderBottom:'1px solid #333'}}>
-            <h3 style={{margin:0}}>Équipes ({participants.length})</h3>
+            <h3 style={{margin:0, marginBottom:'5px'}}>Équipes ({participants.length})</h3>
+            {isOwner && tournoi.status === 'draft' && (
+              <div style={{fontSize:'0.85rem', color:'#aaa', display:'flex', gap:'15px', flexWrap:'wrap'}}>
+                <span style={{color:'#27ae60'}}>✅ Check-in: {participants.filter(p => p.checked_in).length}</span>
+                <span style={{color:'#7f8c8d'}}>⏳ En attente: {participants.filter(p => !p.checked_in && !p.disqualified).length}</span>
+                {participants.filter(p => p.disqualified).length > 0 && (
+                  <span style={{color:'#e74c3c'}}>❌ DQ: {participants.filter(p => p.disqualified).length}</span>
+                )}
+              </div>
+            )}
           </div>
           <ul style={{listStyle:'none', padding:0, margin:0, maxHeight:'300px', overflowY:'auto'}}>
             {participants.map(p => (
-                <li key={p.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                    <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                <li key={p.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between', alignItems:'center', background: p.checked_in ? '#1a2e1a' : (p.disqualified ? '#2e1a1a' : 'transparent')}}>
+                    <div style={{display:'flex', gap:'10px', alignItems:'center', flex:1}}>
                         <div style={{width:'30px', height:'30px', background:'#444', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:'bold'}}>
                             {p.teams?.tag || '?'}
                         </div>
-                        <span>{p.teams?.name || 'Inconnu'}</span>
+                        <span style={{color: p.disqualified ? '#e74c3c' : (p.checked_in ? '#27ae60' : '#ccc')}}>
+                          {p.teams?.name || 'Inconnu'}
+                        </span>
+                        {/* Indicateur de statut */}
+                        {isOwner && tournoi.status === 'draft' && (
+                          <span style={{
+                            fontSize: '0.75rem',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: p.checked_in ? '#27ae60' : (p.disqualified ? '#e74c3c' : '#7f8c8d'),
+                            color: 'white',
+                            fontWeight: 'bold'
+                          }}>
+                            {p.checked_in ? '✅ Check-in' : (p.disqualified ? '❌ DQ' : '⏳ En attente')}
+                          </span>
+                        )}
                     </div>
-                    {isOwner && <button onClick={()=>removeParticipant(p.id)} style={{color:'#e74c3c', background:'none', border:'none', cursor:'pointer'}}>✕</button>}
+                    {isOwner && (
+                      <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                        {tournoi.status === 'draft' && (
+                          <button
+                            onClick={() => handleAdminCheckIn(p.id, p.checked_in)}
+                            style={{
+                              padding: '5px 12px',
+                              background: p.checked_in ? '#e67e22' : '#27ae60',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: 'bold'
+                            }}
+                            title={p.checked_in ? 'Retirer le check-in' : 'Valider le check-in'}
+                          >
+                            {p.checked_in ? '↩️ Retirer' : '✅ Check-in'}
+                          </button>
+                        )}
+                        <button onClick={()=>removeParticipant(p.id)} style={{color:'#e74c3c', background:'none', border:'none', cursor:'pointer', fontSize:'1.2rem'}} title="Exclure cette équipe">✕</button>
+                      </div>
+                    )}
                 </li>
             ))}
           </ul>
