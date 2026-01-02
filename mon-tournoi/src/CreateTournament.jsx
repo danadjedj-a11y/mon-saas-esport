@@ -8,6 +8,9 @@ export default function CreateTournament({ session, supabase }) {
   const [date, setDate] = useState('');
   const [bestOf, setBestOf] = useState(1); // Best-of-X : 1 = single game, 3 = BO3, 5 = BO5, 7 = BO7
   const [mapsPool, setMapsPool] = useState(''); // Liste de cartes séparées par des virgules
+  const [rules, setRules] = useState(''); // Règlement du tournoi (Markdown)
+  const [maxParticipants, setMaxParticipants] = useState(''); // Nombre maximum de participants (vide = illimité)
+  const [registrationDeadline, setRegistrationDeadline] = useState(''); // Date limite d'inscription
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -40,6 +43,19 @@ export default function CreateTournament({ session, supabase }) {
         mapsPoolArray = mapsPool.split(',').map(m => m.trim()).filter(m => m.length > 0);
       }
 
+      // Convertir la date limite d'inscription
+      let registrationDeadlineISO = null;
+      if (registrationDeadline) {
+        const [datePart, timePart] = registrationDeadline.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+        registrationDeadlineISO = localDate.toISOString();
+      }
+
+      // Préparer max_participants (null si vide)
+      const maxParticipantsNum = maxParticipants.trim() ? parseInt(maxParticipants) : null;
+
       // 1. Création du tournoi dans la base de données
       const { data, error } = await supabase
         .from('tournaments')
@@ -52,7 +68,10 @@ export default function CreateTournament({ session, supabase }) {
             status: 'draft',
             format: format, // On enregistre le choix (elimination ou round_robin)
             best_of: bestOf,
-            maps_pool: mapsPoolArray.length > 0 ? mapsPoolArray : null
+            maps_pool: mapsPoolArray.length > 0 ? mapsPoolArray : null,
+            rules: rules.trim() || null,
+            max_participants: maxParticipantsNum,
+            registration_deadline: registrationDeadlineISO
           }
         ])
         .select()
@@ -179,6 +198,54 @@ export default function CreateTournament({ session, supabase }) {
             onChange={e => setDate(e.target.value)} 
             style={{ width: '100%', padding: '12px', background: '#252525', border: '1px solid #444', color: 'white', borderRadius: '8px' }} 
           />
+        </div>
+
+        {/* RÈGLEMENT */}
+        <div style={{background:'#2a2a2a', padding:'15px', borderRadius:'8px', border:'1px solid #e74c3c'}}>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#ec7063'}}>📋 Règlement du Tournoi (Optionnel)</label>
+          <textarea
+            value={rules}
+            onChange={e => setRules(e.target.value)}
+            placeholder="Exemple:&#10;&#10;## Règles Générales&#10;- Les matchs sont en Best-of-3&#10;- Les screenshots de fin de partie sont obligatoires&#10;&#10;## Récompenses&#10;- 1er : 500€&#10;- 2e : 250€&#10;&#10;## Sanctions&#10;- Abandon = Disqualification&#10;- Retard de plus de 10 min = Forfait"
+            rows={8}
+            style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #e74c3c', color: 'white', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.9rem' }}
+          />
+          <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
+            Rédigez le règlement en Markdown. Il sera visible sur la page publique du tournoi. Les équipes pourront le consulter avant de s'inscrire.
+          </p>
+        </div>
+
+        {/* LIMITATIONS D'INSCRIPTION */}
+        <div style={{background:'#2a2a2a', padding:'15px', borderRadius:'8px', border:'1px solid #f39c12'}}>
+          <label style={{fontWeight:'bold', display:'block', marginBottom:'10px', color:'#f7dc6f'}}>🚪 Limitations d'Inscription</label>
+          
+          <div style={{marginBottom:'15px'}}>
+            <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontSize:'0.9rem'}}>Nombre maximum d'équipes (Laisser vide = illimité)</label>
+            <input 
+              type="number" 
+              min="2"
+              placeholder="Ex: 16, 32, 64..."
+              value={maxParticipants}
+              onChange={e => setMaxParticipants(e.target.value)} 
+              style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #f39c12', color: 'white', borderRadius: '8px' }} 
+            />
+            <p style={{fontSize:'0.8rem', color:'#aaa', marginTop:'5px'}}>
+              Si le nombre maximum est atteint, les équipes pourront s'inscrire sur une liste d'attente.
+            </p>
+          </div>
+
+          <div>
+            <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontSize:'0.9rem'}}>Date limite d'inscription (Optionnel)</label>
+            <input 
+              type="datetime-local" 
+              value={registrationDeadline} 
+              onChange={e => setRegistrationDeadline(e.target.value)} 
+              style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #f39c12', color: 'white', borderRadius: '8px' }} 
+            />
+            <p style={{fontSize:'0.8rem', color:'#aaa', marginTop:'5px'}}>
+              Après cette date, les inscriptions seront automatiquement fermées.
+            </p>
+          </div>
         </div>
 
         <button 

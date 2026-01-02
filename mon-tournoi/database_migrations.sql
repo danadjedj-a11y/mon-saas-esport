@@ -382,6 +382,43 @@ COMMENT ON COLUMN match_vetos.veto_order IS 'Ordre du veto (1 = premier veto, 2 
 COMMENT ON TABLE game_score_reports IS 'Historique des déclarations de scores par manche';
 
 -- ============================================================
+-- Migration pour Règlement, Limitations d'Inscription et Liste d'Attente
+-- ============================================================
+
+-- Ajouter colonnes pour le règlement du tournoi
+ALTER TABLE tournaments
+ADD COLUMN IF NOT EXISTS rules TEXT;
+
+-- Ajouter colonnes pour les limitations d'inscription
+ALTER TABLE tournaments
+ADD COLUMN IF NOT EXISTS max_participants INTEGER,
+ADD COLUMN IF NOT EXISTS registration_deadline TIMESTAMP WITH TIME ZONE;
+
+-- Créer la table pour la liste d'attente (waitlist)
+CREATE TABLE IF NOT EXISTS waitlist (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL, -- Position dans la liste d'attente (1 = premier, 2 = deuxième, etc.)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(tournament_id, team_id) -- Une équipe ne peut être qu'une fois dans la waitlist d'un tournoi
+);
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_waitlist_tournament_id ON waitlist(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_waitlist_team_id ON waitlist(team_id);
+CREATE INDEX IF NOT EXISTS idx_waitlist_position ON waitlist(tournament_id, position);
+CREATE INDEX IF NOT EXISTS idx_tournaments_max_participants ON tournaments(max_participants);
+CREATE INDEX IF NOT EXISTS idx_tournaments_registration_deadline ON tournaments(registration_deadline);
+
+-- Commentaires
+COMMENT ON COLUMN tournaments.rules IS 'Règlement du tournoi (Markdown)';
+COMMENT ON COLUMN tournaments.max_participants IS 'Nombre maximum de participants/équipes (NULL = illimité)';
+COMMENT ON COLUMN tournaments.registration_deadline IS 'Date/heure limite pour les inscriptions (NULL = pas de limite)';
+COMMENT ON TABLE waitlist IS 'Liste d\'attente pour les tournois complets. Les équipes sont promues automatiquement si une place se libère.';
+COMMENT ON COLUMN waitlist.position IS 'Position dans la liste d\'attente (1 = premier, sera promu en premier)';
+
+-- ============================================================
 -- IMPORTANT : Exécutez aussi le fichier rls_policies.sql
 -- pour créer les politiques RLS nécessaires au panneau admin
 -- ============================================================

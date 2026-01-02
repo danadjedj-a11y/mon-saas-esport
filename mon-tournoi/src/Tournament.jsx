@@ -24,6 +24,7 @@ export default function Tournament({ session }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [swissScores, setSwissScores] = useState([]);
+  const [waitlist, setWaitlist] = useState([]);
 
   // États d'interface (Modales & Admin)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,6 +57,10 @@ export default function Tournament({ session }) {
     // 👇 D. AJOUT CRUCIAL : Écouter les scores suisses 👇
     .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, (payload) => {
         console.log('Changement Swiss Score détecté !', payload);
+        fetchData();
+    })
+    // 👇 E. Écouter les changements dans la waitlist 👇
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist', filter: `tournament_id=eq.${id}` }, () => {
         fetchData();
     })
     .subscribe();
@@ -145,7 +150,18 @@ export default function Tournament({ session }) {
             const winner = lastMatch.score_p1 > lastMatch.score_p2 ? lastMatch.p1_name : lastMatch.p2_name;
             setWinnerName(winner);
         }
+      } else {
+        // Si pas de matchs, initialiser quand même les matches vides
+        setMatches([]);
       }
+      
+      // Charger la liste d'attente (toujours, même sans matchs)
+      const { data: waitlistData } = await supabase
+        .from('waitlist')
+        .select('*, teams(*)')
+        .eq('tournament_id', id)
+        .order('position', { ascending: true });
+      setWaitlist(waitlistData || []);
     } catch (error) {
       console.error("Erreur fetchData:", error);
     } finally {
@@ -389,9 +405,80 @@ export default function Tournament({ session }) {
     await fetchData();
   };
 
+  // Fonction pour promouvoir une équipe spécifique depuis la waitlist
+  const promoteTeamFromWaitlist = async (waitlistEntryId, teamId) => {
+    // Vérifier s'il y a de la place
+    if (tournoi?.max_participants) {
+      const { count } = await supabase
+        .from('participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_id', id);
+
+      const currentCount = count || 0;
+      if (currentCount >= tournoi.max_participants) {
+        alert('❌ Le tournoi est complet. Impossible de promouvoir cette équipe.');
+        return;
+      }
+    }
+
+    // Promouvoir en participant
+    const { error: insertError } = await supabase
+      .from('participants')
+      .insert([{
+        tournament_id: id,
+        team_id: teamId,
+        checked_in: false,
+        disqualified: false
+      }]);
+
+    if (insertError) {
+      console.error('Erreur lors de la promotion:', insertError);
+      alert('❌ Erreur lors de la promotion : ' + insertError.message);
+      return;
+    }
+
+    // Retirer de la waitlist
+    const { error: deleteError } = await supabase
+      .from('waitlist')
+      .delete()
+      .eq('id', waitlistEntryId);
+
+    if (deleteError) {
+      console.error('Erreur lors de la suppression de la waitlist:', deleteError);
+    }
+
+    // Réorganiser les positions dans la waitlist
+    const { data: remainingWaitlist } = await supabase
+      .from('waitlist')
+      .select('*')
+      .eq('tournament_id', id)
+      .order('position', { ascending: true });
+
+    if (remainingWaitlist && remainingWaitlist.length > 0) {
+      for (let i = 0; i < remainingWaitlist.length; i++) {
+        await supabase
+          .from('waitlist')
+          .update({ position: i + 1 })
+          .eq('id', remainingWaitlist[i].id);
+      }
+    }
+
+    alert('✅ Équipe promue avec succès !');
+    fetchData();
+  };
+
   const removeParticipant = async (pid) => {
     if (!confirm("Exclure cette équipe ?")) return;
-    await supabase.from('participants').delete().eq('id', pid);
+    
+    const { error } = await supabase.from('participants').delete().eq('id', pid);
+    
+    if (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert('❌ Erreur lors de la suppression : ' + error.message);
+      return;
+    }
+    
+    // Ne pas promouvoir automatiquement - l'admin choisira manuellement
     fetchData();
   };
 
@@ -775,6 +862,50 @@ export default function Tournament({ session }) {
           </div>
       )}
 
+      {/* --- RÈGLEMENT --- */}
+      {tournoi.rules && (
+        <div style={{ background: '#1a1a1a', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: '1px solid #333' }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#00d4ff', borderBottom: '1px solid #444', paddingBottom: '10px' }}>📋 Règlement du Tournoi</h3>
+          <div style={{ 
+            color: '#ddd', 
+            lineHeight: '1.6', 
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '0.95rem'
+          }}>
+            {tournoi.rules}
+          </div>
+        </div>
+      )}
+
+      {/* --- INFORMATIONS D'INSCRIPTION --- */}
+      {(tournoi.max_participants || tournoi.registration_deadline) && tournoi.status === 'draft' && (
+        <div style={{ background: '#2a2a2a', padding: '15px', borderRadius: '8px', marginBottom: '30px', borderLeft: '4px solid #f39c12' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#f7dc6f' }}>🚪 Informations d'Inscription</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#ccc' }}>
+            {tournoi.max_participants && (
+              <div>
+                <strong>Nombre maximum d'équipes :</strong> {tournoi.max_participants} ({participants.length} inscrites)
+              </div>
+            )}
+            {tournoi.registration_deadline && (
+              <div>
+                <strong>Date limite d'inscription :</strong> {new Date(tournoi.registration_deadline).toLocaleString('fr-FR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+                {new Date(tournoi.registration_deadline) < new Date() && (
+                  <span style={{ color: '#e74c3c', marginLeft: '10px', fontWeight: 'bold' }}>⚠️ EXPIRÉE</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* --- ADMIN CONTROLS --- */}
       {isOwner && tournoi.status === 'ongoing' && (
         <AdminPanel 
@@ -816,7 +947,7 @@ export default function Tournament({ session }) {
       {/* --- ACTIONS JOUEURS (Inscription / Check-in) --- */}
       {tournoi.status === 'draft' && (
         <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <TeamJoinButton tournamentId={id} supabase={supabase} session={session} onJoinSuccess={fetchData} />
+          <TeamJoinButton tournamentId={id} supabase={supabase} session={session} onJoinSuccess={fetchData} tournament={tournoi} />
           <CheckInButton tournamentId={id} supabase={supabase} session={session} tournament={tournoi} />
         </div>
       )}
@@ -841,6 +972,60 @@ export default function Tournament({ session }) {
                 </li>
             ))}
           </ul>
+          
+          {/* LISTE D'ATTENTE */}
+          {isOwner && waitlist.length > 0 && tournoi.status === 'draft' && (
+            <>
+              <div style={{borderTop:'1px solid #333', padding:'15px', borderBottom:'1px solid #333', background:'#2a2a2a'}}>
+                <h3 style={{margin:0, fontSize:'0.95rem', color:'#f39c12'}}>⏳ Liste d'Attente ({waitlist.length})</h3>
+              </div>
+              <ul style={{listStyle:'none', padding:0, margin:0, maxHeight:'200px', overflowY:'auto'}}>
+                {waitlist.map((w) => {
+                  const canPromote = !tournoi?.max_participants || participants.length < tournoi.max_participants;
+                  return (
+                    <li key={w.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#252525', opacity:0.9}}>
+                      <div style={{display:'flex', gap:'10px', alignItems:'center', flex:1}}>
+                        <div style={{width:'20px', height:'20px', background:'#f39c12', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:'bold', color:'#000'}}>
+                          {w.position}
+                        </div>
+                        <div style={{width:'24px', height:'24px', background:'#444', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', fontWeight:'bold'}}>
+                          {w.teams?.tag || '?'}
+                        </div>
+                        <span style={{fontSize:'0.9rem', color:'#ccc'}}>{w.teams?.name || 'Inconnu'}</span>
+                      </div>
+                      <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                        <span style={{fontSize:'0.75rem', color:'#888'}}>Position #{w.position}</span>
+                        {canPromote && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Promouvoir "${w.teams?.name || 'cette équipe'}" depuis la liste d'attente ?`)) {
+                                promoteTeamFromWaitlist(w.id, w.team_id);
+                              }
+                            }}
+                            style={{
+                              padding: '5px 12px',
+                              background: '#27ae60',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            ✅ Promouvoir
+                          </button>
+                        )}
+                        {!canPromote && (
+                          <span style={{fontSize: '0.7rem', color: '#888', fontStyle: 'italic'}}>Complet</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
           
           <div style={{ borderTop: '1px solid #333', padding: '15px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>💬 Chat Lobby</h3>

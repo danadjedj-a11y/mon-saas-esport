@@ -7,6 +7,7 @@
 -- Supprimer les anciennes politiques si elles existent (pour éviter les doublons)
 DROP POLICY IF EXISTS "Tournament owners can update participants" ON participants;
 DROP POLICY IF EXISTS "Users can update their own team check-in" ON participants;
+DROP POLICY IF EXISTS "Tournament owners can insert participants" ON participants;
 
 -- Politique 1 : Permettre au propriétaire du tournoi de modifier tous les participants de son tournoi
 CREATE POLICY "Tournament owners can update participants"
@@ -58,6 +59,32 @@ WITH CHECK (
     SELECT 1 FROM team_members
     WHERE team_members.team_id = participants.team_id
     AND team_members.user_id = auth.uid()
+  )
+);
+
+-- Politique 3 : Permettre au propriétaire du tournoi d'insérer des participants (pour promotions depuis waitlist)
+CREATE POLICY "Tournament owners can insert participants"
+ON participants
+FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM tournaments
+    WHERE tournaments.id = participants.tournament_id
+    AND tournaments.owner_id = auth.uid()
+  )
+);
+
+-- Politique 4 : Permettre au propriétaire du tournoi de supprimer les participants
+DROP POLICY IF EXISTS "Tournament owners can delete participants" ON participants;
+
+CREATE POLICY "Tournament owners can delete participants"
+ON participants
+FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1 FROM tournaments
+    WHERE tournaments.id = participants.tournament_id
+    AND tournaments.owner_id = auth.uid()
   )
 );
 

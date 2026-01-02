@@ -492,8 +492,26 @@ export default function PublicTournament() {
               
               <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
                 <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Équipes inscrites</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{participants.length}</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>
+                  {participants.length}
+                  {tournoi.max_participants && ` / ${tournoi.max_participants}`}
+                </div>
               </div>
+              
+              {tournoi.registration_deadline && (
+                <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Date limite d'inscription</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: new Date(tournoi.registration_deadline) < new Date() ? '#e74c3c' : '#fff' }}>
+                    {new Date(tournoi.registration_deadline).toLocaleDateString('fr-FR', { 
+                      day: 'numeric', 
+                      month: 'short', 
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                    {new Date(tournoi.registration_deadline) < new Date() && ' (Expirée)'}
+                  </div>
+                </div>
+              )}
               
               {tournoi.start_date && (
                 <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
@@ -510,6 +528,22 @@ export default function PublicTournament() {
                 </div>
               )}
             </div>
+
+            {/* RÈGLEMENT */}
+            {tournoi.rules && (
+              <div style={{ marginTop: '30px', background: '#2a2a2a', padding: '25px', borderRadius: '10px', border: '1px solid #444' }}>
+                <h3 style={{ margin: '0 0 15px 0', color: '#00d4ff', fontSize: '1.3rem' }}>📋 Règlement du Tournoi</h3>
+                <div style={{ 
+                  color: '#ddd', 
+                  lineHeight: '1.8', 
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: 'Arial, sans-serif',
+                  fontSize: '0.95rem'
+                }}>
+                  {tournoi.rules}
+                </div>
+              </div>
+            )}
 
             {matches.length > 0 && (
               <div style={{ marginTop: '30px', background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
