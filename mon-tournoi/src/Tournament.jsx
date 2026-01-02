@@ -10,6 +10,7 @@ import Chat from './Chat';
 import AdminPanel from './AdminPanel';
 import SeedingModal from './SeedingModal';
 import SchedulingModal from './SchedulingModal';
+import { notifyMatchResult } from './notificationUtils';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -388,6 +389,11 @@ export default function Tournament({ session }) {
       const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', currentMatch.id).single();
       const winnerId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
       const loserId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
+
+      // Notifier les équipes du résultat
+      if (winnerId && loserId) {
+        await notifyMatchResult(currentMatch.id, winnerId, loserId, s1, s2);
+      }
 
       if (tournoi.format === 'double_elimination') {
          await handleDoubleEliminationProgression(updatedMatch, winnerId, loserId);

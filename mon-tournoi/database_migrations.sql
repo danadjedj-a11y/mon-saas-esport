@@ -98,6 +98,35 @@ COMMENT ON COLUMN matches.is_reset IS 'Est-ce un match de reset (Grand Finals re
 COMMENT ON COLUMN matches.source_match_id IS 'ID du match source pour les transitions entre brackets (Double Elimination)';
 
 -- ============================================================
+-- Migration pour le Système de Notifications
+-- ============================================================
+
+-- Créer la table notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- 'match_upcoming', 'match_result', 'admin_message', 'tournament_update', 'team_invite', etc.
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    link TEXT, -- URL vers la page concernée (ex: /match/123, /tournament/456)
+    read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    metadata JSONB -- Pour stocker des données supplémentaires (ex: match_id, tournament_id, etc.)
+);
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+
+-- Commentaires
+COMMENT ON TABLE notifications IS 'Système de notifications pour les utilisateurs';
+COMMENT ON COLUMN notifications.type IS 'Type de notification: match_upcoming, match_result, admin_message, tournament_update, team_invite, etc.';
+COMMENT ON COLUMN notifications.link IS 'URL relative vers la page concernée (ex: /match/123)';
+COMMENT ON COLUMN notifications.metadata IS 'Données supplémentaires au format JSON (ex: {match_id: uuid, tournament_id: uuid})';
+
+-- ============================================================
 -- IMPORTANT : Exécutez aussi le fichier rls_policies.sql
 -- pour créer les politiques RLS nécessaires au panneau admin
 -- ============================================================

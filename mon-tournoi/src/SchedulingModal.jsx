@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { notifyMatchUpcoming } from './notificationUtils';
 
 export default function SchedulingModal({ isOpen, onClose, match, supabase, onSave }) {
   const [scheduledDateTime, setScheduledDateTime] = useState('');
@@ -49,6 +50,11 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
         .eq('id', match.id);
 
       if (error) throw error;
+
+      // Créer des notifications pour les équipes si le match a des équipes assignées
+      if (scheduledAtISO && match.player1_id && match.player2_id) {
+        await notifyMatchUpcoming(match.id, match.player1_id, match.player2_id, scheduledAtISO);
+      }
 
       if (onSave) onSave();
       onClose();

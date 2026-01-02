@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Chat from './Chat';
+import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
 
 export default function MatchLobby({ session, supabase }) {
   const { id } = useParams();
@@ -357,6 +358,11 @@ export default function MatchLobby({ session, supabase }) {
                 const winnerTeamId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
                 const loserTeamId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
                 
+                // Notifier les équipes du résultat
+                if (winnerTeamId && loserTeamId) {
+                  await notifyMatchResult(id, winnerTeamId, loserTeamId, s1, s2);
+                }
+                
                 // Récupérer format
                 const { data: tournament } = await supabase.from('tournaments').select('format, id').eq('id', updatedMatch.tournament_id).single();
                 
@@ -377,6 +383,12 @@ export default function MatchLobby({ session, supabase }) {
             } else {
               // ❌ CONFLIT
               await supabase.from('matches').update({ score_status: 'disputed' }).eq('id', id);
+              
+              // Notifier les équipes du conflit
+              if (match.player1_id && match.player2_id) {
+                await notifyScoreDispute(id, match.player1_id, match.player2_id);
+              }
+              
               alert('⚠️ Conflit : Les scores ne correspondent pas. Un admin doit intervenir.');
             }
           }

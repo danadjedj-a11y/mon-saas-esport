@@ -12,6 +12,7 @@ import MatchLobby from './MatchLobby';
 import CreateTournament from './CreateTournament';
 import PublicTournament from './PublicTournament';
 import StatsDashboard from './StatsDashboard';
+import Leaderboard from './Leaderboard';
 
 function App() {
   const [session, setSession] = useState(null)
@@ -47,6 +48,7 @@ function App() {
         <Route path="/match/:id" element={session ? <MatchLobby session={session} supabase={supabase} /> : <Auth />} />
         <Route path="/create-tournament" element={session ? <CreateTournament session={session} supabase={supabase} /> : <Auth />} />
         <Route path="/stats" element={session ? <StatsDashboard session={session} supabase={supabase} /> : <Auth />} />
+        <Route path="/leaderboard" element={session ? <Leaderboard session={session} supabase={supabase} /> : <Auth />} />
 
         {/* Catch-all pour les routes non définies */}
         <Route path="*" element={session ? <Navigate to="/" /> : <Auth />} />

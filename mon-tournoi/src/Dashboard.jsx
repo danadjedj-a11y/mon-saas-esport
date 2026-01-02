@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Link } from 'react-router-dom';
+import NotificationCenter from './NotificationCenter';
 
 export default function Dashboard({ session }) {
   const [tournaments, setTournaments] = useState([]);
@@ -91,20 +92,16 @@ export default function Dashboard({ session }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1>Mes Tournois Récents</h1>
         
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button 
             onClick={() => navigate('/create-tournament')} 
-            style={{ /* garde ton style actuel */ }}
+            style={{ padding: '10px 20px', background: '#8e44ad', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
           >
             + Créer un Tournoi
           </button>
 
-          <button 
-            onClick={handleLogout}
-            style={{ padding: '10px 20px', background: 'transparent', border: '1px solid #e74c3c', borderRadius: '5px', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            Déconnexion
-          </button>
+          <NotificationCenter session={session} supabase={supabase} />
+
           <button 
             onClick={() => navigate('/profile')} 
             style={{ background: '#9b59b6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -117,18 +114,23 @@ export default function Dashboard({ session }) {
           >
             📊 Statistiques
           </button>
-          <button onClick={() => navigate('/create-team')} style={{ margin: '10px', padding: '10px', background: '#2ecc71' }}>
+          <button 
+            onClick={() => navigate('/leaderboard')} 
+            style={{ background: '#f39c12', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            🏆 Classement
+          </button>
+          <button onClick={() => navigate('/create-team')} style={{ padding: '10px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
             🛡️ Créer une Team
           </button>
          <Link 
             to="/my-team"
             style={{ 
-              display: 'inline-block', // Important pour que ça ressemble à un bouton
-              margin: '10px', 
+              display: 'inline-block',
               padding: '10px', 
               background: '#2ecc71', 
               color: 'white', 
-              textDecoration: 'none', // Enlève le soulignement du lien
+              textDecoration: 'none',
               borderRadius: '5px', 
               fontWeight: 'bold',
               cursor: 'pointer' 
@@ -136,6 +138,12 @@ export default function Dashboard({ session }) {
           >
             🛡️ Mon Équipe
           </Link>
+          <button 
+            onClick={handleLogout}
+            style={{ padding: '10px 20px', background: 'transparent', border: '1px solid #e74c3c', borderRadius: '5px', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            Déconnexion
+          </button>
         </div>
       </div>
 
