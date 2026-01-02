@@ -783,6 +783,7 @@ export default function Tournament({ session }) {
           session={session} 
           participants={participants} 
           matches={matches} 
+          tournament={tournoi}
           onUpdate={fetchData}
           onScheduleMatch={(match) => {
             setSchedulingMatch(match);

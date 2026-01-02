@@ -13,6 +13,9 @@ import CreateTournament from './CreateTournament';
 import PublicTournament from './PublicTournament';
 import StatsDashboard from './StatsDashboard';
 import Leaderboard from './Leaderboard';
+import StreamOverlay from './stream/StreamOverlay';
+import StreamDashboard from './stream/StreamDashboard';
+import TournamentAPI from './api/TournamentAPI';
 
 function App() {
   const [session, setSession] = useState(null)
@@ -36,6 +39,11 @@ function App() {
       <Routes>
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
+        
+        {/* STREAM & API ROUTES (Accessibles sans authentification) */}
+        <Route path="/stream/overlay/:id" element={<StreamOverlay />} />
+        <Route path="/stream/dashboard/:id" element={<StreamDashboard />} />
+        <Route path="/api/tournament/:id/:endpoint" element={<TournamentAPI />} />
         
         {/* Routes protégées nécessitant une authentification */}
         <Route path="/" element={session ? <Dashboard session={session} /> : <Auth />} />
