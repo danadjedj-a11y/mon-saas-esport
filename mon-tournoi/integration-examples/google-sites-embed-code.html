@@ -30,6 +30,10 @@
         TOURNAMENT_URL: 'https://mon-saas-esport.vercel.app/tournament',
         // OU pour la production :
         // TOURNAMENT_URL: 'https://votre-domaine.com/tournament',
+        
+        // Intervalle de rafraîchissement automatique (en millisecondes)
+        // 30000 = 30 secondes, 60000 = 1 minute, etc.
+        REFRESH_INTERVAL: 10000, // 30 secondes
     };
 
     // Styles CSS
@@ -109,6 +113,13 @@
         }
         #tournament-widget-container .bracket-link:hover {
             background: rgba(255, 255, 255, 0.4);
+        }
+        #tournament-widget-container .last-update {
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.6;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.7);
         }
     `;
     document.head.appendChild(style);
@@ -196,6 +207,9 @@
                         🎮 Format: Best-of-${data.tournament.best_of}
                     </div>
                 ` : ''}
+                <div class="last-update">
+                    Dernière mise à jour: ${new Date().toLocaleTimeString('fr-FR')}
+                </div>
             </div>
         `;
     }
@@ -229,14 +243,39 @@
         container.innerHTML = '<div class="loading">Chargement des données du tournoi...</div>';
     }
 
+    let refreshInterval = null;
+
     async function init() {
         renderLoading();
         try {
             const data = await fetchTournamentInfo();
             renderTournament(data);
+            
+            // Rafraîchir automatiquement selon l'intervalle configuré
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            refreshInterval = setInterval(async () => {
+                try {
+                    const data = await fetchTournamentInfo();
+                    renderTournament(data);
+                } catch (error) {
+                    // En cas d'erreur, on continue silencieusement (ne pas casser l'affichage)
+                    console.error('Erreur lors du rafraîchissement:', error);
+                }
+            }, CONFIG.REFRESH_INTERVAL || 30000); // Par défaut 30 secondes
         } catch (error) {
             renderError(error);
         }
+    }
+
+    // Nettoyer l'interval quand la page est déchargée
+    if (typeof window !== 'undefined') {
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
     }
 
     if (document.readyState === 'loading') {
