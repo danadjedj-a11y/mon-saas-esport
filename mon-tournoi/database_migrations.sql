@@ -127,6 +127,66 @@ COMMENT ON COLUMN notifications.link IS 'URL relative vers la page concernée (e
 COMMENT ON COLUMN notifications.metadata IS 'Données supplémentaires au format JSON (ex: {match_id: uuid, tournament_id: uuid})';
 
 -- ============================================================
+-- Migration pour le Système Suisse (Swiss System)
+-- ============================================================
+
+-- Créer la table swiss_scores pour tracker les scores suisses
+CREATE TABLE IF NOT EXISTS swiss_scores (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    draws INTEGER DEFAULT 0,
+    buchholz_score DECIMAL(10, 2) DEFAULT 0, -- Score des adversaires (somme des victoires des adversaires)
+    opp_wins DECIMAL(10, 2) DEFAULT 0, -- Victoires des adversaires (pour tie-breaks avancés)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(tournament_id, team_id)
+);
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_swiss_scores_tournament_id ON swiss_scores(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_swiss_scores_team_id ON swiss_scores(team_id);
+
+-- RLS pour swiss_scores
+ALTER TABLE swiss_scores ENABLE ROW LEVEL SECURITY;
+
+-- Politique pour permettre la lecture à tous (pour classements publics)
+DROP POLICY IF EXISTS "Swiss scores are viewable by everyone." ON swiss_scores;
+CREATE POLICY "Swiss scores are viewable by everyone."
+ON swiss_scores FOR SELECT
+USING (true);
+
+-- Politique pour permettre aux organisateurs de gérer les scores
+DROP POLICY IF EXISTS "Tournament owners can manage swiss scores." ON swiss_scores;
+CREATE POLICY "Tournament owners can manage swiss scores."
+ON swiss_scores FOR ALL
+USING (
+    EXISTS (
+        SELECT 1 FROM tournaments
+        WHERE tournaments.id = swiss_scores.tournament_id
+        AND tournaments.owner_id = auth.uid()
+    )
+);
+
+-- Fonction pour mettre à jour updated_at automatiquement
+CREATE OR REPLACE FUNCTION update_swiss_scores_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger pour updated_at
+DROP TRIGGER IF EXISTS trigger_update_swiss_scores_updated_at ON swiss_scores;
+CREATE TRIGGER trigger_update_swiss_scores_updated_at
+    BEFORE UPDATE ON swiss_scores
+    FOR EACH ROW
+    EXECUTE FUNCTION update_swiss_scores_updated_at();
+
+-- ============================================================
 -- IMPORTANT : Exécutez aussi le fichier rls_policies.sql
 -- pour créer les politiques RLS nécessaires au panneau admin
 -- ============================================================

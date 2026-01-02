@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Chat from './Chat';
 import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
+import { updateSwissScores } from './swissUtils'; // <--- IMPORT AJOUTÉ
 
 export default function MatchLobby({ session, supabase }) {
   const { id } = useParams();
@@ -12,6 +13,7 @@ export default function MatchLobby({ session, supabase }) {
   const [myTeamId, setMyTeamId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tournamentOwnerId, setTournamentOwnerId] = useState(null);
+  const [tournamentFormat, setTournamentFormat] = useState(null); // <--- NOUVEL ÉTAT POUR LE FORMAT
   
   // États pour le score déclaré par MON équipe
   const [myScore, setMyScore] = useState(0);
@@ -44,16 +46,17 @@ export default function MatchLobby({ session, supabase }) {
       return;
     }
 
-    // Récupérer le tournoi pour vérifier si on est admin
+    // Récupérer le tournoi pour vérifier si on est admin ET LE FORMAT
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('owner_id')
+      .select('owner_id, format')
       .eq('id', matchData.tournament_id)
       .single();
     
     if (tournament) {
       setTournamentOwnerId(tournament.owner_id);
       setIsAdmin(session?.user?.id === tournament.owner_id);
+      setTournamentFormat(tournament.format); // <--- SAUVEGARDE DU FORMAT
     }
     
     // Récupérer les noms/logos des équipes
@@ -348,12 +351,20 @@ export default function MatchLobby({ session, supabase }) {
 
               alert('✅ Scores concordent ! Le match est validé et l\'arbre va se mettre à jour.');
               
-              // C. FAIRE AVANCER L'ARBRE (Le cœur du problème résolu ici)
+              // C. Récupérer le match mis à jour
               const updatedMatch = { ...currentMatch, score_p1: team1Report.score_team, score_p2: team1Report.score_opponent, status: 'completed' };
               
+              // --- 🛑 AJOUT SPÉCIAL SUISSE 🛑 ---
+              if (tournamentFormat === 'swiss') {
+                console.log('🇨🇭 Match Suisse validé par joueurs : Calcul des points...');
+                await updateSwissScores(supabase, updatedMatch.tournament_id, updatedMatch);
+              }
+              // -------------------------------
+
               const s1 = updatedMatch.score_p1;
               const s2 = updatedMatch.score_p2;
               
+              // Pour les autres formats (élimination), on avance seulement s'il y a un gagnant
               if (s1 !== s2) {
                 const winnerTeamId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
                 const loserTeamId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
@@ -363,7 +374,7 @@ export default function MatchLobby({ session, supabase }) {
                   await notifyMatchResult(id, winnerTeamId, loserTeamId, s1, s2);
                 }
                 
-                // Récupérer format
+                // Récupérer format (si pas déjà dans l'état, par sécurité)
                 const { data: tournament } = await supabase.from('tournaments').select('format, id').eq('id', updatedMatch.tournament_id).single();
                 
                 if (tournament) {
@@ -415,9 +426,16 @@ export default function MatchLobby({ session, supabase }) {
 
     alert("✅ Conflit résolu !");
     
-    // 3. Avancer Bracket
+    // 3. Avancer Bracket / Calculer Points
     const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', id).single();
     if (updatedMatch) {
+       // --- 🛑 AJOUT SPÉCIAL SUISSE 🛑 ---
+       if (tournamentFormat === 'swiss') {
+         console.log('🇨🇭 Match Suisse résolu par Admin : Calcul des points...');
+         await updateSwissScores(supabase, updatedMatch.tournament_id, updatedMatch);
+       }
+       // -------------------------------
+
        const winnerTeamId = scoreP1 > scoreP2 ? updatedMatch.player1_id : updatedMatch.player2_id;
        const loserTeamId = scoreP1 > scoreP2 ? updatedMatch.player2_id : updatedMatch.player1_id;
 

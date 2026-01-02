@@ -11,6 +11,7 @@ import AdminPanel from './AdminPanel';
 import SeedingModal from './SeedingModal';
 import SchedulingModal from './SchedulingModal';
 import { notifyMatchResult } from './notificationUtils';
+import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores, recalculateBuchholzScores } from './swissUtils';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function Tournament({ session }) {
   const [participants, setParticipants] = useState([]);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [swissScores, setSwissScores] = useState([]);
 
   // États d'interface (Modales & Admin)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,11 +44,20 @@ export default function Tournament({ session }) {
     fetchData();
 
     // Abonnement aux changements Supabase (Matchs, Participants, Tournoi)
-    const channel = supabase.channel('tournament-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, () => fetchData())
-      .subscribe();
+  // Abonnement aux changements Supabase
+  const channel = supabase.channel('tournament-updates')
+    // A. Écouter les matchs
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
+    // B. Écouter les participants
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, () => fetchData())
+    // C. Écouter le tournoi global
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, () => fetchData())
+    // 👇 D. AJOUT CRUCIAL : Écouter les scores suisses 👇
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, (payload) => {
+        console.log('Changement Swiss Score détecté !', payload);
+        fetchData();
+    })
+    .subscribe();
 
     // Écouteur pour forcer la mise à jour depuis le MatchLobby (Custom Event)
     const handleMatchUpdate = (event) => {
@@ -117,6 +128,14 @@ export default function Tournament({ session }) {
         });
         
         setMatches(enrichedMatches);
+        
+        // Charger les scores suisses si format suisse
+        if (tData?.format === 'swiss') {
+          const scores = await getSwissScores(supabase, id);
+          setSwissScores(scores);
+        } else {
+          setSwissScores([]);
+        }
         
         // Détection vainqueur final
         const lastMatch = enrichedMatches.find(m => !m.bracket_type && !m.is_reset && m.status === 'completed' && enrichedMatches.every(om => om.round_number <= m.round_number));
@@ -333,6 +352,35 @@ export default function Tournament({ session }) {
             }
         }
     }
+    
+    // --- SYSTÈME SUISSE ---
+    else if (tournoi.format === 'swiss') {
+        const teamIds = orderedParticipants.map(p => p.team_id);
+        
+        // Initialiser les scores suisses
+        await initializeSwissScores(supabase, id, teamIds);
+        
+        // Pour le premier round, on pair aléatoirement (ou selon seeding)
+        const pairs = [];
+        const teams = [...teamIds];
+        while (teams.length > 0) {
+            const pair = teams.splice(0, 2);
+            pairs.push(pair);
+        }
+        
+        let matchNum = 1;
+        pairs.forEach(pair => {
+            matchesToCreate.push({
+                tournament_id: id,
+                match_number: matchNum++,
+                round_number: 1,
+                player1_id: pair[0] || null,
+                player2_id: pair[1] || null,
+                status: pair[1] ? 'pending' : 'completed', // Bye si nombre impair
+                bracket_type: 'swiss'
+            });
+        });
+    }
 
     const { error: matchError } = await supabase.from('matches').insert(matchesToCreate);
     if (matchError) alert("Erreur création matchs : " + matchError.message);
@@ -353,6 +401,70 @@ export default function Tournament({ session }) {
     }).catch(() => {
       alert('Erreur lors de la copie du lien');
     });
+  };
+
+  // Générer le round suivant pour le système suisse
+  const generateNextSwissRound = async () => {
+    if (tournoi.format !== 'swiss') return;
+    
+    // Récupérer tous les matchs et scores suisses
+    const { data: allMatches } = await supabase.from('matches').select('*').eq('tournament_id', id).order('round_number');
+    const swissScores = await getSwissScores(supabase, id);
+    
+    // Trouver le dernier round
+    const maxRound = Math.max(...(allMatches || []).map(m => m.round_number), 0);
+    
+    // Vérifier que tous les matchs du dernier round sont terminés
+    const lastRoundMatches = (allMatches || []).filter(m => m.round_number === maxRound);
+    const allCompleted = lastRoundMatches.every(m => m.status === 'completed');
+    
+    if (!allCompleted) {
+      alert('⚠️ Tous les matchs du round actuel doivent être terminés avant de générer le round suivant.');
+      return;
+    }
+    
+    // Calculer le nombre de rounds (généralement log2(nombre d'équipes))
+    const numTeams = participants.length;
+    const totalRounds = Math.ceil(Math.log2(numTeams));
+    
+    if (maxRound >= totalRounds) {
+      // Tournoi terminé
+      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
+      triggerConfetti();
+      alert('🏆 Tous les rounds sont terminés ! Le tournoi est complété.');
+      fetchData();
+      return;
+    }
+    
+    // Générer les paires pour le round suivant
+    const pairs = swissPairing(swissScores, allMatches || []);
+    
+    if (pairs.length === 0) {
+      alert('⚠️ Impossible de générer des paires. Vérifiez les scores suisses.');
+      return;
+    }
+    
+    // Créer les matchs pour le round suivant
+    const nextRound = maxRound + 1;
+    let matchNum = Math.max(...(allMatches || []).map(m => m.match_number), 0) + 1;
+    const matchesToCreate = pairs.map(pair => ({
+      tournament_id: id,
+      match_number: matchNum++,
+      round_number: nextRound,
+      player1_id: pair[0],
+      player2_id: pair[1],
+      status: 'pending',
+      bracket_type: 'swiss'
+    }));
+    
+    const { error } = await supabase.from('matches').insert(matchesToCreate);
+    if (error) {
+      alert('Erreur lors de la création du round : ' + error.message);
+      return;
+    }
+    
+    alert(`✅ Round ${nextRound} généré avec ${pairs.length} matchs !`);
+    fetchData();
   };
 
   // ==============================================================================
@@ -385,8 +497,21 @@ export default function Tournament({ session }) {
 
     if (error) return alert('Erreur score : ' + error.message);
 
+    // Récupérer le match mis à jour depuis la DB (comme pour les brackets)
+    const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', currentMatch.id).single();
+    
+    if (!updatedMatch) {
+      setIsModalOpen(false);
+      fetchData();
+      return;
+    }
+
+    // Mettre à jour les scores suisses si format suisse (pour tous les matchs, y compris nuls)
+    if (tournoi.format === 'swiss') {
+      await updateSwissScores(supabase, id, updatedMatch);
+    }
+
     if (s1 !== s2) {
-      const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', currentMatch.id).single();
       const winnerId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
       const loserId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
 
@@ -635,6 +760,62 @@ export default function Tournament({ session }) {
         {/* --- COLONNE DROITE : CLASSEMENT & ARBRE --- */}
         <div style={{ flex: '3', minWidth:'300px', overflowX:'auto' }}>
             
+            {/* Table Swiss System */}
+            {tournoi?.format === 'swiss' && swissScores.length > 0 && (
+              <div style={{ marginBottom: '40px', background: '#1a1a1a', borderRadius: '15px', padding: '20px', border: '1px solid #333' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h2 style={{ margin: 0, borderBottom: '1px solid #444', paddingBottom: '10px' }}>🇨🇭 Classement Suisse</h2>
+                  {isOwner && tournoi.status === 'ongoing' && (
+                    <button 
+                      onClick={generateNextSwissRound}
+                      style={{ padding: '10px 20px', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      ➕ Générer Round Suivant
+                    </button>
+                  )}
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
+                  <thead>
+                    <tr style={{ background: '#252525', textAlign: 'left' }}>
+                      <th style={{ padding: '10px' }}>Rang</th>
+                      <th style={{ padding: '10px' }}>Équipe</th>
+                      <th style={{ padding: '10px', textAlign:'center' }}>Victoires</th>
+                      <th style={{ padding: '10px', textAlign:'center' }}>Défaites</th>
+                      <th style={{ padding: '10px', textAlign:'center' }}>Nuls</th>
+                      <th style={{ padding: '10px', textAlign:'center' }}>Buchholz</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const standings = swissScores.sort((a, b) => {
+                        if (b.wins !== a.wins) return b.wins - a.wins;
+                        if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
+                        return a.team_id.localeCompare(b.team_id);
+                      });
+                      return standings.map((score, index) => {
+                        const team = participants.find(p => p.team_id === score.team_id);
+                        return (
+                          <tr key={score.id} style={{ borderBottom: '1px solid #333' }}>
+                            <td style={{ padding: '10px', fontWeight: index === 0 ? 'bold' : 'normal', color: index === 0 ? '#f1c40f' : 'white' }}>
+                              #{index + 1}
+                            </td>
+                            <td style={{ padding: '10px', display:'flex', alignItems:'center', gap:'10px' }}>
+                              <img src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} style={{width:'24px', height:'24px', borderRadius:'50%'}} alt=""/>
+                              {team?.teams?.name || 'Inconnu'}
+                            </td>
+                            <td style={{ padding: '10px', textAlign:'center', color: '#2ecc71', fontWeight: 'bold' }}>{score.wins}</td>
+                            <td style={{ padding: '10px', textAlign:'center', color: '#e74c3c' }}>{score.losses}</td>
+                            <td style={{ padding: '10px', textAlign:'center', color: '#f39c12' }}>{score.draws}</td>
+                            <td style={{ padding: '10px', textAlign:'center', color: '#3498db' }}>{parseFloat(score.buchholz_score || 0).toFixed(1)}</td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {/* Table Round Robin */}
             {tournoi?.format === 'round_robin' && (
                 <div style={{ marginBottom: '40px', background: '#1a1a1a', borderRadius: '15px', padding: '20px', border: '1px solid #333' }}>
@@ -723,6 +904,18 @@ export default function Tournament({ session }) {
                         </div>
                     )}
                     </div>
+                </div>
+                ) : tournoi.format === 'swiss' ? (
+                // Swiss System (affichage par rounds)
+                <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
+                    {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
+                    <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
+                        <h4 style={{textAlign:'center', color:'#3498db', fontWeight:'bold'}}>🇨🇭 Round {round}</h4>
+                        {matches.filter(m=>m.round_number === round && m.bracket_type === 'swiss').map(m => (
+                            <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
+                        ))}
+                    </div>
+                    ))}
                 </div>
                 ) : (
                 // Single Elimination ou Round Robin (vue simple)
