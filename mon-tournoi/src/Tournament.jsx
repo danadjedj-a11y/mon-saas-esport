@@ -9,6 +9,7 @@ import CheckInButton from './CheckInButton';
 import Chat from './Chat';
 import AdminPanel from './AdminPanel';
 import SeedingModal from './SeedingModal';
+import SchedulingModal from './SchedulingModal';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -27,6 +28,8 @@ export default function Tournament({ session }) {
   const [scoreB, setScoreB] = useState(0);
   const [winnerName, setWinnerName] = useState(null);
   const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
+  const [isSchedulingModalOpen, setIsSchedulingModalOpen] = useState(false);
+  const [schedulingMatch, setSchedulingMatch] = useState(null);
 
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
 
@@ -553,7 +556,18 @@ export default function Tournament({ session }) {
 
       {/* --- ADMIN CONTROLS --- */}
       {isOwner && tournoi.status === 'ongoing' && (
-        <AdminPanel tournamentId={id} supabase={supabase} session={session} participants={participants} matches={matches} onUpdate={fetchData} />
+        <AdminPanel 
+          tournamentId={id} 
+          supabase={supabase} 
+          session={session} 
+          participants={participants} 
+          matches={matches} 
+          onUpdate={fetchData}
+          onScheduleMatch={(match) => {
+            setSchedulingMatch(match);
+            setIsSchedulingModalOpen(true);
+          }}
+        />
       )}
       
       {isOwner && tournoi.status === 'draft' && (
@@ -742,6 +756,17 @@ export default function Tournament({ session }) {
       )}
 
       <SeedingModal isOpen={isSeedingModalOpen} onClose={() => setIsSeedingModalOpen(false)} participants={participants} tournamentId={id} supabase={supabase} onSave={() => fetchData()} />
+      
+      <SchedulingModal 
+        isOpen={isSchedulingModalOpen} 
+        onClose={() => {
+          setIsSchedulingModalOpen(false);
+          setSchedulingMatch(null);
+        }} 
+        match={schedulingMatch}
+        supabase={supabase} 
+        onSave={() => fetchData()} 
+      />
     </div>
   );
 }
@@ -750,17 +775,35 @@ export default function Tournament({ session }) {
 function MatchCard({ match, onClick, isOwner }) {
     const hasDisqualified = match.p1_disqualified || match.p2_disqualified;
     const isCompleted = match.status === 'completed';
+    const isScheduled = match.scheduled_at && !isCompleted;
     
     return (
         <div onClick={()=>onClick(match)} style={{
             width:'240px', 
             background: hasDisqualified ? '#3a1a1a' : (match.bracket_type === 'losers' ? '#1a1a1a' : '#252525'), 
-            border: hasDisqualified ? '1px solid #e74c3c' : (isCompleted ? '1px solid #4ade80' : '1px solid #444'), 
+            border: hasDisqualified ? '1px solid #e74c3c' : (isCompleted ? '1px solid #4ade80' : (isScheduled ? '1px solid #3498db' : '1px solid #444')), 
             borderRadius:'8px', 
             cursor: isOwner ? 'pointer' : 'default', 
             position:'relative',
             opacity: hasDisqualified ? 0.7 : 1
         }}>
+            {/* Badge Date planifiée */}
+            {isScheduled && (
+                <div style={{
+                    position: 'absolute',
+                    top: '5px',
+                    right: '5px',
+                    background: '#3498db',
+                    color: 'white',
+                    padding: '3px 8px',
+                    borderRadius: '3px',
+                    fontSize: '0.7rem',
+                    fontWeight: 'bold',
+                    zIndex: 10
+                }}>
+                    📅 {new Date(match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+            )}
             {/* J1 */}
             <div style={{padding:'10px', display:'flex', justifyContent:'space-between', alignItems:'center', background: match.score_p1 > match.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
                 <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>

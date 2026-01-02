@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AdminPanel({ tournamentId, supabase, session, participants, matches, onUpdate }) {
-  const [activeTab, setActiveTab] = useState('participants'); // 'participants', 'conflicts', 'stats'
+export default function AdminPanel({ tournamentId, supabase, session, participants, matches, onUpdate, onScheduleMatch }) {
+  const [activeTab, setActiveTab] = useState('participants'); // 'participants', 'conflicts', 'stats', 'schedule'
   const [conflicts, setConflicts] = useState([]);
   const [stats, setStats] = useState(null);
 
@@ -148,6 +148,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
         {[
           { id: 'participants', label: '👥 Participants', count: participants.length },
           { id: 'conflicts', label: '⚠️ Conflits', count: conflicts.length },
+          { id: 'schedule', label: '📅 Planning', count: matches.filter(m => m.scheduled_at).length },
           { id: 'stats', label: '📊 Statistiques' }
         ].map(tab => (
           <button
@@ -315,6 +316,87 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'schedule' && (
+          <div>
+            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>📅 Planning des Matchs</h3>
+            <div style={{ marginBottom: '15px', fontSize: '0.9rem', color: '#aaa' }}>
+              Cliquez sur un match pour le planifier ou modifier sa date/heure.
+            </div>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {matches
+                .filter(m => m.status === 'pending' || m.scheduled_at)
+                .sort((a, b) => {
+                  // Trier : matchs planifiés en premier (par date), puis non planifiés
+                  if (a.scheduled_at && !b.scheduled_at) return -1;
+                  if (!a.scheduled_at && b.scheduled_at) return 1;
+                  if (a.scheduled_at && b.scheduled_at) {
+                    return new Date(a.scheduled_at) - new Date(b.scheduled_at);
+                  }
+                  // Sinon trier par round puis match_number
+                  if (a.round_number !== b.round_number) return a.round_number - b.round_number;
+                  return a.match_number - b.match_number;
+                })
+                .map(match => {
+                  const matchInfo = match.bracket_type 
+                    ? `${match.bracket_type === 'winners' ? '🏆 Winners' : '💀 Losers'} - Round ${match.round_number}`
+                    : `Round ${match.round_number}`;
+                  
+                  const team1Name = match.p1_name ? match.p1_name.split(' [')[0] : 'En attente';
+                  const team2Name = match.p2_name ? match.p2_name.split(' [')[0] : 'En attente';
+                  
+                  return (
+                    <div
+                      key={match.id}
+                      onClick={() => onScheduleMatch && onScheduleMatch(match)}
+                      style={{
+                        background: match.scheduled_at ? '#1a3a1a' : '#2a2a2a',
+                        padding: '15px',
+                        borderRadius: '5px',
+                        border: match.scheduled_at ? '1px solid #27ae60' : '1px solid #444',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = match.scheduled_at ? '#1a4a1a' : '#333';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = match.scheduled_at ? '#1a3a1a' : '#2a2a2a';
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                          Match #{match.match_number} - {matchInfo}
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
+                          {team1Name} <span style={{ color: '#666' }}>vs</span> {team2Name}
+                        </div>
+                        {match.scheduled_at && (
+                          <div style={{ marginTop: '8px', fontSize: '0.85rem', color: '#4ade80' }}>
+                            📅 {new Date(match.scheduled_at).toLocaleString('fr-FR', {
+                              dateStyle: 'short',
+                              timeStyle: 'short'
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '1.5rem', color: match.scheduled_at ? '#4ade80' : '#666' }}>
+                        📅
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            {matches.filter(m => m.status === 'pending' || m.scheduled_at).length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                Aucun match à planifier
               </div>
             )}
           </div>
