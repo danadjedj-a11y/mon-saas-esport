@@ -91,7 +91,7 @@ export default function CreateTournament({ session, supabase }) {
 
   return (
     <div style={{ maxWidth: '600px', margin: '40px auto', padding: '40px', background: '#1a1a1a', borderRadius: '15px', color: 'white', border: '1px solid #333' }}>
-      <button onClick={() => navigate('/dashboard')} style={{background:'transparent', border:'none', color:'#888', cursor:'pointer', marginBottom:'20px'}}>← Annuler</button>
+      <button onClick={() => navigate('/organizer/dashboard')} style={{background:'transparent', border:'none', color:'#888', cursor:'pointer', marginBottom:'20px'}}>← Annuler</button>
       
       <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#00d4ff' }}>Organiser un nouveau tournoi</h2>
       

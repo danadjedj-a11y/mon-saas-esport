@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import confetti from 'canvas-confetti';
 
@@ -17,6 +17,11 @@ import { exportTournamentToPDF } from './utils/pdfExport';
 export default function Tournament({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Déterminer le mode (organizer ou player) basé sur l'URL
+  const isOrganizerView = location.pathname.includes('/organizer/tournament/');
+  const isPlayerView = location.pathname.includes('/player/tournament/');
   
   // États de données
   const [tournoi, setTournoi] = useState(null);
@@ -37,6 +42,10 @@ export default function Tournament({ session }) {
   const [schedulingMatch, setSchedulingMatch] = useState(null);
 
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
+  
+  // En mode organizer, forcer isOwner à true pour les propriétaires
+  // En mode player, forcer isOwner à false même si c'est le propriétaire (pour une vue joueur pure)
+  const shouldShowAdminFeatures = isOwner && isOrganizerView;
 
   // ==============================================================================
   // 1. CHARGEMENT DES DONNÉES ET REALTIME
@@ -827,7 +836,20 @@ export default function Tournament({ session }) {
       {/* --- HEADER --- */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #333', paddingBottom:'20px', marginBottom:'30px'}}>
         <div>
-           <button onClick={() => navigate('/dashboard')} style={{background:'transparent', border:'1px solid #444', color:'#888', padding:'5px 10px', borderRadius:'4px', cursor:'pointer', marginBottom:'10px'}}>← Retour</button>
+           <button onClick={() => {
+             if (isOrganizerView) {
+               navigate('/organizer/dashboard');
+             } else if (isPlayerView) {
+               navigate('/player/dashboard');
+             } else {
+               // Fallback : déterminer selon le rôle
+               if (isOwner) {
+                 navigate('/organizer/dashboard');
+               } else {
+                 navigate('/player/dashboard');
+               }
+             }
+           }} style={{background:'transparent', border:'1px solid #444', color:'#888', padding:'5px 10px', borderRadius:'4px', cursor:'pointer', marginBottom:'10px'}}>← Retour</button>
            <h1 style={{ margin: 0, color: '#00d4ff' }}>{tournoi.name}</h1>
         </div>
         <div style={{textAlign:'right', display:'flex', flexDirection:'column', gap:'10px', alignItems:'flex-end'}}>
@@ -922,7 +944,7 @@ export default function Tournament({ session }) {
       )}
 
       {/* --- ADMIN CONTROLS --- */}
-      {isOwner && tournoi.status === 'ongoing' && (
+      {shouldShowAdminFeatures && tournoi.status === 'ongoing' && (
         <AdminPanel 
           tournamentId={id} 
           supabase={supabase} 
@@ -938,7 +960,7 @@ export default function Tournament({ session }) {
         />
       )}
       
-      {isOwner && tournoi.status === 'draft' && (
+      {shouldShowAdminFeatures && tournoi.status === 'draft' && (
         <div style={{ background: '#222', padding: '20px', borderRadius: '8px', marginBottom: '30px', borderLeft:'4px solid #8e44ad' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px' }}>
           <span>{participants.length} équipes inscrites.</span>
@@ -973,7 +995,7 @@ export default function Tournament({ session }) {
         <div style={{ flex: '1', minWidth: '300px', maxWidth: '400px', background: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
           <div style={{padding:'15px', borderBottom:'1px solid #333'}}>
             <h3 style={{margin:0, marginBottom:'5px'}}>Équipes ({participants.length})</h3>
-            {isOwner && tournoi.status === 'draft' && (
+            {shouldShowAdminFeatures && tournoi.status === 'draft' && (
               <div style={{fontSize:'0.85rem', color:'#aaa', display:'flex', gap:'15px', flexWrap:'wrap'}}>
                 <span style={{color:'#27ae60'}}>✅ Check-in: {participants.filter(p => p.checked_in).length}</span>
                 <span style={{color:'#7f8c8d'}}>⏳ En attente: {participants.filter(p => !p.checked_in && !p.disqualified).length}</span>
@@ -1035,7 +1057,7 @@ export default function Tournament({ session }) {
           </ul>
           
           {/* LISTE D'ATTENTE */}
-          {isOwner && waitlist.length > 0 && tournoi.status === 'draft' && (
+          {shouldShowAdminFeatures && waitlist.length > 0 && tournoi.status === 'draft' && (
             <>
               <div style={{borderTop:'1px solid #333', padding:'15px', borderBottom:'1px solid #333', background:'#2a2a2a'}}>
                 <h3 style={{margin:0, fontSize:'0.95rem', color:'#f39c12'}}>⏳ Liste d'Attente ({waitlist.length})</h3>
