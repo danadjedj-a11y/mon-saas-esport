@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { getUserRole } from './utils/userRole'
+import { toast } from './utils/toast'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
@@ -62,7 +63,7 @@ export default function Auth() {
 
     const { error } = result
     if (error) {
-      alert(error.message)
+      toast.error(error.message)
       setLoading(false)
     }
     // Si succès, la redirection sera gérée par onAuthStateChange

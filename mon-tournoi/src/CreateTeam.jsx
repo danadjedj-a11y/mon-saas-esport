@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from './utils/toast';
 
 export default function CreateTeam({ session, supabase }) {
   const [name, setName] = useState('');
@@ -23,15 +24,18 @@ export default function CreateTeam({ session, supabase }) {
     const sanitizedTag = sanitizeInput(tag);
 
     if (!sanitizedName || !sanitizedTag) {
-      return alert("Nom et Tag obligatoires");
+      toast.error("Nom et Tag obligatoires");
+      return;
     }
 
     if (sanitizedName.length > MAX_NAME_LENGTH) {
-      return alert(`Le nom de l'équipe ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
+      toast.error(`Le nom de l'équipe ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
+      return;
     }
 
     if (sanitizedTag.length < MIN_TAG_LENGTH || sanitizedTag.length > MAX_TAG_LENGTH) {
-      return alert(`Le tag doit contenir entre ${MIN_TAG_LENGTH} et ${MAX_TAG_LENGTH} caractères`);
+      toast.error(`Le tag doit contenir entre ${MIN_TAG_LENGTH} et ${MAX_TAG_LENGTH} caractères`);
+      return;
     }
     
     setLoading(true);
@@ -50,14 +54,14 @@ export default function CreateTeam({ session, supabase }) {
         .select();
 
       if (error) {
-        alert("Erreur: " + error.message);
+        toast.error("Erreur: " + error.message);
       } else {
-        alert("Équipe créée avec succès !");
+        toast.success("Équipe créée avec succès !");
         navigate('/player/dashboard');
       }
     } catch (error) {
       console.error('Erreur lors de la création de l\'équipe:', error);
-      alert('Erreur lors de la création de l\'équipe');
+      toast.error('Erreur lors de la création de l\'équipe');
     } finally {
       setLoading(false);
     }

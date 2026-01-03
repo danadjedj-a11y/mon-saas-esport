@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from './utils/toast';
 
 export default function CreateTournament({ session, supabase }) {
   const [name, setName] = useState('');
@@ -34,13 +35,13 @@ export default function CreateTournament({ session, supabase }) {
       // Validation des inputs
       const sanitizedName = sanitizeInput(name);
       if (!sanitizedName || sanitizedName.length > MAX_NAME_LENGTH) {
-        alert(`Le nom du tournoi est requis et ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
+        toast.error(`Le nom du tournoi est requis et ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
         setLoading(false);
         return;
       }
 
       if (rules && rules.length > MAX_RULES_LENGTH) {
-        alert(`Le règlement ne peut pas dépasser ${MAX_RULES_LENGTH} caractères`);
+        toast.error(`Le règlement ne peut pas dépasser ${MAX_RULES_LENGTH} caractères`);
         setLoading(false);
         return;
       }
@@ -48,7 +49,7 @@ export default function CreateTournament({ session, supabase }) {
       if (maxParticipants) {
         const maxPartsNum = parseInt(maxParticipants);
         if (isNaN(maxPartsNum) || maxPartsNum < MIN_PARTICIPANTS || maxPartsNum > MAX_PARTICIPANTS) {
-          alert(`Le nombre maximum de participants doit être entre ${MIN_PARTICIPANTS} et ${MAX_PARTICIPANTS}`);
+          toast.error(`Le nombre maximum de participants doit être entre ${MIN_PARTICIPANTS} et ${MAX_PARTICIPANTS}`);
           setLoading(false);
           return;
         }
@@ -117,7 +118,7 @@ export default function CreateTournament({ session, supabase }) {
       navigate(`/tournament/${data.id}`);
 
     } catch (error) {
-      alert('Erreur lors de la création : ' + error.message);
+      toast.error('Erreur lors de la création : ' + error.message);
     } finally {
       setLoading(false);
     }

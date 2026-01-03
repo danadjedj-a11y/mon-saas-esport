@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import NotificationCenter from './NotificationCenter';
+import { toast } from './utils/toast';
 
 export default function OrganizerDashboard({ session }) {
   const [tournaments, setTournaments] = useState([]);
@@ -39,7 +40,7 @@ export default function OrganizerDashboard({ session }) {
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) alert("Erreur lors de la déconnexion");
+    if (error) toast.error("Erreur lors de la déconnexion");
     else navigate('/');
   };
 
@@ -53,9 +54,10 @@ export default function OrganizerDashboard({ session }) {
       .eq('id', id);
 
     if (error) {
-      alert("Impossible de supprimer.");
+      toast.error("Impossible de supprimer: " + error.message);
       console.error(error);
     } else {
+      toast.success("Tournoi supprimé avec succès");
       setTournaments(tournaments.filter(t => t.id !== id));
     }
   };

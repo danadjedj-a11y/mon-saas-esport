@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
 import Auth from './Auth'
 import HomePage from './HomePage'
 import Dashboard from './Dashboard'
@@ -20,6 +21,7 @@ import StreamOverlay from './stream/StreamOverlay';
 import StreamDashboard from './stream/StreamDashboard';
 import TournamentAPI from './api/TournamentAPI';
 import { getUserRole } from './utils/userRole';
+import { toast } from './utils/toast';
 
 // Composant pour protéger les routes organisateur
 function OrganizerRoute({ children, session }) {
@@ -37,7 +39,7 @@ function OrganizerRoute({ children, session }) {
       if (role === 'organizer') {
         setAuthorized(true);
       } else {
-        alert('❌ Accès refusé. Seuls les organisateurs peuvent accéder à cette section.');
+        toast.error('❌ Accès refusé. Seuls les organisateurs peuvent accéder à cette section.');
         navigate('/player/dashboard');
         setAuthorized(false);
       }
@@ -92,8 +94,9 @@ function App() {
   }, [])
 
   return (
-    <Router>
-      <Routes>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
         
