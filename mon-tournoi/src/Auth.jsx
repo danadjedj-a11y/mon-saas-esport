@@ -1,11 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
+import { getUserRole } from './utils/userRole'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState('login') // 'login' ou 'signup'
+  const navigate = useNavigate()
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        // Rediriger vers le dashboard approprié
+        const role = await getUserRole(supabase, session.user.id)
+        if (role === 'organizer') {
+          navigate('/organizer/dashboard', { replace: true })
+        } else {
+          navigate('/player/dashboard', { replace: true })
+        }
+      }
+    }
+    checkSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Rediriger après connexion
+        const role = await getUserRole(supabase, session.user.id)
+        if (role === 'organizer') {
+          navigate('/organizer/dashboard', { replace: true })
+        } else {
+          navigate('/player/dashboard', { replace: true })
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [navigate])
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -27,15 +61,18 @@ export default function Auth() {
     }
 
     const { error } = result
-    if (error) alert(error.message)
-    setLoading(false)
+    if (error) {
+      alert(error.message)
+      setLoading(false)
+    }
+    // Si succès, la redirection sera gérée par onAuthStateChange
   }
 
   return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', color: 'white', fontFamily: 'Arial' }}>
       <div style={{ background: '#222', padding: '40px', borderRadius: '10px', width: '300px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
         <h1 style={{ color: '#00d4ff', margin: '0 0 20px 0' }}>Toornament Clone</h1>
-        <p style={{ color: '#888', marginBottom: '30px' }}>{mode === 'login' ? 'Connexion Organisateur' : 'Créer un compte'}</p>
+        <p style={{ color: '#888', marginBottom: '30px' }}>{mode === 'login' ? 'Connexion' : 'Créer un compte'}</p>
         
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input

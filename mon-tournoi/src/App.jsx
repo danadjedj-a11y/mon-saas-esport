@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import Auth from './Auth'
+import HomePage from './HomePage'
 import Dashboard from './Dashboard'
 import OrganizerDashboard from './OrganizerDashboard'
 import PlayerDashboard from './PlayerDashboard'
@@ -28,7 +29,7 @@ function OrganizerRoute({ children, session }) {
   useEffect(() => {
     const checkRole = async () => {
       if (!session?.user) {
-        navigate('/');
+        navigate('/auth');
         return;
       }
       
@@ -101,10 +102,14 @@ function App() {
         <Route path="/stream/dashboard/:id" element={<StreamDashboard />} />
         <Route path="/api/tournament/:id/:endpoint" element={<TournamentAPI />} />
         
-        {/* Routes protégées nécessitant une authentification */}
-        {/* Route racine - redirection intelligente vers organizer ou player */}
-        <Route path="/" element={session ? <Dashboard session={session} /> : <Auth />} />
-        <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Auth />} />
+        {/* Route racine - Page publique d'accueil */}
+        <Route path="/" element={<HomePage />} />
+        
+        {/* Route de connexion/authentification */}
+        <Route path="/auth" element={<Auth />} />
+        
+        {/* Route dashboard - redirection intelligente vers organizer ou player */}
+        <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Navigate to="/" />} />
         
         {/* Routes Organisateur - PROTÉGÉES */}
         <Route path="/organizer/dashboard" element={
@@ -112,21 +117,21 @@ function App() {
             <OrganizerRoute session={session}>
               <OrganizerDashboard session={session} />
             </OrganizerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/organizer/tournament/:id" element={
           session ? (
             <OrganizerRoute session={session}>
               <Tournament session={session} />
             </OrganizerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/create-tournament" element={
           session ? (
             <OrganizerRoute session={session}>
               <CreateTournament session={session} supabase={supabase} />
             </OrganizerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         
         {/* Routes Joueur - PROTÉGÉES */}
@@ -135,14 +140,14 @@ function App() {
             <PlayerRoute session={session}>
               <PlayerDashboard session={session} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/player/tournament/:id" element={
           session ? (
             <PlayerRoute session={session}>
               <Tournament session={session} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         
         {/* Route legacy - redirige automatiquement selon le rôle */}
@@ -157,7 +162,7 @@ function App() {
                 <Tournament session={session} />
               </PlayerRoute>
             )
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         {/* Routes communes (joueurs et organisateurs) */}
         <Route path="/profile" element={session ? <Profile session={session} /> : <Auth />} />
@@ -166,42 +171,42 @@ function App() {
             <PlayerRoute session={session}>
               <CreateTeam session={session} supabase={supabase} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/my-team" element={
           session ? (
             <PlayerRoute session={session}>
               <MyTeam session={session} supabase={supabase} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/join-team/:teamId" element={
           session ? (
             <PlayerRoute session={session}>
               <JoinTeam session={session} supabase={supabase} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/match/:id" element={
           session ? (
             <PlayerRoute session={session}>
               <MatchLobby session={session} supabase={supabase} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/stats" element={
           session ? (
             <PlayerRoute session={session}>
               <StatsDashboard session={session} supabase={supabase} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
         <Route path="/leaderboard" element={
           session ? (
             <PlayerRoute session={session}>
               <Leaderboard session={session} supabase={supabase} />
             </PlayerRoute>
-          ) : <Auth />
+          ) : <Navigate to="/auth" />
         } />
 
         {/* Catch-all pour les routes non définies */}

@@ -6,6 +6,7 @@ import NotificationCenter from './NotificationCenter';
 export default function PlayerDashboard({ session }) {
   const [myTournaments, setMyTournaments] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
+  const [availableTournaments, setAvailableTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -15,6 +16,8 @@ export default function PlayerDashboard({ session }) {
 
   const fetchPlayerData = async () => {
     if (!session) return;
+    
+    setLoading(true);
     
     // Récupérer mes équipes
     const { data: captainTeams } = await supabase
@@ -32,6 +35,15 @@ export default function PlayerDashboard({ session }) {
       ...(memberTeams?.map(tm => tm.team_id) || [])
     ];
     const uniqueTeamIds = [...new Set(allTeamIds)];
+
+    // Récupérer TOUS les tournois publics et en draft
+    const { data: allTournaments } = await supabase
+      .from('tournaments')
+      .select('*')
+      .in('status', ['draft', 'ongoing'])
+      .order('created_at', { ascending: false });
+
+    setAvailableTournaments(allTournaments || []);
 
     if (uniqueTeamIds.length === 0) {
       setLoading(false);
@@ -63,7 +75,7 @@ export default function PlayerDashboard({ session }) {
         .or(`player2_id.in.(${uniqueTeamIds.join(',')})`)
         .eq('status', 'pending')
         .order('scheduled_at', { ascending: true })
-        .limit(5);
+        .limit(10);
 
       setUpcomingMatches(matches || []);
     }
@@ -80,179 +92,260 @@ export default function PlayerDashboard({ session }) {
   if (loading) return <div style={{color:'white', padding:'20px'}}>Chargement...</div>;
 
   return (
-    <div style={{ padding: '20px', color: 'white', minHeight: '100vh', background: '#0a0a0a' }}>
+    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: 'white' }}>
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '2px solid #333', paddingBottom: '20px' }}>
-        <div>
-          <h1 style={{ margin: 0, color: '#3498db', fontSize: '2rem' }}>⚔️ Espace Joueur</h1>
-          <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '0.9rem' }}>Vos tournois et matchs à venir</p>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-
-          <button 
-            onClick={() => navigate('/create-team')} 
-            style={{ padding: '10px 20px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            🛡️ Créer une Team
-          </button>
-
-          <button 
-            onClick={() => navigate('/my-team')} 
-            style={{ padding: '10px 20px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            🛡️ Mon Équipe
-          </button>
-
-          <NotificationCenter session={session} supabase={supabase} />
-
-          <button 
-            onClick={() => navigate('/stats')} 
-            style={{ background: '#3498db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            📊 Statistiques
-          </button>
-
-          <button 
-            onClick={() => navigate('/leaderboard')} 
-            style={{ background: '#f39c12', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            🏆 Classement
-          </button>
+      <div style={{ background: '#1a1a1a', borderBottom: '1px solid #2a2a2a', padding: '15px 30px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#3498db' }}>⚔️ Mon Tournoi - Joueur</h1>
+            <nav style={{ display: 'flex', gap: '20px' }}>
+              <a href="#" style={{ color: '#3498db', textDecoration: 'none', fontWeight: 'bold' }}>Mes Tournois</a>
+              <a onClick={() => navigate('/stats')} style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}>Statistiques</a>
+              <a onClick={() => navigate('/leaderboard')} style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}>Classement</a>
+            </nav>
+          </div>
           
-          <button 
-            onClick={() => navigate('/profile')} 
-            style={{ background: '#9b59b6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            ⚙️ Profil
-          </button>
-          
-          <button 
-            onClick={handleLogout}
-            style={{ padding: '10px 20px', background: 'transparent', border: '1px solid #e74c3c', borderRadius: '8px', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            Déconnexion
-          </button>
-        </div>
-      </div>
-
-      {/* MATCHS À VENIR */}
-      {upcomingMatches.length > 0 && (
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ marginBottom: '20px', color: '#00d4ff' }}>⚡ Matchs à Venir</h2>
-          <div style={{ display: 'grid', gap: '15px' }}>
-            {upcomingMatches.map((match) => (
-              <div
-                key={match.id}
-                onClick={() => navigate(`/match/${match.id}`)}
-                style={{
-                  background: '#1a1a1a',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  border: '1px solid #3498db',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.01)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '5px' }}>
-                    {match.tournaments?.name || 'Tournoi'}
-                  </div>
-                  {match.scheduled_at && (
-                    <div style={{ fontSize: '0.85rem', color: '#888' }}>
-                      📅 {new Date(match.scheduled_at).toLocaleString('fr-FR')}
-                    </div>
-                  )}
-                </div>
-                <div style={{ fontSize: '1.5rem' }}>⚔️</div>
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <NotificationCenter session={session} supabase={supabase} />
+            <button 
+              onClick={() => navigate('/create-team')} 
+              style={{ padding: '8px 16px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+            >
+              🛡️ Créer une Team
+            </button>
+            <button 
+              onClick={() => navigate('/my-team')} 
+              style={{ padding: '8px 16px', background: '#34495e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+            >
+              Mon Équipe
+            </button>
+            <button 
+              onClick={() => navigate('/profile')} 
+              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #555', color: '#aaa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              Profil
+            </button>
+            <button 
+              onClick={handleLogout}
+              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #e74c3c', borderRadius: '6px', color: '#e74c3c', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              Déconnexion
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* MES TOURNOIS */}
-      <div>
-        <h2 style={{ marginBottom: '20px', color: '#00d4ff' }}>Mes Tournois Inscrits</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-          {myTournaments.map((t) => {
-            const getStatusStyle = (status) => {
-              switch (status) {
-                case 'draft': return { bg: '#f39c12', text: 'Inscriptions' };
-                case 'completed': return { bg: '#7f8c8d', text: 'Terminé' };
-                default: return { bg: '#27ae60', text: 'En cours' };
-              }
-            };
-            const statusStyle = getStatusStyle(t.status);
-            
-            return (
-              <div 
-                key={t.id} 
-                onClick={() => navigate(`/player/tournament/${t.id}`)}
-                style={{ 
-                  background: '#1a1a1a', 
-                  padding: '20px', 
-                  borderRadius: '10px', 
-                  border: '1px solid #333', 
-                  cursor: 'pointer',
-                  position: 'relative',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: '200px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.02)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(52, 152, 219, 0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <span style={{ 
-                  position: 'absolute', top: '10px', right: '10px', 
-                  background: statusStyle.bg, padding: '4px 8px', 
-                  borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' 
-                }}>
-                  {statusStyle.text}
-                </span>
-
-                <div>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '10px' }}>🏆</div>
-                  <h3 style={{ margin: '0 0 5px 0', color: '#00d4ff' }}>{t.name}</h3>
-                  <div style={{ fontSize: '0.85rem', color: '#3498db', marginBottom: '2px' }}>🎮 {t.game}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '10px' }}>📊 {t.format}</div>
-                  <p style={{ color: '#555', fontSize: '0.75rem', margin: 0 }}>
-                    Inscrit le {new Date(t.created_at).toLocaleDateString('fr-FR')}
-                  </p>
+      {/* CONTENU PRINCIPAL */}
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px' }}>
+        {/* MATCHS À VENIR - EN HAUT */}
+        {upcomingMatches.length > 0 && (
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ marginBottom: '20px', fontSize: '1.3rem', color: '#3498db' }}>⚡ Mes Prochains Matchs</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '15px' }}>
+              {upcomingMatches.map((match) => (
+                <div
+                  key={match.id}
+                  onClick={() => navigate(`/match/${match.id}`)}
+                  style={{
+                    background: '#1a1a1a',
+                    padding: '20px',
+                    borderRadius: '10px',
+                    border: '1px solid #2a2a2a',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#3498db';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#2a2a2a';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                      {match.tournaments?.name || 'Tournoi'}
+                    </div>
+                    {match.scheduled_at && (
+                      <div style={{ fontSize: '0.85rem', color: '#888', background: '#252525', padding: '5px 10px', borderRadius: '5px' }}>
+                        📅 {new Date(match.scheduled_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
+                    Round {match.round_number} • Match #{match.match_number}
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+          {/* COLONNE GAUCHE : MES TOURNOIS */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#3498db' }}>🎯 Mes Tournois</h2>
+              <span style={{ fontSize: '0.9rem', color: '#888' }}>{myTournaments.length} tournoi(s)</span>
+            </div>
+
+            {myTournaments.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {myTournaments.map((t) => {
+                  const getStatusStyle = (status) => {
+                    switch (status) {
+                      case 'draft': return { bg: '#f39c12', text: 'Inscriptions', icon: '📝' };
+                      case 'completed': return { bg: '#7f8c8d', text: 'Terminé', icon: '🏁' };
+                      default: return { bg: '#27ae60', text: 'En cours', icon: '⚔️' };
+                    }
+                  };
+                  const statusStyle = getStatusStyle(t.status);
+                  
+                  return (
+                    <div 
+                      key={t.id} 
+                      onClick={() => navigate(`/player/tournament/${t.id}`)}
+                      style={{ 
+                        background: '#1a1a1a', 
+                        padding: '20px', 
+                        borderRadius: '10px', 
+                        border: '1px solid #2a2a2a', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3498db';
+                        e.currentTarget.style.transform = 'translateX(5px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#2a2a2a';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#fff' }}>{t.name}</h3>
+                          <div style={{ fontSize: '0.85rem', color: '#888', display: 'flex', gap: '15px', marginTop: '8px' }}>
+                            <span>🎮 {t.game}</span>
+                            <span>📊 {t.format}</span>
+                          </div>
+                        </div>
+                        <span style={{ 
+                          background: statusStyle.bg, 
+                          padding: '5px 12px', 
+                          borderRadius: '5px', 
+                          fontSize: '0.8rem', 
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {statusStyle.icon} {statusStyle.text}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ) : (
+              <div style={{ background: '#1a1a1a', padding: '40px', borderRadius: '10px', textAlign: 'center', border: '1px solid #2a2a2a' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎯</div>
+                <p style={{ color: '#888', margin: 0 }}>Vous n'êtes inscrit à aucun tournoi</p>
+                <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '5px' }}>Rejoignez un tournoi disponible ci-contre</p>
+              </div>
+            )}
+          </div>
+
+          {/* COLONNE DROITE : TOURNOIS DISPONIBLES */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#3498db' }}>🌟 Tournois Disponibles</h2>
+              <span style={{ fontSize: '0.9rem', color: '#888' }}>{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '600px', overflowY: 'auto' }}>
+              {availableTournaments
+                .filter(t => !myTournaments.some(mt => mt.id === t.id))
+                .map((t) => {
+                  const getStatusStyle = (status) => {
+                    switch (status) {
+                      case 'draft': return { bg: '#f39c12', text: 'Inscriptions ouvertes', icon: '📝' };
+                      default: return { bg: '#27ae60', text: 'En cours', icon: '⚔️' };
+                    }
+                  };
+                  const statusStyle = getStatusStyle(t.status);
+                  
+                  return (
+                    <div 
+                      key={t.id} 
+                      onClick={() => navigate(`/tournament/${t.id}/public`)}
+                      style={{ 
+                        background: '#1a1a1a', 
+                        padding: '20px', 
+                        borderRadius: '10px', 
+                        border: '1px solid #2a2a2a', 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3498db';
+                        e.currentTarget.style.transform = 'translateX(5px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#2a2a2a';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#fff' }}>{t.name}</h3>
+                          <div style={{ fontSize: '0.85rem', color: '#888', display: 'flex', gap: '15px', marginTop: '8px' }}>
+                            <span>🎮 {t.game}</span>
+                            <span>📊 {t.format}</span>
+                          </div>
+                        </div>
+                        <span style={{ 
+                          background: statusStyle.bg, 
+                          padding: '5px 12px', 
+                          borderRadius: '5px', 
+                          fontSize: '0.8rem', 
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {statusStyle.icon} {statusStyle.text}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              
+              {availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length === 0 && (
+                <div style={{ background: '#1a1a1a', padding: '40px', borderRadius: '10px', textAlign: 'center', border: '1px solid #2a2a2a' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🌟</div>
+                  <p style={{ color: '#888', margin: 0 }}>Aucun tournoi disponible</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* STATISTIQUES RAPIDES */}
+        <div style={{ marginTop: '40px', background: '#1a1a1a', padding: '25px', borderRadius: '10px', border: '1px solid #2a2a2a' }}>
+          <h3 style={{ margin: '0 0 20px 0', fontSize: '1.2rem', color: '#3498db' }}>📊 Aperçu Statistiques</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3498db' }}>{myTournaments.length}</div>
+              <div style={{ fontSize: '0.9rem', color: '#888', marginTop: '5px' }}>Tournois</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60' }}>{upcomingMatches.length}</div>
+              <div style={{ fontSize: '0.9rem', color: '#888', marginTop: '5px' }}>Matchs à venir</div>
+            </div>
+            <div style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/stats')}>
+              <div style={{ fontSize: '0.9rem', color: '#3498db', textDecoration: 'underline' }}>Voir toutes les stats →</div>
+            </div>
+          </div>
         </div>
       </div>
-      
-      {myTournaments.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#666', marginTop: '50px', padding: '40px' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>⚔️</div>
-          <p style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Aucun tournoi inscrit</p>
-          <p style={{ color: '#888', marginBottom: '20px' }}>Rejoignez un tournoi pour commencer à jouer</p>
-          <button 
-            onClick={() => navigate('/create-team')} 
-            style={{ padding: '12px 24px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', marginRight: '10px' }}
-          >
-            🛡️ Créer une Équipe
-          </button>
-        </div>
-      )}
     </div>
   );
 }
-

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { getSwissScores } from './swissUtils';
 import { calculateMatchWinner } from './bofUtils';
+import TeamJoinButton from './TeamJoinButton';
 
 export default function PublicTournament() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [session, setSession] = useState(null);
   
   const [tournoi, setTournoi] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -16,6 +19,15 @@ export default function PublicTournament() {
   const [swissScores, setSwissScores] = useState([]);
 
   useEffect(() => {
+    // Vérifier la session utilisateur
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
     fetchData();
 
     // Abonnement temps réel pour les mises à jour publiques
@@ -32,7 +44,10 @@ export default function PublicTournament() {
       () => fetchData())
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+      subscription.unsubscribe();
+    };
   }, [id]);
 
   const fetchData = async () => {
@@ -528,6 +543,46 @@ export default function PublicTournament() {
                 </div>
               )}
             </div>
+
+            {/* BOUTON D'INSCRIPTION */}
+            {tournoi.status === 'draft' && (
+              <div style={{ marginTop: '30px', background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)', padding: '25px', borderRadius: '10px', border: '1px solid #3498db' }}>
+                <h3 style={{ margin: '0 0 15px 0', color: 'white', fontSize: '1.3rem' }}>🎯 Inscription au Tournoi</h3>
+                {session ? (
+                  <TeamJoinButton 
+                    tournamentId={id} 
+                    supabase={supabase} 
+                    session={session} 
+                    onJoinSuccess={fetchData} 
+                    tournament={tournoi} 
+                  />
+                ) : (
+                  <div>
+                    <p style={{ margin: '0 0 15px 0', color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>
+                      Connectez-vous pour vous inscrire à ce tournoi avec votre équipe
+                    </p>
+                    <button
+                      onClick={() => navigate('/')}
+                      style={{
+                        padding: '12px 30px',
+                        background: 'white',
+                        color: '#3498db',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '1rem',
+                        transition: 'transform 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      🔐 Se Connecter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* RÈGLEMENT */}
             {tournoi.rules && (
