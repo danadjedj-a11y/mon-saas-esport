@@ -19,68 +19,85 @@ export default function PlayerDashboard({ session }) {
     
     setLoading(true);
     
-    // Récupérer mes équipes
-    const { data: captainTeams } = await supabase
-      .from('teams')
-      .select('id')
-      .eq('captain_id', session.user.id);
-    
-    const { data: memberTeams } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', session.user.id);
+    try {
+      // Paralléliser les requêtes pour les équipes
+      const [captainTeamsResult, memberTeamsResult, allTournamentsResult] = await Promise.all([
+        supabase
+          .from('teams')
+          .select('id')
+          .eq('captain_id', session.user.id),
+        supabase
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', session.user.id),
+        supabase
+          .from('tournaments')
+          .select('*')
+          .in('status', ['draft', 'ongoing'])
+          .order('created_at', { ascending: false })
+      ]);
 
-    const allTeamIds = [
-      ...(captainTeams?.map(t => t.id) || []),
-      ...(memberTeams?.map(tm => tm.team_id) || [])
-    ];
-    const uniqueTeamIds = [...new Set(allTeamIds)];
+      const captainTeams = captainTeamsResult.data || [];
+      const memberTeams = memberTeamsResult.data || [];
+      const allTournaments = allTournamentsResult.data || [];
 
-    // Récupérer TOUS les tournois publics et en draft
-    const { data: allTournaments } = await supabase
-      .from('tournaments')
-      .select('*')
-      .in('status', ['draft', 'ongoing'])
-      .order('created_at', { ascending: false });
+      setAvailableTournaments(allTournaments);
 
-    setAvailableTournaments(allTournaments || []);
+      const allTeamIds = [
+        ...captainTeams.map(t => t.id),
+        ...memberTeams.map(tm => tm.team_id)
+      ];
+      const uniqueTeamIds = [...new Set(allTeamIds)];
 
-    if (uniqueTeamIds.length === 0) {
+      if (uniqueTeamIds.length === 0) {
+        setMyTournaments([]);
+        setUpcomingMatches([]);
+        setLoading(false);
+        return;
+      }
+
+      // Récupérer les participants et les matchs en parallèle
+      const [participantsResult, matchesResult] = await Promise.all([
+        supabase
+          .from('participants')
+          .select('tournament_id')
+          .in('team_id', uniqueTeamIds),
+        supabase
+          .from('matches')
+          .select('*, tournaments(*)')
+          .in('player1_id', uniqueTeamIds)
+          .or(`player2_id.in.(${uniqueTeamIds.join(',')})`)
+          .eq('status', 'pending')
+          .order('scheduled_at', { ascending: true })
+          .limit(10)
+      ]);
+
+      const participants = participantsResult.data || [];
+      const matches = matchesResult.data || [];
+
+      if (participants.length > 0) {
+        const tournamentIds = [...new Set(participants.map(p => p.tournament_id))];
+        
+        const { data: tournaments } = await supabase
+          .from('tournaments')
+          .select('*')
+          .in('id', tournamentIds)
+          .order('created_at', { ascending: false });
+        
+        setMyTournaments(tournaments || []);
+      } else {
+        setMyTournaments([]);
+      }
+
+      setUpcomingMatches(matches);
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      setMyTournaments([]);
+      setAvailableTournaments([]);
+      setUpcomingMatches([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Récupérer les tournois où mes équipes sont inscrites
-    const { data: participants } = await supabase
-      .from('participants')
-      .select('tournament_id, tournaments(*)')
-      .in('team_id', uniqueTeamIds);
-
-    if (participants) {
-      const tournamentIds = [...new Set(participants.map(p => p.tournament_id))];
-      const { data: tournaments } = await supabase
-        .from('tournaments')
-        .select('*')
-        .in('id', tournamentIds)
-        .order('created_at', { ascending: false });
-      
-      setMyTournaments(tournaments || []);
-
-      // Récupérer les matchs à venir
-      const { data: matches } = await supabase
-        .from('matches')
-        .select('*, tournaments(*)')
-        .in('tournament_id', tournamentIds)
-        .in('player1_id', uniqueTeamIds)
-        .or(`player2_id.in.(${uniqueTeamIds.join(',')})`)
-        .eq('status', 'pending')
-        .order('scheduled_at', { ascending: true })
-        .limit(10);
-
-      setUpcomingMatches(matches || []);
-    }
-    
-    setLoading(false);
   };
 
   const handleLogout = async () => {

@@ -27,18 +27,39 @@ export default function HomePage() {
 
   const fetchTournaments = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tournaments')
-      .select('*')
-      .in('status', ['draft', 'ongoing'])
-      .order('created_at', { ascending: false });
+    let timeoutId;
+    try {
+      // Créer une promesse avec timeout de 10 secondes
+      const queryPromise = supabase
+        .from('tournaments')
+        .select('*')
+        .in('status', ['draft', 'ongoing'])
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Erreur chargement tournois:', error);
-    } else {
-      setTournaments(data || []);
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Timeout: La requête a pris plus de 10 secondes'));
+        }, 10000);
+      });
+
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
+
+      const { data, error } = result;
+
+      if (error) {
+        console.error('Erreur chargement tournois:', error);
+        setTournaments([]);
+      } else {
+        setTournaments(data || []);
+      }
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      console.error('Erreur lors du chargement des tournois:', err.message || err);
+      setTournaments([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const getStatusStyle = (status) => {

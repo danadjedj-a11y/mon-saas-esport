@@ -15,15 +15,25 @@ export default function OrganizerDashboard({ session }) {
   const fetchMyTournaments = async () => {
     if (!session) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tournaments')
-      .select('*')
-      .eq('owner_id', session.user.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('owner_id', session.user.id)
+        .order('created_at', { ascending: false });
 
-    if (error) console.error('Erreur chargement:', error);
-    else setTournaments(data || []);
-    setLoading(false);
+      if (error) {
+        console.error('Erreur chargement:', error);
+        setTournaments([]);
+      } else {
+        setTournaments(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
+      setTournaments([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
