@@ -6,6 +6,7 @@ import NotificationCenter from './NotificationCenter';
 export default function OrganizerDashboard({ session }) {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'draft', 'ongoing', 'completed'
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,6 +74,16 @@ export default function OrganizerDashboard({ session }) {
   const draftCount = tournaments.filter(t => t.status === 'draft').length;
   const ongoingCount = tournaments.filter(t => t.status === 'ongoing').length;
   const completedCount = tournaments.filter(t => t.status === 'completed').length;
+
+  // Filtrer les tournois selon le filtre actif
+  const filteredTournaments = activeFilter === 'all' 
+    ? tournaments 
+    : tournaments.filter(t => {
+        if (activeFilter === 'draft') return t.status === 'draft';
+        if (activeFilter === 'ongoing') return t.status === 'ongoing';
+        if (activeFilter === 'completed') return t.status === 'completed';
+        return true;
+      });
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f0f0f', color: 'white' }}>
@@ -169,40 +180,46 @@ export default function OrganizerDashboard({ session }) {
             <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#8e44ad' }}>Mes Tournois</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
+                onClick={() => setActiveFilter('draft')}
                 style={{ 
                   padding: '8px 16px', 
-                  background: draftCount > 0 ? '#f39c12' : '#2a2a2a', 
+                  background: activeFilter === 'draft' ? '#f39c12' : (draftCount > 0 ? '#3a2a1a' : '#2a2a2a'), 
                   color: 'white', 
-                  border: 'none', 
+                  border: activeFilter === 'draft' ? '2px solid #f39c12' : 'none', 
                   borderRadius: '6px', 
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  fontWeight: activeFilter === 'draft' ? 'bold' : 'normal'
                 }}
               >
                 Brouillons ({draftCount})
               </button>
               <button 
+                onClick={() => setActiveFilter('ongoing')}
                 style={{ 
                   padding: '8px 16px', 
-                  background: ongoingCount > 0 ? '#27ae60' : '#2a2a2a', 
+                  background: activeFilter === 'ongoing' ? '#27ae60' : (ongoingCount > 0 ? '#1a3a1a' : '#2a2a2a'), 
                   color: 'white', 
-                  border: 'none', 
+                  border: activeFilter === 'ongoing' ? '2px solid #27ae60' : 'none', 
                   borderRadius: '6px', 
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  fontWeight: activeFilter === 'ongoing' ? 'bold' : 'normal'
                 }}
               >
                 En cours ({ongoingCount})
               </button>
               <button 
+                onClick={() => setActiveFilter('completed')}
                 style={{ 
                   padding: '8px 16px', 
-                  background: completedCount > 0 ? '#7f8c8d' : '#2a2a2a', 
+                  background: activeFilter === 'completed' ? '#7f8c8d' : (completedCount > 0 ? '#2a2a2a' : '#2a2a2a'), 
                   color: 'white', 
-                  border: 'none', 
+                  border: activeFilter === 'completed' ? '2px solid #7f8c8d' : 'none', 
                   borderRadius: '6px', 
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  fontWeight: activeFilter === 'completed' ? 'bold' : 'normal'
                 }}
               >
                 Terminés ({completedCount})
@@ -210,9 +227,9 @@ export default function OrganizerDashboard({ session }) {
             </div>
           </div>
 
-          {tournaments.length > 0 ? (
+          {filteredTournaments.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-              {tournaments.map((t) => {
+              {filteredTournaments.map((t) => {
                 const statusStyle = getStatusStyle(t.status);
                 
                 return (
@@ -297,8 +314,16 @@ export default function OrganizerDashboard({ session }) {
           ) : (
             <div style={{ background: '#1a1a1a', padding: '60px', borderRadius: '10px', textAlign: 'center', border: '1px solid #2a2a2a' }}>
               <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎯</div>
-              <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem', color: '#fff' }}>Aucun tournoi créé</h3>
-              <p style={{ color: '#888', marginBottom: '30px' }}>Créez votre premier tournoi pour commencer à organiser</p>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem', color: '#fff' }}>
+                {tournaments.length === 0 
+                  ? 'Aucun tournoi créé' 
+                  : `Aucun tournoi ${activeFilter === 'draft' ? 'brouillon' : activeFilter === 'ongoing' ? 'en cours' : activeFilter === 'completed' ? 'terminé' : ''}`}
+              </h3>
+              <p style={{ color: '#888', marginBottom: '30px' }}>
+                {tournaments.length === 0 
+                  ? 'Créez votre premier tournoi pour commencer à organiser'
+                  : 'Essayez un autre filtre ou créez un nouveau tournoi'}
+              </p>
               <button 
                 onClick={() => navigate('/create-tournament')} 
                 style={{ 
@@ -312,7 +337,7 @@ export default function OrganizerDashboard({ session }) {
                   fontSize: '1rem'
                 }}
               >
-                + Créer mon Premier Tournoi
+                + Créer un Tournoi
               </button>
             </div>
           )}
