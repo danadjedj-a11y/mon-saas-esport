@@ -1112,7 +1112,9 @@ export default function Tournament({ session }) {
           
           <div style={{ borderTop: '1px solid #333', padding: '15px' }}>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>💬 Chat Lobby</h3>
-            <Chat tournamentId={id} session={session} supabase={supabase} />
+            <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+              <Chat tournamentId={id} session={session} supabase={supabase} />
+            </div>
           </div>
         </div>
 

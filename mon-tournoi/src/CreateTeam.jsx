@@ -7,31 +7,60 @@ export default function CreateTeam({ session, supabase }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const MAX_NAME_LENGTH = 50;
+  const MAX_TAG_LENGTH = 5;
+  const MIN_TAG_LENGTH = 2;
+
+  // Sanitizer pour les noms
+  const sanitizeInput = (text) => {
+    return text.trim().replace(/[<>]/g, '');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !tag) return alert("Nom et Tag obligatoires");
+    
+    const sanitizedName = sanitizeInput(name);
+    const sanitizedTag = sanitizeInput(tag);
+
+    if (!sanitizedName || !sanitizedTag) {
+      return alert("Nom et Tag obligatoires");
+    }
+
+    if (sanitizedName.length > MAX_NAME_LENGTH) {
+      return alert(`Le nom de l'équipe ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
+    }
+
+    if (sanitizedTag.length < MIN_TAG_LENGTH || sanitizedTag.length > MAX_TAG_LENGTH) {
+      return alert(`Le tag doit contenir entre ${MIN_TAG_LENGTH} et ${MAX_TAG_LENGTH} caractères`);
+    }
     
     setLoading(true);
 
-    // Création de l'équipe (L'utilisateur connecté devient automatiquement captain_id grâce à Supabase)
-    const { data, error } = await supabase
-      .from('teams')
-      .insert([
-        { 
-          name: name, 
-          tag: tag.toUpperCase(), // On force le tag en majuscules
-          captain_id: session.user.id 
-        }
-      ])
-      .select();
+    try {
+      // Création de l'équipe (L'utilisateur connecté devient automatiquement captain_id grâce à Supabase)
+      const { data, error } = await supabase
+        .from('teams')
+        .insert([
+          { 
+            name: sanitizedName, 
+            tag: sanitizedTag.toUpperCase().replace(/[^A-Z0-9]/g, ''), // On force le tag en majuscules et on enlève les caractères non alphanumériques
+            captain_id: session.user.id 
+          }
+        ])
+        .select();
 
-    if (error) {
-      alert("Erreur: " + error.message);
-    } else {
-      alert("Équipe créée avec succès !");
-      navigate('/dashboard'); // Retour au dashboard
+      if (error) {
+        alert("Erreur: " + error.message);
+      } else {
+        alert("Équipe créée avec succès !");
+        navigate('/player/dashboard');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la création de l\'équipe:', error);
+      alert('Erreur lors de la création de l\'équipe');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -51,21 +80,33 @@ export default function CreateTeam({ session, supabase }) {
             type="text" 
             placeholder="Ex: T1, Cloud9..." 
             value={name} 
-            onChange={e => setName(e.target.value)} 
+            onChange={e => {
+              const value = e.target.value;
+              if (value.length <= MAX_NAME_LENGTH) {
+                setName(value);
+              }
+            }}
+            maxLength={MAX_NAME_LENGTH}
             style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: 'white', borderRadius: '5px' }}
           />
+          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+            {name.length}/{MAX_NAME_LENGTH} caractères
+          </div>
         </div>
 
         <div>
-          <label style={{ display: 'block', marginBottom: '8px' }}>Tag (3-4 lettres)</label>
+          <label style={{ display: 'block', marginBottom: '8px' }}>Tag ({MIN_TAG_LENGTH}-{MAX_TAG_LENGTH} caractères)</label>
           <input 
             type="text" 
             placeholder="Ex: FNC" 
-            maxLength={5}
+            maxLength={MAX_TAG_LENGTH}
             value={tag} 
-            onChange={e => setTag(e.target.value)} 
+            onChange={e => setTag(e.target.value.replace(/[^A-Za-z0-9]/g, ''))} 
             style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: 'white', borderRadius: '5px', textTransform: 'uppercase' }}
           />
+          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+            {tag.length}/{MAX_TAG_LENGTH} caractères (lettres et chiffres uniquement)
+          </div>
         </div>
 
         <button 

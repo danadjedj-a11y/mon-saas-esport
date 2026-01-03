@@ -14,11 +14,45 @@ export default function CreateTournament({ session, supabase }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Limites de sécurité
+  const MAX_NAME_LENGTH = 100;
+  const MAX_RULES_LENGTH = 5000;
+  const MAX_MAPS_POOL_LENGTH = 500;
+  const MAX_PARTICIPANTS = 1000;
+  const MIN_PARTICIPANTS = 2;
+
+  // Sanitizer pour les inputs
+  const sanitizeInput = (text) => {
+    return text.trim().replace(/[<>]/g, '');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Validation des inputs
+      const sanitizedName = sanitizeInput(name);
+      if (!sanitizedName || sanitizedName.length > MAX_NAME_LENGTH) {
+        alert(`Le nom du tournoi est requis et ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
+        setLoading(false);
+        return;
+      }
+
+      if (rules && rules.length > MAX_RULES_LENGTH) {
+        alert(`Le règlement ne peut pas dépasser ${MAX_RULES_LENGTH} caractères`);
+        setLoading(false);
+        return;
+      }
+
+      if (maxParticipants) {
+        const maxPartsNum = parseInt(maxParticipants);
+        if (isNaN(maxPartsNum) || maxPartsNum < MIN_PARTICIPANTS || maxPartsNum > MAX_PARTICIPANTS) {
+          alert(`Le nombre maximum de participants doit être entre ${MIN_PARTICIPANTS} et ${MAX_PARTICIPANTS}`);
+          setLoading(false);
+          return;
+        }
+      }
       // Convertir la date locale en ISO string pour éviter le décalage d'heure
       // datetime-local renvoie "YYYY-MM-DDTHH:mm" sans timezone
       // On doit construire la date en considérant qu'elle est en heure locale
@@ -61,7 +95,7 @@ export default function CreateTournament({ session, supabase }) {
         .from('tournaments')
         .insert([
           { 
-            name, 
+            name: sanitizedName, 
             game, 
             start_date: startDateISO, 
             owner_id: session.user.id,
@@ -105,9 +139,18 @@ export default function CreateTournament({ session, supabase }) {
             type="text" 
             placeholder="Ex: Weekly Cup #42"
             value={name} 
-            onChange={e => setName(e.target.value)} 
+            onChange={e => {
+              const value = e.target.value;
+              if (value.length <= MAX_NAME_LENGTH) {
+                setName(value);
+              }
+            }}
+            maxLength={MAX_NAME_LENGTH}
             style={{ width: '100%', padding: '12px', background: '#252525', border: '1px solid #444', color: 'white', borderRadius: '8px' }} 
           />
+          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+            {name.length}/{MAX_NAME_LENGTH} caractères
+          </div>
         </div>
 
         {/* JEU */}
@@ -176,9 +219,18 @@ export default function CreateTournament({ session, supabase }) {
               type="text" 
               placeholder="Ex: Bind, Haven, Split, Ascent, Icebox (séparées par des virgules)"
               value={mapsPool} 
-              onChange={e => setMapsPool(e.target.value)} 
+              onChange={e => {
+                const value = e.target.value;
+                if (value.length <= MAX_MAPS_POOL_LENGTH) {
+                  setMapsPool(value);
+                }
+              }}
+              maxLength={MAX_MAPS_POOL_LENGTH}
               style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #f39c12', color: 'white', borderRadius: '8px' }} 
             />
+            <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+              {mapsPool.length}/{MAX_MAPS_POOL_LENGTH} caractères
+            </div>
             <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
               Liste les cartes disponibles pour le tournoi. Les équipes pourront bannir/picker des cartes avant chaque match.
               {game === 'Valorant' && ' Exemples: Bind, Haven, Split, Ascent, Icebox, Breeze, Fracture'}
@@ -205,11 +257,20 @@ export default function CreateTournament({ session, supabase }) {
           <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#ec7063'}}>📋 Règlement du Tournoi (Optionnel)</label>
           <textarea
             value={rules}
-            onChange={e => setRules(e.target.value)}
+            onChange={e => {
+              const value = e.target.value;
+              if (value.length <= MAX_RULES_LENGTH) {
+                setRules(value);
+              }
+            }}
+            maxLength={MAX_RULES_LENGTH}
             placeholder="Exemple:&#10;&#10;## Règles Générales&#10;- Les matchs sont en Best-of-3&#10;- Les screenshots de fin de partie sont obligatoires&#10;&#10;## Récompenses&#10;- 1er : 500€&#10;- 2e : 250€&#10;&#10;## Sanctions&#10;- Abandon = Disqualification&#10;- Retard de plus de 10 min = Forfait"
             rows={8}
             style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #e74c3c', color: 'white', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.9rem' }}
           />
+          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+            {rules.length}/{MAX_RULES_LENGTH} caractères
+          </div>
           <p style={{fontSize:'0.85rem', color:'#aaa', marginTop:'8px', fontStyle:'italic'}}>
             Rédigez le règlement en Markdown. Il sera visible sur la page publique du tournoi. Les équipes pourront le consulter avant de s'inscrire.
           </p>
@@ -223,11 +284,17 @@ export default function CreateTournament({ session, supabase }) {
             <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontSize:'0.9rem'}}>Nombre maximum d'équipes (Laisser vide = illimité)</label>
             <input 
               type="number" 
-              min="2"
+              min={MIN_PARTICIPANTS}
+              max={MAX_PARTICIPANTS}
               placeholder="Ex: 16, 32, 64..."
               value={maxParticipants}
-              onChange={e => setMaxParticipants(e.target.value)} 
-              style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #f39c12', color: 'white', borderRadius: '8px' }} 
+              onChange={e => {
+                const value = e.target.value;
+                if (value === '' || (parseInt(value) >= MIN_PARTICIPANTS && parseInt(value) <= MAX_PARTICIPANTS)) {
+                  setMaxParticipants(value);
+                }
+              }}
+              style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #f39c12', color: 'white', borderRadius: '8px' }}
             />
             <p style={{fontSize:'0.8rem', color:'#aaa', marginTop:'5px'}}>
               Si le nombre maximum est atteint, les équipes pourront s'inscrire sur une liste d'attente.

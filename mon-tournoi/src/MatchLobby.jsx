@@ -1303,11 +1303,13 @@ export default function MatchLobby({ session, supabase }) {
       </div>
 
       {/* COLONNE DROITE : CHAT */}
-      <div style={{ height: '600px', background: '#1a1a1a', borderRadius: '15px', border: '1px solid #333', overflow: 'hidden' }}>
-        <div style={{padding:'15px', borderBottom:'1px solid #333', background:'#222'}}>
+      <div style={{ height: '600px', background: '#1a1a1a', borderRadius: '15px', border: '1px solid #333', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{padding:'15px', borderBottom:'1px solid #333', background:'#222', flexShrink: 0}}>
             <h3 style={{margin:0}}>💬 Chat du Match</h3>
         </div>
-        <Chat matchId={id} session={session} supabase={supabase} />
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Chat matchId={id} session={session} supabase={supabase} />
+        </div>
       </div>
     </div>
   );
