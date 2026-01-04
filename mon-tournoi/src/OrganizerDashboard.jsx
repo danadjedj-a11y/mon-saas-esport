@@ -39,9 +39,18 @@ export default function OrganizerDashboard({ session }) {
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) toast.error("Erreur lors de la déconnexion");
-    else navigate('/');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Erreur lors de la déconnexion");
+      } else {
+        navigate('/');
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Erreur déconnexion:', err);
+      toast.error("Erreur lors de la déconnexion");
+    }
   };
 
   const deleteTournament = async (e, id) => {
@@ -64,13 +73,13 @@ export default function OrganizerDashboard({ session }) {
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'draft': return { bg: '#f39c12', text: 'Brouillon', icon: '📝' };
-      case 'completed': return { bg: '#7f8c8d', text: 'Terminé', icon: '🏁' };
-      default: return { bg: '#27ae60', text: 'En cours', icon: '⚔️' };
+      case 'draft': return { bg: '#E7632C', text: 'Brouillon', icon: '📝' };
+      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
+      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
     }
   };
 
-  if (loading) return <div style={{color:'white', padding:'20px'}}>Chargement...</div>;
+  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif"}}>Chargement...</div>;
 
   // Statistiques
   const draftCount = tournaments.filter(t => t.status === 'draft').length;
@@ -88,35 +97,100 @@ export default function OrganizerDashboard({ session }) {
       });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: 'white' }}>
+    <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2' }}>
       {/* HEADER */}
-      <div style={{ background: '#1a1a1a', borderBottom: '1px solid #2a2a2a', padding: '15px 30px' }}>
+      <div style={{ background: 'rgba(3, 9, 19, 0.95)', borderBottom: '3px solid #FF36A3', padding: '15px 30px', boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#8e44ad' }}>🎯 Mon Tournoi - Organisateur</h1>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🎯 Fluky Boys - Organisateur</h1>
             <nav style={{ display: 'flex', gap: '20px' }}>
-              <a href="#" style={{ color: '#8e44ad', textDecoration: 'none', fontWeight: 'bold' }}>Mes Tournois</a>
-              <a onClick={() => navigate('/create-tournament')} style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}>Créer un Tournoi</a>
+              <a href="#" style={{ color: '#FF36A3', textDecoration: 'none', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Mes Tournois</a>
+              <a onClick={() => navigate('/create-tournament')} style={{ color: '#F8F6F2', textDecoration: 'none', cursor: 'pointer', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#FF36A3'} onMouseLeave={(e) => e.currentTarget.style.color = '#F8F6F2'}>Créer un Tournoi</a>
             </nav>
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <NotificationCenter session={session} supabase={supabase} />
             <button 
+              type="button"
               onClick={() => navigate('/create-tournament')} 
-              style={{ padding: '10px 20px', background: '#8e44ad', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}
+              style={{ 
+                padding: '10px 20px', 
+                background: '#C10468', 
+                color: '#F8F6F2', 
+                border: '2px solid #FF36A3', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.95rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FF36A3';
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
               + Créer un Tournoi
             </button>
             <button 
+              type="button"
               onClick={() => navigate('/profile')} 
-              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #555', color: '#aaa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
+              style={{ 
+                padding: '8px 16px', 
+                background: 'transparent', 
+                border: '2px solid #FF36A3', 
+                color: '#F8F6F2', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FF36A3';
+                e.currentTarget.style.borderColor = '#C10468';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }}
             >
               Paramètres
             </button>
             <button 
+              type="button"
               onClick={handleLogout}
-              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #e74c3c', borderRadius: '6px', color: '#e74c3c', cursor: 'pointer', fontSize: '0.9rem' }}
+              style={{ 
+                padding: '8px 16px', 
+                background: 'transparent', 
+                border: '2px solid #C10468', 
+                borderRadius: '8px', 
+                color: '#F8F6F2', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#C10468';
+              }}
             >
               Déconnexion
             </button>
@@ -128,48 +202,59 @@ export default function OrganizerDashboard({ session }) {
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px' }}>
         {/* STATISTIQUES RAPIDES */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-          <div style={{ background: '#1a1a1a', padding: '25px', borderRadius: '10px', border: '1px solid #2a2a2a', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#8e44ad', marginBottom: '10px' }}>{tournaments.length}</div>
-            <div style={{ fontSize: '0.95rem', color: '#888' }}>Total Tournois</div>
+          <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '25px', borderRadius: '12px', border: '2px solid #FF36A3', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#FF36A3', marginBottom: '10px', fontFamily: "'Shadows Into Light', cursive" }}>{tournaments.length}</div>
+            <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Total Tournois</div>
           </div>
-          <div style={{ background: '#1a1a1a', padding: '25px', borderRadius: '10px', border: '1px solid #2a2a2a', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#27ae60', marginBottom: '10px' }}>{ongoingCount}</div>
-            <div style={{ fontSize: '0.95rem', color: '#888' }}>En cours</div>
+          <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '25px', borderRadius: '12px', border: '2px solid #FF36A3', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#C10468', marginBottom: '10px', fontFamily: "'Shadows Into Light', cursive" }}>{ongoingCount}</div>
+            <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>En cours</div>
           </div>
-          <div style={{ background: '#1a1a1a', padding: '25px', borderRadius: '10px', border: '1px solid #2a2a2a', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#f39c12', marginBottom: '10px' }}>{draftCount}</div>
-            <div style={{ fontSize: '0.95rem', color: '#888' }}>Brouillons</div>
+          <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '25px', borderRadius: '12px', border: '2px solid #FF36A3', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#E7632C', marginBottom: '10px', fontFamily: "'Shadows Into Light', cursive" }}>{draftCount}</div>
+            <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Brouillons</div>
           </div>
-          <div style={{ background: '#1a1a1a', padding: '25px', borderRadius: '10px', border: '1px solid #2a2a2a', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#7f8c8d', marginBottom: '10px' }}>{completedCount}</div>
-            <div style={{ fontSize: '0.95rem', color: '#888' }}>Terminés</div>
+          <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '25px', borderRadius: '12px', border: '2px solid #FF36A3', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#FF36A3', marginBottom: '10px', fontFamily: "'Shadows Into Light', cursive" }}>{completedCount}</div>
+            <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Terminés</div>
           </div>
         </div>
 
         {/* ACTIONS RAPIDES */}
-        <div style={{ background: 'linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%)', padding: '25px', borderRadius: '10px', marginBottom: '40px', border: '1px solid #8e44ad' }}>
+        <div style={{ background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.3) 0%, rgba(255, 54, 163, 0.2) 100%)', padding: '25px', borderRadius: '12px', marginBottom: '40px', border: '2px solid #FF36A3' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '1.3rem', color: 'white' }}>🚀 Prêt à créer un nouveau tournoi ?</h3>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🚀 Prêt à créer un nouveau tournoi ?</h3>
+              <p style={{ margin: 0, color: '#F8F6F2', fontSize: '0.95rem', fontFamily: "'Protest Riot', sans-serif" }}>
                 Organisez votre événement en quelques clics
               </p>
             </div>
             <button 
+              type="button"
               onClick={() => navigate('/create-tournament')} 
               style={{ 
                 padding: '12px 30px', 
-                background: 'white', 
-                color: '#8e44ad', 
-                border: 'none', 
-                borderRadius: '6px', 
+                background: '#C10468', 
+                color: '#F8F6F2', 
+                border: '2px solid #FF36A3', 
+                borderRadius: '8px', 
                 cursor: 'pointer', 
-                fontWeight: 'bold', 
+                fontFamily: "'Shadows Into Light', cursive",
                 fontSize: '1rem',
-                transition: 'transform 0.2s'
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+                e.currentTarget.style.background = '#FF36A3';
+                e.currentTarget.style.borderColor = '#C10468';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }}
             >
               Créer un Tournoi
             </button>
@@ -179,49 +264,97 @@ export default function OrganizerDashboard({ session }) {
         {/* LISTE DES TOURNOIS */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#8e44ad' }}>Mes Tournois</h2>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>Mes Tournois</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
+                type="button"
                 onClick={() => setActiveFilter('draft')}
                 style={{ 
                   padding: '8px 16px', 
-                  background: activeFilter === 'draft' ? '#f39c12' : (draftCount > 0 ? '#3a2a1a' : '#2a2a2a'), 
-                  color: 'white', 
-                  border: activeFilter === 'draft' ? '2px solid #f39c12' : 'none', 
-                  borderRadius: '6px', 
+                  background: activeFilter === 'draft' ? '#E7632C' : 'transparent', 
+                  color: '#F8F6F2', 
+                  border: activeFilter === 'draft' ? '2px solid #E7632C' : '2px solid #FF36A3', 
+                  borderRadius: '8px', 
                   cursor: 'pointer',
+                  fontFamily: "'Shadows Into Light', cursive",
                   fontSize: '0.9rem',
-                  fontWeight: activeFilter === 'draft' ? 'bold' : 'normal'
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeFilter !== 'draft') {
+                    e.currentTarget.style.background = '#C10468';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeFilter !== 'draft') {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }
                 }}
               >
                 Brouillons ({draftCount})
               </button>
               <button 
+                type="button"
                 onClick={() => setActiveFilter('ongoing')}
                 style={{ 
                   padding: '8px 16px', 
-                  background: activeFilter === 'ongoing' ? '#27ae60' : (ongoingCount > 0 ? '#1a3a1a' : '#2a2a2a'), 
-                  color: 'white', 
-                  border: activeFilter === 'ongoing' ? '2px solid #27ae60' : 'none', 
-                  borderRadius: '6px', 
+                  background: activeFilter === 'ongoing' ? '#C10468' : 'transparent', 
+                  color: '#F8F6F2', 
+                  border: activeFilter === 'ongoing' ? '2px solid #C10468' : '2px solid #FF36A3', 
+                  borderRadius: '8px', 
                   cursor: 'pointer',
+                  fontFamily: "'Shadows Into Light', cursive",
                   fontSize: '0.9rem',
-                  fontWeight: activeFilter === 'ongoing' ? 'bold' : 'normal'
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeFilter !== 'ongoing') {
+                    e.currentTarget.style.background = '#C10468';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeFilter !== 'ongoing') {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }
                 }}
               >
                 En cours ({ongoingCount})
               </button>
               <button 
+                type="button"
                 onClick={() => setActiveFilter('completed')}
                 style={{ 
                   padding: '8px 16px', 
-                  background: activeFilter === 'completed' ? '#7f8c8d' : (completedCount > 0 ? '#2a2a2a' : '#2a2a2a'), 
-                  color: 'white', 
-                  border: activeFilter === 'completed' ? '2px solid #7f8c8d' : 'none', 
-                  borderRadius: '6px', 
+                  background: activeFilter === 'completed' ? '#FF36A3' : 'transparent', 
+                  color: '#F8F6F2', 
+                  border: activeFilter === 'completed' ? '2px solid #FF36A3' : '2px solid #FF36A3', 
+                  borderRadius: '8px', 
                   cursor: 'pointer',
+                  fontFamily: "'Shadows Into Light', cursive",
                   fontSize: '0.9rem',
-                  fontWeight: activeFilter === 'completed' ? 'bold' : 'normal'
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeFilter !== 'completed') {
+                    e.currentTarget.style.background = '#C10468';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeFilter !== 'completed') {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }
                 }}
               >
                 Terminés ({completedCount})
@@ -239,33 +372,33 @@ export default function OrganizerDashboard({ session }) {
                     key={t.id} 
                     onClick={() => navigate(`/organizer/tournament/${t.id}`)}
                     style={{ 
-                      background: '#1a1a1a', 
+                      background: 'rgba(3, 9, 19, 0.9)', 
                       padding: '25px', 
-                      borderRadius: '10px', 
-                      border: '1px solid #2a2a2a', 
+                      borderRadius: '12px', 
+                      border: '2px solid #FF36A3', 
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'all 0.3s ease',
                       position: 'relative'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#8e44ad';
+                      e.currentTarget.style.borderColor = '#C10468';
                       e.currentTarget.style.transform = 'translateY(-3px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(142, 68, 173, 0.2)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#2a2a2a';
+                      e.currentTarget.style.borderColor = '#FF36A3';
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
                       <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', color: '#fff' }}>{t.name}</h3>
-                        <div style={{ fontSize: '0.85rem', color: '#888', display: 'flex', gap: '15px', marginTop: '8px' }}>
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{t.name}</h3>
+                        <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
                           <span>🎮 {t.game}</span>
                           <span>📊 {t.format}</span>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#F8F6F2', marginTop: '10px', fontFamily: "'Protest Riot', sans-serif" }}>
                           Créé le {new Date(t.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
                       </div>
@@ -275,35 +408,43 @@ export default function OrganizerDashboard({ session }) {
                         borderRadius: '6px', 
                         fontSize: '0.85rem', 
                         fontWeight: 'bold',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        color: '#F8F6F2',
+                        fontFamily: "'Protest Riot', sans-serif"
                       }}>
                         {statusStyle.icon} {statusStyle.text}
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #2a2a2a' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #FF36A3' }}>
                       <button 
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteTournament(e, t.id);
                         }}
                         style={{ 
                           background: 'transparent', 
-                          border: '1px solid #e74c3c', 
-                          color: '#e74c3c',
+                          border: '2px solid #C10468', 
+                          color: '#F8F6F2',
                           padding: '6px 12px', 
-                          borderRadius: '5px', 
+                          borderRadius: '8px', 
                           cursor: 'pointer', 
+                          fontFamily: "'Shadows Into Light', cursive",
                           fontSize: '0.85rem',
-                          transition: 'all 0.2s'
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          transition: 'all 0.3s ease'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#e74c3c';
-                          e.currentTarget.style.color = 'white';
+                          e.currentTarget.style.background = '#C10468';
+                          e.currentTarget.style.borderColor = '#FF36A3';
+                          e.currentTarget.style.color = '#F8F6F2';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.color = '#e74c3c';
+                          e.currentTarget.style.borderColor = '#C10468';
+                          e.currentTarget.style.color = '#F8F6F2';
                         }}
                       >
                         🗑️ Supprimer
@@ -314,29 +455,43 @@ export default function OrganizerDashboard({ session }) {
               })}
             </div>
           ) : (
-            <div style={{ background: '#1a1a1a', padding: '60px', borderRadius: '10px', textAlign: 'center', border: '1px solid #2a2a2a' }}>
+            <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '60px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
               <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎯</div>
-              <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem', color: '#fff' }}>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '1.3rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
                 {tournaments.length === 0 
                   ? 'Aucun tournoi créé' 
                   : `Aucun tournoi ${activeFilter === 'draft' ? 'brouillon' : activeFilter === 'ongoing' ? 'en cours' : activeFilter === 'completed' ? 'terminé' : ''}`}
               </h3>
-              <p style={{ color: '#888', marginBottom: '30px' }}>
+              <p style={{ color: '#F8F6F2', marginBottom: '30px', fontFamily: "'Protest Riot', sans-serif" }}>
                 {tournaments.length === 0 
                   ? 'Créez votre premier tournoi pour commencer à organiser'
                   : 'Essayez un autre filtre ou créez un nouveau tournoi'}
               </p>
               <button 
+                type="button"
                 onClick={() => navigate('/create-tournament')} 
                 style={{ 
                   padding: '12px 30px', 
-                  background: '#8e44ad', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
+                  background: '#C10468', 
+                  color: '#F8F6F2', 
+                  border: '2px solid #FF36A3', 
+                  borderRadius: '8px', 
                   cursor: 'pointer', 
-                  fontWeight: 'bold', 
-                  fontSize: '1rem'
+                  fontFamily: "'Shadows Into Light', cursive",
+                  fontSize: '1rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#FF36A3';
+                  e.currentTarget.style.borderColor = '#C10468';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#C10468';
+                  e.currentTarget.style.borderColor = '#FF36A3';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
                 + Créer un Tournoi

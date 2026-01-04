@@ -125,28 +125,99 @@ export default function MyTeam({ session, supabase }) {
     fetchMembers(currentTeam.id); // Rafraîchir juste la liste des membres
   };
 
-  if (loading) return <div style={{color:'white', padding:'20px'}}>Chargement...</div>;
+  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif", minHeight: '100vh'}}>Chargement...</div>;
 
   if (allTeams.length === 0) return (
-    <div style={{color:'white', textAlign:'center', marginTop:'50px'}}>
-      <h2>Tu n'as pas encore d'équipe.</h2>
-      <button onClick={() => navigate('/create-team')} style={{padding:'10px 20px', background:'#8e44ad', color:'white', border:'none', borderRadius:'5px', cursor:'pointer', marginTop:'20px'}}>Créer une Team</button>
+    <div style={{color:'#F8F6F2', textAlign:'center', marginTop:'50px', background: '#030913', minHeight: '100vh', padding: '40px'}}>
+      <h2 style={{fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '2rem'}}>Tu n'as pas encore d'équipe.</h2>
+      <button 
+        type="button"
+        onClick={() => navigate('/create-team')} 
+        style={{
+          padding:'10px 20px', 
+          background:'#C10468', 
+          color:'#F8F6F2', 
+          border:'2px solid #FF36A3', 
+          borderRadius:'8px', 
+          cursor:'pointer', 
+          marginTop:'20px',
+          fontFamily: "'Shadows Into Light', cursive",
+          fontSize: '1rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+          transition: 'all 0.3s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#FF36A3';
+          e.currentTarget.style.borderColor = '#C10468';
+          e.currentTarget.style.transform = 'translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#C10468';
+          e.currentTarget.style.borderColor = '#FF36A3';
+          e.currentTarget.style.transform = 'translateY(0)';
+        }}
+      >
+        Créer une Team
+      </button>
     </div>
   );
 
   const isCaptain = currentTeam?.captain_id === session.user.id;
 
   return (
-    <div style={{ padding: '40px', color: 'white', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '40px 20px', color: '#F8F6F2', maxWidth: '600px', margin: '0 auto', background: '#030913' }}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-        <button onClick={() => navigate('/dashboard')} style={{background:'transparent', border:'1px solid #444', color:'#888', padding:'5px 10px', borderRadius:'4px', cursor:'pointer'}}>← Retour</button>
+        <button 
+          type="button"
+          onClick={() => navigate('/dashboard')} 
+          style={{
+            background:'transparent', 
+            border:'2px solid #C10468', 
+            color:'#F8F6F2', 
+            padding:'8px 16px', 
+            borderRadius:'8px', 
+            cursor:'pointer',
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '0.9rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#C10468';
+            e.currentTarget.style.borderColor = '#FF36A3';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = '#C10468';
+          }}
+        >
+          ← Retour
+        </button>
         
         {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
         {allTeams.length > 1 && (
             <select 
                 value={currentTeam.id} 
                 onChange={(e) => handleTeamSwitch(e.target.value)}
-                style={{ padding:'8px', background:'#222', color:'white', border:'1px solid #444', borderRadius:'5px' }}
+                style={{ 
+                  padding:'8px', 
+                  background:'rgba(3, 9, 19, 0.8)', 
+                  color:'#F8F6F2', 
+                  border:'2px solid #C10468', 
+                  borderRadius:'8px',
+                  fontFamily: "'Protest Riot', sans-serif",
+                  transition: 'all 0.3s ease'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#FF36A3';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#C10468';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
             >
                 {allTeams.map(t => (
                     <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
@@ -155,7 +226,7 @@ export default function MyTeam({ session, supabase }) {
         )}
       </div>
       
-      <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
+      <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
         
         {/* EN-TÊTE AVEC LOGO */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' }}>
@@ -163,17 +234,27 @@ export default function MyTeam({ session, supabase }) {
                 <img 
                   src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`} 
                   alt="Team Logo" 
-                  style={{ width: '100%', height: '100%', borderRadius: '15px', objectFit: 'cover', border: '2px solid #333' }}
+                  style={{ width: '100%', height: '100%', borderRadius: '15px', objectFit: 'cover', border: '2px solid #FF36A3' }}
                 />
                 
                 {isCaptain && (
                   <>
                     <label htmlFor="logo-upload" style={{
                       position: 'absolute', bottom: '-5px', right: '-5px', 
-                      background: '#00d4ff', color: 'black', width: '30px', height: '30px', 
+                      background: '#FF36A3', color: '#F8F6F2', width: '30px', height: '30px', 
                       borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                      cursor: 'pointer', border: '2px solid #1a1a1a', fontWeight:'bold', fontSize:'1.2rem'
-                    }}>
+                      cursor: 'pointer', border: '2px solid #030913', fontWeight:'bold', fontSize:'1.2rem',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#C10468';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#FF36A3';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    >
                       {uploading ? '⏳' : '+'}
                     </label>
                     <input 
@@ -189,33 +270,86 @@ export default function MyTeam({ session, supabase }) {
             </div>
 
             <div style={{ flex: 1, overflow: 'hidden' }}>
-                <h1 style={{ margin: 0, color: 'white', fontSize: '2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentTeam.name}</h1>
-                <span style={{ fontSize: '1rem', color: '#00d4ff', fontWeight: 'bold' }}>[{currentTeam.tag}]</span>
+                <h1 style={{ margin: 0, color: '#F8F6F2', fontSize: '2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: "'Shadows Into Light', cursive" }}>{currentTeam.name}</h1>
+                <span style={{ fontSize: '1rem', color: '#FF36A3', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>[{currentTeam.tag}]</span>
             </div>
 
-            <button onClick={copyInviteLink} style={{ background: '#27ae60', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+            <button 
+              type="button"
+              onClick={copyInviteLink} 
+              style={{ 
+                background: '#C10468', 
+                color: '#F8F6F2', 
+                border: '2px solid #FF36A3', 
+                padding: '10px 15px', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontWeight: 'bold', 
+                whiteSpace: 'nowrap',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FF36A3';
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
               🔗 Inviter
             </button>
         </div>
 
         {/* LISTE DES MEMBRES */}
-        <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '10px' }}>Roster ({members.length})</h3>
+        <h3 style={{ borderBottom: '2px solid #FF36A3', paddingBottom: '10px', fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '1.5rem' }}>Roster ({members.length})</h3>
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {members.map(m => (
-            <li key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #222' }}>
+            <li key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid rgba(255, 54, 163, 0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <img 
                   src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`} 
-                  style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit:'cover' }} alt="" 
+                  style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit:'cover', border: '2px solid #FF36A3' }} alt="" 
                 />
-                <span style={{color: m.user_id === session.user.id ? '#4ade80' : 'white'}}>
+                <span style={{color: m.user_id === session.user.id ? '#FF36A3' : '#F8F6F2', fontFamily: "'Protest Riot', sans-serif"}}>
                   {m.profiles?.username || 'Joueur sans pseudo'} 
-                  {m.role === 'captain' && <span style={{ marginLeft: '10px', fontSize: '0.7rem', background: '#f1c40f', color: 'black', padding: '2px 6px', borderRadius: '4px' }}>CAPTAIN</span>}
+                  {m.role === 'captain' && <span style={{ marginLeft: '10px', fontSize: '0.7rem', background: '#E7632C', color: '#F8F6F2', padding: '2px 6px', borderRadius: '4px', fontFamily: "'Protest Riot', sans-serif" }}>CAPTAIN</span>}
                 </span>
               </div>
               
               {isCaptain && m.user_id !== session.user.id && (
-                <button onClick={() => kickMember(m.user_id)} style={{ background: '#c0392b', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Exclure</button>
+                <button 
+                  type="button"
+                  onClick={() => kickMember(m.user_id)} 
+                  style={{ 
+                    background: 'transparent', 
+                    color: '#F8F6F2', 
+                    border: '2px solid #C10468', 
+                    padding: '5px 10px', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer', 
+                    fontSize: '0.8rem',
+                    fontFamily: "'Shadows Into Light', cursive",
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#C10468';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = '#C10468';
+                  }}
+                >
+                  Exclure
+                </button>
               )}
             </li>
           ))}

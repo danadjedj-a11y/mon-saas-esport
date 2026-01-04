@@ -827,14 +827,14 @@ export default function Tournament({ session }) {
   // 4. RENDU (UI)
   // ==============================================================================
 
-  if (loading) return <div style={{color:'white', padding:'20px'}}>Chargement...</div>;
-  if (!tournoi) return <div style={{color:'white'}}>Tournoi introuvable</div>;
+  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif", minHeight: '100vh'}}>Chargement...</div>;
+  if (!tournoi) return <div style={{color:'#F8F6F2', background: '#030913', minHeight: '100vh', padding: '20px', fontFamily: "'Protest Riot', sans-serif"}}>Tournoi introuvable</div>;
 
   return (
-    <div style={{ padding: '20px', color: 'white', maxWidth: '100%', margin: '0 auto', fontFamily: 'Arial' }}>
+    <div style={{ padding: '20px', color: '#F8F6F2', maxWidth: '100%', margin: '0 auto', background: '#030913', minHeight: '100vh' }}>
       
       {/* --- HEADER --- */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #333', paddingBottom:'20px', marginBottom:'30px'}}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'3px solid #FF36A3', paddingBottom:'20px', marginBottom:'30px'}}>
         <div>
            <button onClick={() => {
              if (isOrganizerView) {
@@ -849,41 +849,92 @@ export default function Tournament({ session }) {
                  navigate('/player/dashboard');
                }
              }
-           }} style={{background:'transparent', border:'1px solid #444', color:'#888', padding:'5px 10px', borderRadius:'4px', cursor:'pointer', marginBottom:'10px'}}>← Retour</button>
-           <h1 style={{ margin: 0, color: '#00d4ff' }}>{tournoi.name}</h1>
+           }} style={{
+             background:'transparent', 
+             border:'2px solid #C10468', 
+             color:'#F8F6F2', 
+             padding:'8px 16px', 
+             borderRadius:'8px', 
+             cursor:'pointer', 
+             marginBottom:'10px',
+             fontFamily: "'Shadows Into Light', cursive",
+             fontSize: '0.9rem',
+             textTransform: 'uppercase',
+             letterSpacing: '0.5px',
+             transition: 'all 0.3s ease'
+           }}
+           onMouseEnter={(e) => {
+             e.currentTarget.style.background = '#C10468';
+             e.currentTarget.style.borderColor = '#FF36A3';
+           }}
+           onMouseLeave={(e) => {
+             e.currentTarget.style.background = 'transparent';
+             e.currentTarget.style.borderColor = '#C10468';
+           }}
+           >← Retour</button>
+           <h1 style={{ margin: 0, color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>{tournoi.name}</h1>
         </div>
         <div style={{textAlign:'right', display:'flex', flexDirection:'column', gap:'10px', alignItems:'flex-end'}}>
-           <div style={{fontWeight:'bold', color: tournoi.status === 'draft' ? 'orange' : '#4ade80'}}>
+           <div style={{fontWeight:'bold', color: tournoi.status === 'draft' ? '#E7632C' : '#C10468', fontFamily: "'Protest Riot', sans-serif"}}>
              {winnerName ? '🏆 TERMINÉ' : (tournoi.status === 'draft' ? '🟠 Inscriptions Ouvertes' : '🟢 En cours')}
            </div>
            <div style={{display:'flex', gap:'10px'}}>
              <button 
+               type="button"
                onClick={copyPublicLink} 
                style={{
-                 background:'#3498db', 
-                 color:'white', 
-                 border:'none', 
+                 background:'#C10468', 
+                 color:'#F8F6F2', 
+                 border:'2px solid #FF36A3', 
+                 fontFamily: "'Shadows Into Light', cursive",
+                 textTransform: 'uppercase',
+                 letterSpacing: '0.5px',
+                 transition: 'all 0.3s ease',
                  padding:'8px 16px', 
-                 borderRadius:'4px', 
+                 borderRadius:'8px', 
                  cursor:'pointer', 
                  fontSize:'0.9rem',
                  fontWeight:'bold'
+               }}
+               onMouseEnter={(e) => {
+                 e.currentTarget.style.background = '#FF36A3';
+                 e.currentTarget.style.borderColor = '#C10468';
+                 e.currentTarget.style.transform = 'translateY(-2px)';
+               }}
+               onMouseLeave={(e) => {
+                 e.currentTarget.style.background = '#C10468';
+                 e.currentTarget.style.borderColor = '#FF36A3';
+                 e.currentTarget.style.transform = 'translateY(0)';
                }}
              >
                🔗 Lien Public
              </button>
              {tournoi.status === 'completed' && (
                <button 
+                 type="button"
                  onClick={exportToPDF} 
                  style={{
-                   background:'#e74c3c', 
-                   color:'white', 
-                   border:'none', 
+                   background:'#C10468', 
+                   color:'#F8F6F2', 
+                   border:'2px solid #FF36A3', 
                    padding:'8px 16px', 
-                   borderRadius:'4px', 
+                   borderRadius:'8px', 
                    cursor:'pointer', 
+                   fontFamily: "'Shadows Into Light', cursive",
                    fontSize:'0.9rem',
-                   fontWeight:'bold'
+                   textTransform: 'uppercase',
+                   letterSpacing: '0.5px',
+                   transition: 'all 0.3s ease'
+                 }}
+                 onMouseEnter={(e) => {
+                   e.currentTarget.style.background = '#FF36A3';
+                   e.currentTarget.style.borderColor = '#C10468';
+                   e.currentTarget.style.transform = 'translateY(-2px)';
+                 }}
+                 onMouseLeave={(e) => {
+                   e.currentTarget.style.background = '#C10468';
+                   e.currentTarget.style.borderColor = '#FF36A3';
+                   e.currentTarget.style.transform = 'translateY(0)';
                  }}
                >
                  📄 Export PDF
@@ -894,20 +945,20 @@ export default function Tournament({ session }) {
       </div>
 
       {winnerName && (
-          <div style={{background: 'linear-gradient(45deg, #FFD700, #FFA500)', color:'black', padding:'20px', borderRadius:'8px', textAlign:'center', marginBottom:'30px'}}>
-              <h2 style={{margin:0}}>👑 VAINQUEUR : {winnerName} 👑</h2>
+          <div style={{background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.3) 0%, rgba(255, 54, 163, 0.2) 100%)', color:'#F8F6F2', padding:'20px', borderRadius:'12px', textAlign:'center', marginBottom:'30px', border: '2px solid #FF36A3'}}>
+              <h2 style={{margin:0, fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '1.8rem'}}>👑 VAINQUEUR : {winnerName} 👑</h2>
           </div>
       )}
 
       {/* --- RÈGLEMENT --- */}
       {tournoi.rules && (
-        <div style={{ background: '#1a1a1a', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: '1px solid #333' }}>
-          <h3 style={{ margin: '0 0 15px 0', color: '#00d4ff', borderBottom: '1px solid #444', paddingBottom: '10px' }}>📋 Règlement du Tournoi</h3>
+        <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
+          <h3 style={{ margin: '0 0 15px 0', color: '#FF36A3', borderBottom: '2px solid #FF36A3', paddingBottom: '10px', fontFamily: "'Shadows Into Light', cursive" }}>📋 Règlement du Tournoi</h3>
           <div style={{ 
-            color: '#ddd', 
+            color: '#F8F6F2', 
             lineHeight: '1.6', 
             whiteSpace: 'pre-wrap',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: "'Protest Riot', sans-serif",
             fontSize: '0.95rem'
           }}>
             {tournoi.rules}
@@ -917,9 +968,9 @@ export default function Tournament({ session }) {
 
       {/* --- INFORMATIONS D'INSCRIPTION --- */}
       {(tournoi.max_participants || tournoi.registration_deadline) && tournoi.status === 'draft' && (
-        <div style={{ background: '#2a2a2a', padding: '15px', borderRadius: '8px', marginBottom: '30px', borderLeft: '4px solid #f39c12' }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#f7dc6f' }}>🚪 Informations d'Inscription</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#ccc' }}>
+        <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '15px', borderRadius: '12px', marginBottom: '30px', borderLeft: '4px solid #E7632C', border: '2px solid #FF36A3' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🚪 Informations d'Inscription</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
             {tournoi.max_participants && (
               <div>
                 <strong>Nombre maximum d'équipes :</strong> {tournoi.max_participants} ({participants.length} inscrites)

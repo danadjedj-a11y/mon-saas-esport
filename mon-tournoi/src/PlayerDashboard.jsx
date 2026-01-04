@@ -101,50 +101,144 @@ export default function PlayerDashboard({ session }) {
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) alert("Erreur lors de la déconnexion");
-    else navigate('/');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erreur déconnexion:', error);
+      } else {
+        navigate('/');
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Erreur déconnexion:', err);
+    }
   };
 
-  if (loading) return <div style={{color:'white', padding:'20px'}}>Chargement...</div>;
+  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif"}}>Chargement...</div>;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: 'white' }}>
+    <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2' }}>
       {/* HEADER */}
-      <div style={{ background: '#1a1a1a', borderBottom: '1px solid #2a2a2a', padding: '15px 30px' }}>
+      <div style={{ background: 'rgba(3, 9, 19, 0.95)', borderBottom: '3px solid #FF36A3', padding: '15px 30px', boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#3498db' }}>⚔️ Mon Tournoi - Joueur</h1>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>⚔️ Fluky Boys - Joueur</h1>
             <nav style={{ display: 'flex', gap: '20px' }}>
-              <a href="#" style={{ color: '#3498db', textDecoration: 'none', fontWeight: 'bold' }}>Mes Tournois</a>
-              <a onClick={() => navigate('/stats')} style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}>Statistiques</a>
-              <a onClick={() => navigate('/leaderboard')} style={{ color: '#888', textDecoration: 'none', cursor: 'pointer' }}>Classement</a>
+              <a href="#" style={{ color: '#FF36A3', textDecoration: 'none', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Mes Tournois</a>
+              <a onClick={() => navigate('/stats')} style={{ color: '#F8F6F2', textDecoration: 'none', cursor: 'pointer', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#FF36A3'} onMouseLeave={(e) => e.currentTarget.style.color = '#F8F6F2'}>Statistiques</a>
+              <a onClick={() => navigate('/leaderboard')} style={{ color: '#F8F6F2', textDecoration: 'none', cursor: 'pointer', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#FF36A3'} onMouseLeave={(e) => e.currentTarget.style.color = '#F8F6F2'}>Classement</a>
             </nav>
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <NotificationCenter session={session} supabase={supabase} />
             <button 
+              type="button"
               onClick={() => navigate('/create-team')} 
-              style={{ padding: '8px 16px', background: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+              style={{ 
+                padding: '8px 16px', 
+                background: '#C10468', 
+                color: '#F8F6F2', 
+                border: '2px solid #FF36A3', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FF36A3';
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
               🛡️ Créer une Team
             </button>
             <button 
+              type="button"
               onClick={() => navigate('/my-team')} 
-              style={{ padding: '8px 16px', background: '#34495e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+              style={{ 
+                padding: '8px 16px', 
+                background: 'transparent', 
+                color: '#F8F6F2', 
+                border: '2px solid #C10468', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#C10468';
+              }}
             >
               Mon Équipe
             </button>
             <button 
+              type="button"
               onClick={() => navigate('/profile')} 
-              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #555', color: '#aaa', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
+              style={{ 
+                padding: '8px 16px', 
+                background: 'transparent', 
+                border: '2px solid #FF36A3', 
+                color: '#F8F6F2', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FF36A3';
+                e.currentTarget.style.borderColor = '#C10468';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }}
             >
               Profil
             </button>
             <button 
+              type="button"
               onClick={handleLogout}
-              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #e74c3c', borderRadius: '6px', color: '#e74c3c', cursor: 'pointer', fontSize: '0.9rem' }}
+              style={{ 
+                padding: '8px 16px', 
+                background: 'transparent', 
+                border: '2px solid #C10468', 
+                borderRadius: '8px', 
+                color: '#F8F6F2', 
+                cursor: 'pointer', 
+                fontFamily: "'Shadows Into Light', cursive",
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#C10468';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = '#C10468';
+              }}
             >
               Déconnexion
             </button>
@@ -157,40 +251,42 @@ export default function PlayerDashboard({ session }) {
         {/* MATCHS À VENIR - EN HAUT */}
         {upcomingMatches.length > 0 && (
           <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ marginBottom: '20px', fontSize: '1.3rem', color: '#3498db' }}>⚡ Mes Prochains Matchs</h2>
+            <h2 style={{ marginBottom: '20px', fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>⚡ Mes Prochains Matchs</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '15px' }}>
               {upcomingMatches.map((match) => (
                 <div
                   key={match.id}
                   onClick={() => navigate(`/match/${match.id}`)}
                   style={{
-                    background: '#1a1a1a',
+                    background: 'rgba(3, 9, 19, 0.9)',
                     padding: '20px',
-                    borderRadius: '10px',
-                    border: '1px solid #2a2a2a',
+                    borderRadius: '12px',
+                    border: '2px solid #FF36A3',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.3s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#3498db';
+                    e.currentTarget.style.borderColor = '#C10468';
                     e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#2a2a2a';
+                    e.currentTarget.style.borderColor = '#FF36A3';
                     e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3' }}>
                       {match.tournaments?.name || 'Tournoi'}
                     </div>
                     {match.scheduled_at && (
-                      <div style={{ fontSize: '0.85rem', color: '#888', background: '#252525', padding: '5px 10px', borderRadius: '5px' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', background: '#C10468', padding: '5px 10px', borderRadius: '5px', fontFamily: "'Protest Riot', sans-serif" }}>
                         📅 {new Date(match.scheduled_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
                     Round {match.round_number} • Match #{match.match_number}
                   </div>
                 </div>
@@ -203,8 +299,8 @@ export default function PlayerDashboard({ session }) {
           {/* COLONNE GAUCHE : MES TOURNOIS */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#3498db' }}>🎯 Mes Tournois</h2>
-              <span style={{ fontSize: '0.9rem', color: '#888' }}>{myTournaments.length} tournoi(s)</span>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🎯 Mes Tournois</h2>
+              <span style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>{myTournaments.length} tournoi(s)</span>
             </div>
 
             {myTournaments.length > 0 ? (
@@ -212,9 +308,9 @@ export default function PlayerDashboard({ session }) {
                 {myTournaments.map((t) => {
                   const getStatusStyle = (status) => {
                     switch (status) {
-                      case 'draft': return { bg: '#f39c12', text: 'Inscriptions', icon: '📝' };
-                      case 'completed': return { bg: '#7f8c8d', text: 'Terminé', icon: '🏁' };
-                      default: return { bg: '#27ae60', text: 'En cours', icon: '⚔️' };
+                      case 'draft': return { bg: '#E7632C', text: 'Inscriptions', icon: '📝' };
+                      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
+                      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
                     }
                   };
                   const statusStyle = getStatusStyle(t.status);
@@ -224,26 +320,28 @@ export default function PlayerDashboard({ session }) {
                       key={t.id} 
                       onClick={() => navigate(`/player/tournament/${t.id}`)}
                       style={{ 
-                        background: '#1a1a1a', 
+                        background: 'rgba(3, 9, 19, 0.9)', 
                         padding: '20px', 
-                        borderRadius: '10px', 
-                        border: '1px solid #2a2a2a', 
+                        borderRadius: '12px', 
+                        border: '2px solid #FF36A3', 
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        transition: 'all 0.3s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#3498db';
+                        e.currentTarget.style.borderColor = '#C10468';
                         e.currentTarget.style.transform = 'translateX(5px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(193, 4, 104, 0.3)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#2a2a2a';
+                        e.currentTarget.style.borderColor = '#FF36A3';
                         e.currentTarget.style.transform = 'translateX(0)';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                         <div style={{ flex: 1 }}>
-                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#fff' }}>{t.name}</h3>
-                          <div style={{ fontSize: '0.85rem', color: '#888', display: 'flex', gap: '15px', marginTop: '8px' }}>
+                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{t.name}</h3>
+                          <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
                             <span>🎮 {t.game}</span>
                             <span>📊 {t.format}</span>
                           </div>
@@ -254,7 +352,9 @@ export default function PlayerDashboard({ session }) {
                           borderRadius: '5px', 
                           fontSize: '0.8rem', 
                           fontWeight: 'bold',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          color: '#F8F6F2',
+                          fontFamily: "'Protest Riot', sans-serif"
                         }}>
                           {statusStyle.icon} {statusStyle.text}
                         </span>
@@ -264,10 +364,10 @@ export default function PlayerDashboard({ session }) {
                 })}
               </div>
             ) : (
-              <div style={{ background: '#1a1a1a', padding: '40px', borderRadius: '10px', textAlign: 'center', border: '1px solid #2a2a2a' }}>
+              <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '40px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎯</div>
-                <p style={{ color: '#888', margin: 0 }}>Vous n'êtes inscrit à aucun tournoi</p>
-                <p style={{ color: '#666', fontSize: '0.9rem', marginTop: '5px' }}>Rejoignez un tournoi disponible ci-contre</p>
+                <p style={{ color: '#F8F6F2', margin: 0, fontFamily: "'Protest Riot', sans-serif" }}>Vous n'êtes inscrit à aucun tournoi</p>
+                <p style={{ color: '#F8F6F2', fontSize: '0.9rem', marginTop: '5px', fontFamily: "'Protest Riot', sans-serif" }}>Rejoignez un tournoi disponible ci-contre</p>
               </div>
             )}
           </div>
@@ -275,8 +375,8 @@ export default function PlayerDashboard({ session }) {
           {/* COLONNE DROITE : TOURNOIS DISPONIBLES */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#3498db' }}>🌟 Tournois Disponibles</h2>
-              <span style={{ fontSize: '0.9rem', color: '#888' }}>{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🌟 Tournois Disponibles</h2>
+              <span style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '600px', overflowY: 'auto' }}>
@@ -285,8 +385,8 @@ export default function PlayerDashboard({ session }) {
                 .map((t) => {
                   const getStatusStyle = (status) => {
                     switch (status) {
-                      case 'draft': return { bg: '#f39c12', text: 'Inscriptions ouvertes', icon: '📝' };
-                      default: return { bg: '#27ae60', text: 'En cours', icon: '⚔️' };
+                      case 'draft': return { bg: '#E7632C', text: 'Inscriptions ouvertes', icon: '📝' };
+                      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
                     }
                   };
                   const statusStyle = getStatusStyle(t.status);
@@ -296,26 +396,28 @@ export default function PlayerDashboard({ session }) {
                       key={t.id} 
                       onClick={() => navigate(`/tournament/${t.id}/public`)}
                       style={{ 
-                        background: '#1a1a1a', 
+                        background: 'rgba(3, 9, 19, 0.9)', 
                         padding: '20px', 
-                        borderRadius: '10px', 
-                        border: '1px solid #2a2a2a', 
+                        borderRadius: '12px', 
+                        border: '2px solid #FF36A3', 
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        transition: 'all 0.3s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#3498db';
+                        e.currentTarget.style.borderColor = '#C10468';
                         e.currentTarget.style.transform = 'translateX(5px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(193, 4, 104, 0.3)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#2a2a2a';
+                        e.currentTarget.style.borderColor = '#FF36A3';
                         e.currentTarget.style.transform = 'translateX(0)';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                         <div style={{ flex: 1 }}>
-                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#fff' }}>{t.name}</h3>
-                          <div style={{ fontSize: '0.85rem', color: '#888', display: 'flex', gap: '15px', marginTop: '8px' }}>
+                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{t.name}</h3>
+                          <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
                             <span>🎮 {t.game}</span>
                             <span>📊 {t.format}</span>
                           </div>
@@ -326,7 +428,9 @@ export default function PlayerDashboard({ session }) {
                           borderRadius: '5px', 
                           fontSize: '0.8rem', 
                           fontWeight: 'bold',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          color: '#F8F6F2',
+                          fontFamily: "'Protest Riot', sans-serif"
                         }}>
                           {statusStyle.icon} {statusStyle.text}
                         </span>
@@ -336,9 +440,9 @@ export default function PlayerDashboard({ session }) {
                 })}
               
               {availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length === 0 && (
-                <div style={{ background: '#1a1a1a', padding: '40px', borderRadius: '10px', textAlign: 'center', border: '1px solid #2a2a2a' }}>
+                <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '40px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
                   <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🌟</div>
-                  <p style={{ color: '#888', margin: 0 }}>Aucun tournoi disponible</p>
+                  <p style={{ color: '#F8F6F2', margin: 0, fontFamily: "'Protest Riot', sans-serif" }}>Aucun tournoi disponible</p>
                 </div>
               )}
             </div>
@@ -346,19 +450,19 @@ export default function PlayerDashboard({ session }) {
         </div>
 
         {/* STATISTIQUES RAPIDES */}
-        <div style={{ marginTop: '40px', background: '#1a1a1a', padding: '25px', borderRadius: '10px', border: '1px solid #2a2a2a' }}>
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '1.2rem', color: '#3498db' }}>📊 Aperçu Statistiques</h3>
+        <div style={{ marginTop: '40px', background: 'rgba(3, 9, 19, 0.9)', padding: '25px', borderRadius: '12px', border: '2px solid #FF36A3' }}>
+          <h3 style={{ margin: '0 0 20px 0', fontSize: '1.2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>📊 Aperçu Statistiques</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3498db' }}>{myTournaments.length}</div>
-              <div style={{ fontSize: '0.9rem', color: '#888', marginTop: '5px' }}>Tournois</div>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>{myTournaments.length}</div>
+              <div style={{ fontSize: '0.9rem', color: '#F8F6F2', marginTop: '5px', fontFamily: "'Protest Riot', sans-serif" }}>Tournois</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#27ae60' }}>{upcomingMatches.length}</div>
-              <div style={{ fontSize: '0.9rem', color: '#888', marginTop: '5px' }}>Matchs à venir</div>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#C10468', fontFamily: "'Shadows Into Light', cursive" }}>{upcomingMatches.length}</div>
+              <div style={{ fontSize: '0.9rem', color: '#F8F6F2', marginTop: '5px', fontFamily: "'Protest Riot', sans-serif" }}>Matchs à venir</div>
             </div>
             <div style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/stats')}>
-              <div style={{ fontSize: '0.9rem', color: '#3498db', textDecoration: 'underline' }}>Voir toutes les stats →</div>
+              <div style={{ fontSize: '0.9rem', color: '#FF36A3', textDecoration: 'underline', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Voir toutes les stats →</div>
             </div>
           </div>
         </div>

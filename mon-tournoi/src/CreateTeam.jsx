@@ -68,18 +68,46 @@ export default function CreateTeam({ session, supabase }) {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '500px', margin: '50px auto', background: '#1a1a1a', borderRadius: '15px', color: 'white', border: '1px solid #333' }}>
-      <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginBottom: '20px' }}>← Retour</button>
+    <div style={{ minHeight: '100vh', padding: '40px 20px', background: '#030913' }}>
+      <div style={{ maxWidth: '500px', margin: '0 auto', padding: '40px', background: 'rgba(3, 9, 19, 0.95)', borderRadius: '15px', color: '#F8F6F2', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
+        <button 
+          type="button"
+          onClick={() => navigate(-1)} 
+          style={{ 
+            background: 'transparent', 
+            border: '2px solid #C10468', 
+            color: '#F8F6F2', 
+            cursor: 'pointer', 
+            marginBottom: '20px',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '0.9rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#C10468';
+            e.currentTarget.style.borderColor = '#FF36A3';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = '#C10468';
+          }}
+        >
+          ← Retour
+        </button>
       
-      <h2 style={{ color: '#00d4ff', marginTop: 0 }}>Créer mon Équipe</h2>
-      <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '30px' }}>
-        Tu deviendras le <b>Capitaine</b> de cette équipe. C'est toi qui géreras les inscriptions aux tournois.
-      </p>
+        <h2 style={{ color: '#FF36A3', marginTop: 0, fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>Créer mon Équipe</h2>
+        <p style={{ color: '#F8F6F2', fontSize: '0.9rem', marginBottom: '30px', fontFamily: "'Protest Riot', sans-serif" }}>
+          Tu deviendras le <b>Capitaine</b> de cette équipe. C'est toi qui géreras les inscriptions aux tournois.
+        </p>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
         <div>
-          <label style={{ display: 'block', marginBottom: '8px' }}>Nom de l'équipe</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2' }}>Nom de l'équipe</label>
           <input 
             type="text" 
             placeholder="Ex: T1, Cloud9..." 
@@ -91,24 +119,59 @@ export default function CreateTeam({ session, supabase }) {
               }
             }}
             maxLength={MAX_NAME_LENGTH}
-            style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: 'white', borderRadius: '5px' }}
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              background: 'rgba(3, 9, 19, 0.8)', 
+              border: '2px solid #C10468', 
+              color: '#F8F6F2', 
+              borderRadius: '8px',
+              fontFamily: "'Protest Riot', sans-serif",
+              transition: 'all 0.3s ease'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#FF36A3';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
-          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+          <div style={{ fontSize: '0.75rem', color: '#F8F6F2', marginTop: '4px', fontFamily: "'Protest Riot', sans-serif" }}>
             {name.length}/{MAX_NAME_LENGTH} caractères
           </div>
         </div>
 
         <div>
-          <label style={{ display: 'block', marginBottom: '8px' }}>Tag ({MIN_TAG_LENGTH}-{MAX_TAG_LENGTH} caractères)</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2' }}>Tag ({MIN_TAG_LENGTH}-{MAX_TAG_LENGTH} caractères)</label>
           <input 
             type="text" 
             placeholder="Ex: FNC" 
             maxLength={MAX_TAG_LENGTH}
             value={tag} 
             onChange={e => setTag(e.target.value.replace(/[^A-Za-z0-9]/g, ''))} 
-            style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: 'white', borderRadius: '5px', textTransform: 'uppercase' }}
+            style={{ 
+              width: '100%', 
+              padding: '12px', 
+              background: 'rgba(3, 9, 19, 0.8)', 
+              border: '2px solid #C10468', 
+              color: '#F8F6F2', 
+              borderRadius: '8px', 
+              textTransform: 'uppercase',
+              fontFamily: "'Protest Riot', sans-serif",
+              transition: 'all 0.3s ease'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#FF36A3';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
-          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+          <div style={{ fontSize: '0.75rem', color: '#F8F6F2', marginTop: '4px', fontFamily: "'Protest Riot', sans-serif" }}>
             {tag.length}/{MAX_TAG_LENGTH} caractères (lettres et chiffres uniquement)
           </div>
         </div>
@@ -119,19 +182,38 @@ export default function CreateTeam({ session, supabase }) {
           style={{ 
             marginTop: '10px',
             padding: '15px', 
-            background: loading ? '#555' : '#8e44ad', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '5px', 
+            background: loading ? 'rgba(193, 4, 104, 0.5)' : '#C10468', 
+            color: '#F8F6F2', 
+            border: '2px solid #FF36A3', 
+            borderRadius: '8px', 
             cursor: loading ? 'not-allowed' : 'pointer', 
-            fontWeight: 'bold',
-            fontSize: '1rem'
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '1rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease',
+            opacity: loading ? 0.6 : 1
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              e.currentTarget.style.background = '#FF36A3';
+              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!loading) {
+              e.currentTarget.style.background = '#C10468';
+              e.currentTarget.style.borderColor = '#FF36A3';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }
           }}
         >
           {loading ? 'Création...' : 'Valider et créer l\'équipe'}
         </button>
 
       </form>
+      </div>
     </div>
   );
 }

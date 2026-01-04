@@ -1,34 +1,60 @@
+/* ============================================
+   CHARTE GRAPHIQUE FLUKY BOYS
+   Design System - Comics/BD Style Spider-Verse
+   ============================================ */
+
+/* Variables CSS - Palette de Couleurs */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Couleurs Principales */
+  --fluky-bg-primary: #030913;        /* Fond Principal - Bleu nuit très sombre */
+  --fluky-primary: #C10468;          /* Rose Foncé - Action principale */
+  --fluky-secondary: #FF36A3;        /* Rose Flashy - Effets néon, Hover */
+  --fluky-accent-orange: #E7632C;     /* Orange - Détails subtils */
+  --fluky-accent-yellow: #F8EC54;     /* Jaune - Détails subtils */
+  --fluky-text: #F8F6F2;             /* Texte Principal - Blanc cassé */
+  
+  /* Polices */
+  --fluky-font-heading: 'Shadows Into Light', cursive;
+  --fluky-font-body: 'Protest Riot', sans-serif;
+}
+
+/* Reset & Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: var(--fluky-font-body);
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  
+  color-scheme: dark;
+  color: var(--fluky-text);
+  background-color: var(--fluky-bg-primary);
+  
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
-  /* display: flex;        <-- J'ai supprimé ça */
-  /* place-items: center;  <-- Et ça */
   min-width: 320px;
   min-height: 100vh;
-  display: block; /* Pour être sûr que ça prenne toute la largeur */
+  display: block;
+  background-color: var(--fluky-bg-primary);
+  color: var(--fluky-text);
+}
+
+/* Typographie */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--fluky-font-heading);
+  color: var(--fluky-text);
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 h1 {
@@ -36,34 +62,201 @@ h1 {
   line-height: 1.1;
 }
 
+h2 {
+  font-size: 2.4em;
+}
+
+h3 {
+  font-size: 1.8em;
+}
+
+p, span, div, a, li, label, input, textarea, select {
+  font-family: var(--fluky-font-body);
+  color: var(--fluky-text);
+}
+
+/* Liens */
+a {
+  font-weight: 500;
+  color: var(--fluky-secondary);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--fluky-primary);
+  text-decoration: underline;
+}
+
+/* Boutons - Style Fluky Boys */
 button {
+  font-family: var(--fluky-font-heading);
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 2px solid var(--fluky-secondary);
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--fluky-primary);
+  color: var(--fluky-text);
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+button:hover {
+  background-color: var(--fluky-secondary);
+  border-color: var(--fluky-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 54, 163, 0.4);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--fluky-secondary);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Inputs & Formulaires */
+input, textarea, select {
+  font-family: var(--fluky-font-body);
+  background-color: rgba(3, 9, 19, 0.8);
+  border: 2px solid var(--fluky-primary);
+  color: var(--fluky-text);
+  padding: 0.6em 1em;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--fluky-secondary);
+  box-shadow: 0 0 0 3px rgba(255, 54, 163, 0.2);
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(248, 246, 242, 0.5);
+}
+
+/* Cartes / Conteneurs */
+.card, .container-card {
+  background-color: rgba(3, 9, 19, 0.9);
+  border: 2px solid var(--fluky-secondary);
+  border-radius: 12px;
+  padding: 1.5em;
+  transition: all 0.3s ease;
+}
+
+.card:hover, .container-card:hover {
+  border-color: var(--fluky-primary);
+  box-shadow: 0 8px 24px rgba(193, 4, 104, 0.3);
+  transform: translateY(-4px);
+}
+
+/* Effets de style BD/Graffiti */
+.comic-border {
+  border: 4px solid #000;
+  position: relative;
+}
+
+.comic-border::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid var(--fluky-secondary);
+  border-radius: inherit;
+  z-index: -1;
+}
+
+/* Effets de texture Halftone (optionnel) */
+.halftone-bg {
+  background-image: 
+    radial-gradient(circle, rgba(193, 4, 104, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Utilitaires */
+.text-primary {
+  color: var(--fluky-primary);
+}
+
+.text-secondary {
+  color: var(--fluky-secondary);
+}
+
+.bg-primary {
+  background-color: var(--fluky-primary);
+}
+
+.bg-secondary {
+  background-color: var(--fluky-secondary);
+}
+
+.bg-dark {
+  background-color: var(--fluky-bg-primary);
+}
+
+/* Animations */
+@keyframes pulse-neon {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--fluky-secondary), 0 0 10px var(--fluky-secondary);
   }
-  a:hover {
-    color: #747bff;
+  50% {
+    box-shadow: 0 0 10px var(--fluky-secondary), 0 0 20px var(--fluky-secondary), 0 0 30px var(--fluky-secondary);
   }
+}
+
+.neon-effect {
+  animation: pulse-neon 2s ease-in-out infinite;
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--fluky-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--fluky-primary);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fluky-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2.4em;
+  }
+  
+  h2 {
+    font-size: 1.8em;
+  }
+  
+  h3 {
+    font-size: 1.4em;
+  }
+  
   button {
-    background-color: #f9f9f9;
+    padding: 0.5em 1em;
+    font-size: 0.9em;
   }
 }

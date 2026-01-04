@@ -153,11 +153,11 @@ export default function PublicTournament() {
     return (
       <div style={{
         width: isBestOf ? '300px' : '260px',
-        background: '#252525',
-        border: isCompleted ? '2px solid #4ade80' : (isScheduled ? '2px solid #3498db' : '1px solid #444'),
-        borderRadius: '10px',
+        background: 'rgba(3, 9, 19, 0.95)',
+        border: isCompleted ? '2px solid #C10468' : (isScheduled ? '2px solid #FF36A3' : '2px solid #C10468'),
+        borderRadius: '12px',
         position: 'relative',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+        boxShadow: '0 4px 12px rgba(193, 4, 104, 0.4)',
         overflow: 'hidden'
       }}>
         {/* Badge Best-of-X */}
@@ -166,14 +166,15 @@ export default function PublicTournament() {
             position: 'absolute',
             top: '5px',
             left: '5px',
-            background: 'linear-gradient(135deg, #8e44ad, #3498db)',
-            color: 'white',
+            background: 'linear-gradient(135deg, #C10468, #FF36A3)',
+            color: '#F8F6F2',
             padding: '4px 10px',
-            borderRadius: '4px',
+            borderRadius: '6px',
             fontSize: '0.7rem',
             fontWeight: 'bold',
             zIndex: 10,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            boxShadow: '0 2px 4px rgba(193, 4, 104, 0.5)',
+            fontFamily: "'Protest Riot', sans-serif"
           }}>
             🎮 Bo{tournoi.best_of}
           </div>
@@ -185,13 +186,14 @@ export default function PublicTournament() {
             position: 'absolute',
             top: '5px',
             right: '5px',
-            background: '#3498db',
-            color: 'white',
+            background: '#FF36A3',
+            color: '#F8F6F2',
             padding: '3px 8px',
-            borderRadius: '3px',
+            borderRadius: '6px',
             fontSize: '0.7rem',
             fontWeight: 'bold',
-            zIndex: 10
+            zIndex: 10,
+            fontFamily: "'Protest Riot', sans-serif"
           }}>
             📅 {new Date(match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </div>
@@ -203,8 +205,8 @@ export default function PublicTournament() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: isTeam1Winning ? '#2f3b2f' : 'transparent',
-          borderRadius: '10px 10px 0 0',
+          background: isTeam1Winning ? 'rgba(193, 4, 104, 0.2)' : 'transparent',
+          borderRadius: '12px 12px 0 0',
           paddingTop: isBestOf ? '25px' : '15px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
@@ -216,36 +218,37 @@ export default function PublicTournament() {
                   height: '28px', 
                   borderRadius: '50%', 
                   objectFit: 'cover', 
-                  border: '1px solid #555', 
+                  border: '2px solid #FF36A3', 
                   flexShrink: 0
                 }} 
                 alt="" 
               />
             )}
             <span style={{
-              color: match.player1_id ? 'white' : '#666',
+              color: match.player1_id ? '#F8F6F2' : '#FF36A3',
               fontWeight: isTeam1Winning ? 'bold' : 'normal',
               fontSize: '0.9rem',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              fontFamily: "'Protest Riot', sans-serif"
             }}>
               {match.p1_name.split(' [')[0]}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
-            <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
               {displayScore1 || '-'}
             </span>
             {isBestOf && bestOfScore && (
-              <span style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#F8F6F2', marginTop: '2px', fontFamily: "'Protest Riot', sans-serif" }}>
                 {bestOfScore.completedGames}/{bestOfScore.totalGames}
               </span>
             )}
           </div>
         </div>
         
-        <div style={{ height: '1px', background: '#333' }}></div>
+        <div style={{ height: '2px', background: '#FF36A3' }}></div>
         
         {/* JOUEUR 2 */}
         <div style={{
@@ -253,8 +256,8 @@ export default function PublicTournament() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: isTeam2Winning ? '#2f3b2f' : 'transparent',
-          borderRadius: '0 0 10px 10px'
+          background: isTeam2Winning ? 'rgba(193, 4, 104, 0.2)' : 'transparent',
+          borderRadius: '0 0 12px 12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
             {match.player2_id && (
@@ -265,29 +268,30 @@ export default function PublicTournament() {
                   height: '28px', 
                   borderRadius: '50%', 
                   objectFit: 'cover', 
-                  border: '1px solid #555', 
+                  border: '2px solid #FF36A3', 
                   flexShrink: 0
                 }} 
                 alt="" 
               />
             )}
             <span style={{
-              color: match.player2_id ? 'white' : '#666',
+              color: match.player2_id ? '#F8F6F2' : '#FF36A3',
               fontWeight: isTeam2Winning ? 'bold' : 'normal',
               fontSize: '0.9rem',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              fontFamily: "'Protest Riot', sans-serif"
             }}>
               {match.p2_name.split(' [')[0]}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
-            <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
               {displayScore2 || '-'}
             </span>
             {isBestOf && bestOfScore && (
-              <span style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#F8F6F2', marginTop: '2px', fontFamily: "'Protest Riot', sans-serif" }}>
                 {bestOfScore.completedGames}/{bestOfScore.totalGames}
               </span>
             )}

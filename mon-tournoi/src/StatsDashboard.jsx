@@ -208,26 +208,40 @@ export default function StatsDashboard({ session, supabase }) {
   };
 
   if (loading && !teamStats) {
-    return <div style={{color:'white', padding:'20px', textAlign:'center'}}>Chargement...</div>;
+    return <div style={{color:'#F8F6F2', padding:'20px', textAlign:'center', background: '#030913', minHeight: '100vh', fontFamily: "'Protest Riot', sans-serif"}}>Chargement...</div>;
   }
 
   if (myTeams.length === 0) {
     return (
-      <div style={{ padding: '40px', color: 'white', textAlign: 'center', maxWidth: '800px', margin: '0 auto' }}>
-        <h2>📊 Statistiques</h2>
-        <p style={{marginTop:'20px', color:'#aaa'}}>Vous n'avez pas encore d'équipe.</p>
+      <div style={{ minHeight: '100vh', padding: '40px', color: '#F8F6F2', textAlign: 'center', maxWidth: '800px', margin: '0 auto', background: '#030913' }}>
+        <h2 style={{fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '2rem'}}>📊 Statistiques</h2>
+        <p style={{marginTop:'20px', color:'#F8F6F2', fontFamily: "'Protest Riot', sans-serif"}}>Vous n'avez pas encore d'équipe.</p>
         <button 
+          type="button"
           onClick={() => navigate('/create-team')} 
           style={{
             marginTop:'20px',
             padding: '12px 24px',
-            background: '#2ecc71',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
+            background: '#C10468',
+            color: '#F8F6F2',
+            border: '2px solid #FF36A3',
+            borderRadius: '8px',
             cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '1rem'
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '1rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#FF36A3';
+            e.currentTarget.style.borderColor = '#C10468';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#C10468';
+            e.currentTarget.style.borderColor = '#FF36A3';
+            e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
           🛡️ Créer une équipe
@@ -238,24 +252,38 @@ export default function StatsDashboard({ session, supabase }) {
 
   const currentTeam = myTeams.find(t => t.id === selectedTeam);
   const pieData = teamStats ? [
-    { name: 'Victoires', value: teamStats.wins, color: '#2ecc71' },
-    { name: 'Défaites', value: teamStats.losses, color: '#e74c3c' },
-    { name: 'Matchs nuls', value: teamStats.draws, color: '#95a5a6' }
+    { name: 'Victoires', value: teamStats.wins, color: '#C10468' },
+    { name: 'Défaites', value: teamStats.losses, color: '#FF36A3' },
+    { name: 'Matchs nuls', value: teamStats.draws, color: '#E7632C' }
   ].filter(item => item.value > 0) : [];
 
   return (
-    <div style={{ padding: '20px', color: 'white', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '20px', color: '#F8F6F2', maxWidth: '1400px', margin: '0 auto', background: '#030913' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ margin: 0, color: '#00d4ff' }}>📊 Statistiques</h1>
+        <h1 style={{ margin: 0, color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2.5rem' }}>📊 Statistiques</h1>
         <button 
+          type="button"
           onClick={() => navigate('/dashboard')} 
           style={{
             background:'transparent', 
-            border:'1px solid #555', 
-            color:'white', 
+            border:'2px solid #C10468', 
+            color:'#F8F6F2', 
             padding:'8px 15px', 
-            borderRadius:'5px', 
-            cursor:'pointer'
+            borderRadius:'8px', 
+            cursor:'pointer',
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '0.9rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#C10468';
+            e.currentTarget.style.borderColor = '#FF36A3';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = '#C10468';
           }}
         >
           ← Retour
@@ -263,20 +291,30 @@ export default function StatsDashboard({ session, supabase }) {
       </div>
 
       {/* Sélection d'équipe */}
-      <div style={{ marginBottom: '30px', background: '#1a1a1a', padding: '20px', borderRadius: '10px', border: '1px solid #333' }}>
-        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', fontSize: '1.1rem' }}>Équipe :</label>
+      <div style={{ marginBottom: '30px', background: 'rgba(3, 9, 19, 0.95)', padding: '20px', borderRadius: '12px', border: '2px solid #FF36A3' }}>
+        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', fontSize: '1.1rem', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2' }}>Équipe :</label>
         <select
           value={selectedTeam || ''}
           onChange={(e) => setSelectedTeam(e.target.value)}
           style={{
             padding: '12px',
-            background: '#2a2a2a',
-            border: '1px solid #444',
-            color: 'white',
-            borderRadius: '5px',
+            background: 'rgba(3, 9, 19, 0.8)',
+            border: '2px solid #C10468',
+            color: '#F8F6F2',
+            borderRadius: '8px',
             minWidth: '300px',
             fontSize: '1rem',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontFamily: "'Protest Riot', sans-serif",
+            transition: 'all 0.3s ease'
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = '#FF36A3';
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = '#C10468';
+            e.currentTarget.style.boxShadow = 'none';
           }}
         >
           {myTeams.map(team => (
@@ -288,59 +326,59 @@ export default function StatsDashboard({ session, supabase }) {
       </div>
 
       {loading && teamStats && (
-        <div style={{textAlign:'center', padding:'20px', color:'#aaa'}}>Chargement des statistiques...</div>
+        <div style={{textAlign:'center', padding:'20px', color:'#F8F6F2', fontFamily: "'Protest Riot', sans-serif"}}>Chargement des statistiques...</div>
       )}
 
       {teamStats && (
         <>
           {/* Stats globales */}
-          <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '1px solid #333' }}>
-            <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#00d4ff' }}>📈 Statistiques Globales</h2>
+          <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>📈 Statistiques Globales</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #444' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#3498db', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
                   {teamStats.totalMatches}
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Matchs totaux</div>
+                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Matchs totaux</div>
               </div>
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #444' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#2ecc71', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#C10468', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
                   {teamStats.wins}
                 </div>
                 <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Victoires</div>
               </div>
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #444' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#e74c3c', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
                   {teamStats.losses}
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Défaites</div>
+                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Défaites</div>
               </div>
               {teamStats.draws > 0 && (
-                <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #444' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#95a5a6', marginBottom: '8px' }}>
+                <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#E7632C', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
                     {teamStats.draws}
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Matchs nuls</div>
+                  <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Matchs nuls</div>
                 </div>
               )}
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #444' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#f39c12', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#E7632C', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
                   {teamStats.winRate}%
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Win Rate</div>
+                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Win Rate</div>
               </div>
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', textAlign: 'center', border: '1px solid #444' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: teamStats.scoreDifference >= 0 ? '#2ecc71' : '#e74c3c', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
+                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: teamStats.scoreDifference >= 0 ? '#C10468' : '#FF36A3', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
                   {teamStats.scoreDifference >= 0 ? '+' : ''}{teamStats.scoreDifference}
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Différence de scores</div>
+                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Différence de scores</div>
               </div>
             </div>
 
             {/* Graphique en secteurs */}
             {pieData.length > 0 && (
               <div style={{ marginTop: '30px' }}>
-                <h3 style={{ marginBottom: '20px', fontSize: '1.2rem' }}>Répartition des résultats</h3>
+                <h3 style={{ marginBottom: '20px', fontSize: '1.2rem', fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3' }}>Répartition des résultats</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
@@ -367,20 +405,20 @@ export default function StatsDashboard({ session, supabase }) {
 
           {/* Performance par mois */}
           {performanceData.length > 0 && (
-            <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '1px solid #333' }}>
-              <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#00d4ff' }}>📊 Performance par Mois</h2>
+            <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
+              <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>📊 Performance par Mois</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="month" stroke="#aaa" />
-                  <YAxis stroke="#aaa" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 54, 163, 0.3)" />
+                  <XAxis dataKey="month" stroke="#F8F6F2" />
+                  <YAxis stroke="#F8F6F2" />
                   <Tooltip 
-                    contentStyle={{ background: '#2a2a2a', border: '1px solid #444', borderRadius: '5px', color: 'white' }}
-                    labelStyle={{ color: '#00d4ff' }}
+                    contentStyle={{ background: 'rgba(3, 9, 19, 0.95)', border: '2px solid #FF36A3', borderRadius: '8px', color: '#F8F6F2' }}
+                    labelStyle={{ color: '#FF36A3', fontFamily: "'Protest Riot', sans-serif" }}
                   />
                   <Legend />
-                  <Bar dataKey="wins" fill="#2ecc71" name="Victoires" />
-                  <Bar dataKey="losses" fill="#e74c3c" name="Défaites" />
+                  <Bar dataKey="wins" fill="#C10468" name="Victoires" />
+                  <Bar dataKey="losses" fill="#FF36A3" name="Défaites" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -388,29 +426,29 @@ export default function StatsDashboard({ session, supabase }) {
 
           {/* Stats par jeu */}
           {gameStats.length > 0 && (
-            <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '1px solid #333' }}>
-              <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#00d4ff' }}>🎮 Statistiques par Jeu</h2>
+            <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
+              <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>🎮 Statistiques par Jeu</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                 {gameStats.map((game, index) => (
-                  <div key={index} style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px', border: '1px solid #444' }}>
-                    <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '1.1rem' }}>{game.name}</h3>
+                  <div key={index} style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', border: '2px solid #FF36A3' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '1.1rem', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2' }}>{game.name}</h3>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#aaa' }}>Victoires:</span>
-                      <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>{game.wins}</span>
+                      <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Victoires:</span>
+                      <span style={{ color: '#C10468', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>{game.wins}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#aaa' }}>Défaites:</span>
-                      <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>{game.losses}</span>
+                      <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Défaites:</span>
+                      <span style={{ color: '#FF36A3', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>{game.losses}</span>
                     </div>
                     {game.draws > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ color: '#aaa' }}>Nuls:</span>
-                        <span style={{ color: '#95a5a6', fontWeight: 'bold' }}>{game.draws}</span>
+                        <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Nuls:</span>
+                        <span style={{ color: '#E7632C', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>{game.draws}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #333' }}>
-                      <span style={{ color: '#aaa' }}>Win Rate:</span>
-                      <span style={{ color: '#f39c12', fontWeight: 'bold', fontSize: '1.1rem' }}>{game.winRate}%</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '2px solid #FF36A3' }}>
+                      <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Win Rate:</span>
+                      <span style={{ color: '#E7632C', fontWeight: 'bold', fontSize: '1.1rem', fontFamily: "'Protest Riot', sans-serif" }}>{game.winRate}%</span>
                     </div>
                   </div>
                 ))}
@@ -421,10 +459,10 @@ export default function StatsDashboard({ session, supabase }) {
       )}
 
       {/* Stats par tournoi */}
-      <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#00d4ff' }}>🏆 Statistiques par Tournoi</h2>
+      <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', border: '2px solid #FF36A3' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>🏆 Statistiques par Tournoi</h2>
         {tournamentStats.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#aaa' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
             Aucune participation à un tournoi pour cette équipe.
           </div>
         ) : (
@@ -433,23 +471,29 @@ export default function StatsDashboard({ session, supabase }) {
               <div
                 key={index}
                 style={{
-                  background: '#2a2a2a',
+                  background: 'rgba(3, 9, 19, 0.6)',
                   padding: '20px',
-                  borderRadius: '10px',
-                  border: '1px solid #333',
-                  transition: 'transform 0.2s',
+                  borderRadius: '12px',
+                  border: '2px solid #FF36A3',
+                  transition: 'all 0.3s ease',
                   cursor: 'pointer'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateX(5px)';
+                  e.currentTarget.style.borderColor = '#C10468';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateX(0)';
+                  e.currentTarget.style.borderColor = '#FF36A3';
+                }}
                 onClick={() => navigate(`/tournament/${stat.tournament?.id}`)}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
                   <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2' }}>
                       {stat.tournament?.name || 'Tournoi'}
                     </div>
-                    <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
+                    <div style={{ fontSize: '0.9rem', color: '#FF36A3', fontFamily: "'Protest Riot', sans-serif" }}>
                       🎮 {stat.tournament?.game} | 📊 {stat.tournament?.format === 'elimination' ? 'Élimination' : 
                                                       stat.tournament?.format === 'double_elimination' ? 'Double Élimination' : 
                                                       stat.tournament?.format === 'round_robin' ? 'Round Robin' : stat.tournament?.format}
@@ -457,26 +501,26 @@ export default function StatsDashboard({ session, supabase }) {
                   </div>
                   <div style={{ display: 'flex', gap: '30px', textAlign: 'center', flexWrap: 'wrap' }}>
                     <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3498db' }}>{stat.totalMatches}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Matchs</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>{stat.totalMatches}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Matchs</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2ecc71' }}>{stat.wins}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Victoires</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#C10468', fontFamily: "'Shadows Into Light', cursive" }}>{stat.wins}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Victoires</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#e74c3c' }}>{stat.losses}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Défaites</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>{stat.losses}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Défaites</div>
                     </div>
                     {stat.draws > 0 && (
                       <div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#95a5a6' }}>{stat.draws}</div>
-                        <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Nuls</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#E7632C', fontFamily: "'Shadows Into Light', cursive" }}>{stat.draws}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Nuls</div>
                       </div>
                     )}
                     <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f39c12' }}>{stat.winRate}%</div>
-                      <div style={{ fontSize: '0.85rem', color: '#aaa' }}>Win Rate</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#E7632C', fontFamily: "'Shadows Into Light', cursive" }}>{stat.winRate}%</div>
+                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Win Rate</div>
                     </div>
                   </div>
                 </div>

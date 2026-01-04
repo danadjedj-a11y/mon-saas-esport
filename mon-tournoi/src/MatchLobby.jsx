@@ -817,7 +817,7 @@ export default function MatchLobby({ session, supabase }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentBestOf, match?.id, matchGames.length]);
 
-  if (loading || !match) return <div style={{color:'white', padding:'20px'}}>Chargement du Lobby...</div>;
+  if (loading || !match) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', minHeight: '100vh', fontFamily: "'Protest Riot', sans-serif"}}>Chargement du Lobby...</div>;
 
   const isTeam1 = myTeamId === match.player1_id;
   const reportedByMe = isTeam1 ? match.reported_by_team1 : match.reported_by_team2;
@@ -831,26 +831,53 @@ export default function MatchLobby({ session, supabase }) {
   }
 
   return (
-    <div style={{ padding: '20px', color: 'white', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+    <div style={{ minHeight: '100vh', padding: '20px', color: '#F8F6F2', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', background: '#030913' }}>
       
       {/* COLONNE GAUCHE : INFO MATCH & SCORE */}
       <div>
-        <button onClick={() => navigate(`/tournament/${match.tournament_id}`)} style={{background:'none', border:'none', color:'#888', cursor:'pointer', marginBottom:'20px'}}>← Retour Tournoi</button>
+        <button 
+          type="button"
+          onClick={() => navigate(`/tournament/${match.tournament_id}`)} 
+          style={{
+            background:'transparent', 
+            border:'2px solid #C10468', 
+            color:'#F8F6F2', 
+            cursor:'pointer', 
+            marginBottom:'20px',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '0.9rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#C10468';
+            e.currentTarget.style.borderColor = '#FF36A3';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = '#C10468';
+          }}
+        >
+          ← Retour Tournoi
+        </button>
         
-        <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-          <h2 style={{color:'#666', fontSize:'0.9rem', textTransform:'uppercase', marginTop: 0}}>Match #{match.match_number} - Round {match.round_number}</h2>
+        <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
+          <h2 style={{color:'#FF36A3', fontSize:'0.9rem', textTransform:'uppercase', marginTop: 0, fontFamily: "'Protest Riot', sans-serif"}}>Match #{match.match_number} - Round {match.round_number}</h2>
           
           {hasConflict && (
-            <div style={{background: '#e74c3c', color: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: '4px solid #c0392b'}}>
-              <strong>⚠️ Conflit de scores détecté</strong>
-              <p style={{margin: '5px 0 0 0', fontSize: '0.9rem'}}>Les deux équipes ont déclaré des scores différents. Intervention admin requise.</p>
+            <div style={{background: 'rgba(255, 54, 163, 0.3)', color: '#F8F6F2', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #FF36A3'}}>
+              <strong style={{fontFamily: "'Protest Riot', sans-serif"}}>⚠️ Conflit de scores détecté</strong>
+              <p style={{margin: '5px 0 0 0', fontSize: '0.9rem', fontFamily: "'Protest Riot', sans-serif"}}>Les deux équipes ont déclaré des scores différents. Intervention admin requise.</p>
             </div>
           )}
 
           {isConfirmed && (
-            <div style={{background: '#27ae60', color: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: '4px solid #229954'}}>
-              <strong>✅ Scores confirmés</strong>
-              <p style={{margin: '5px 0 0 0', fontSize: '0.9rem'}}>Les scores ont été validés automatiquement.</p>
+            <div style={{background: 'rgba(193, 4, 104, 0.3)', color: '#F8F6F2', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #C10468'}}>
+              <strong style={{fontFamily: "'Protest Riot', sans-serif"}}>✅ Scores confirmés</strong>
+              <p style={{margin: '5px 0 0 0', fontSize: '0.9rem', fontFamily: "'Protest Riot', sans-serif"}}>Les scores ont été validés automatiquement.</p>
             </div>
           )}
             
@@ -859,13 +886,13 @@ export default function MatchLobby({ session, supabase }) {
                 <div style={{textAlign:'center', flex: 1}}>
                   <img 
                     src={match.team1?.logo_url || `https://ui-avatars.com/api/?name=${match.team1?.tag}&background=random&size=128`} 
-                    style={{width:'80px', height:'80px', borderRadius:'10px', objectFit:'cover', border: isTeam1 ? '3px solid #00d4ff' : '2px solid #555'}} 
+                    style={{width:'80px', height:'80px', borderRadius:'10px', objectFit:'cover', border: isTeam1 ? '3px solid #FF36A3' : '2px solid #C10468'}} 
                     alt=""
                   />
-                    <h3 style={{marginTop:'10px'}}>{match.team1?.name}</h3>
-                  {isTeam1 && <span style={{fontSize:'0.8rem', color:'#00d4ff'}}>👤 Mon équipe</span>}
+                    <h3 style={{marginTop:'10px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2'}}>{match.team1?.name}</h3>
+                  {isTeam1 && <span style={{fontSize:'0.8rem', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>👤 Mon équipe</span>}
                   {reportedByMe && isTeam1 && (
-                    <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#4ade80'}}>✅ Score déclaré</div>
+                    <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#C10468', fontFamily: "'Protest Riot', sans-serif"}}>✅ Score déclaré</div>
                   )}
                 </div>
 
@@ -873,15 +900,15 @@ export default function MatchLobby({ session, supabase }) {
                 <div style={{display:'flex', flexDirection:'column', gap:'10px', alignItems:'center', padding: '0 30px'}}>
                   {isConfirmed ? (
                     <div style={{display:'flex', gap:'15px', alignItems:'center'}}>
-                      <span style={{fontSize:'3rem', fontWeight:'bold', color: match.score_p1 > match.score_p2 ? '#4ade80' : '#666'}}>{match.score_p1}</span>
-                        <span style={{fontSize:'2rem', fontWeight:'bold'}}>:</span>
-                      <span style={{fontSize:'3rem', fontWeight:'bold', color: match.score_p2 > match.score_p1 ? '#4ade80' : '#666'}}>{match.score_p2}</span>
+                      <span style={{fontSize:'3rem', fontWeight:'bold', color: match.score_p1 > match.score_p2 ? '#C10468' : '#FF36A3', fontFamily: "'Shadows Into Light', cursive"}}>{match.score_p1}</span>
+                        <span style={{fontSize:'2rem', fontWeight:'bold', color: '#F8F6F2'}}>:</span>
+                      <span style={{fontSize:'3rem', fontWeight:'bold', color: match.score_p2 > match.score_p1 ? '#C10468' : '#FF36A3', fontFamily: "'Shadows Into Light', cursive"}}>{match.score_p2}</span>
                     </div>
                   ) : (
                     <div style={{display:'flex', gap:'15px', alignItems:'center'}}>
-                      <span style={{fontSize:'2.5rem', fontWeight:'bold'}}>{match.score_p1_reported ?? '-'}</span>
-                      <span style={{fontSize:'2rem'}}>:</span>
-                      <span style={{fontSize:'2.5rem', fontWeight:'bold'}}>{match.score_p2_reported ?? '-'}</span>
+                      <span style={{fontSize:'2.5rem', fontWeight:'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive"}}>{match.score_p1_reported ?? '-'}</span>
+                      <span style={{fontSize:'2rem', color: '#F8F6F2'}}>:</span>
+                      <span style={{fontSize:'2.5rem', fontWeight:'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive"}}>{match.score_p2_reported ?? '-'}</span>
                     </div>
                   )}
                 </div>
@@ -890,13 +917,13 @@ export default function MatchLobby({ session, supabase }) {
                 <div style={{textAlign:'center', flex: 1}}>
                   <img 
                     src={match.team2?.logo_url || `https://ui-avatars.com/api/?name=${match.team2?.tag}&background=random&size=128`} 
-                    style={{width:'80px', height:'80px', borderRadius:'10px', objectFit:'cover', border: !isTeam1 && myTeamId ? '3px solid #00d4ff' : '2px solid #555'}} 
+                    style={{width:'80px', height:'80px', borderRadius:'10px', objectFit:'cover', border: !isTeam1 && myTeamId ? '3px solid #FF36A3' : '2px solid #C10468'}} 
                     alt=""
                   />
-                    <h3 style={{marginTop:'10px'}}>{match.team2?.name}</h3>
-                  {!isTeam1 && myTeamId && <span style={{fontSize:'0.8rem', color:'#00d4ff'}}>👤 Mon équipe</span>}
+                    <h3 style={{marginTop:'10px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2'}}>{match.team2?.name}</h3>
+                  {!isTeam1 && myTeamId && <span style={{fontSize:'0.8rem', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>👤 Mon équipe</span>}
                   {reportedByMe && !isTeam1 && (
-                    <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#4ade80'}}>✅ Score déclaré</div>
+                    <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#C10468', fontFamily: "'Protest Riot', sans-serif"}}>✅ Score déclaré</div>
                   )}
                 </div>
             </div>
