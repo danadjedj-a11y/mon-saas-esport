@@ -1,13 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { toast } from './utils/toast';
+import TournamentCard from './components/TournamentCard';
 
 export default function HomePage() {
-  const [tournaments, setTournaments] = useState([]);
+  const [allTournaments, setAllTournaments] = useState([]); // Tous les tournois chargés
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
+  
+  // États pour recherche, filtres et pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const [gameFilter, setGameFilter] = useState('all');
+  const [formatFilter, setFormatFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date'); // 'date', 'name', 'participants'
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   useEffect(() => {
     // Vérifier la session
@@ -56,26 +66,86 @@ export default function HomePage() {
         setTournaments([]);
       } else {
         console.log('✅ Tournois chargés:', data?.length || 0);
-        setTournaments(data || []);
+        setAllTournaments(data || []);
       }
     } catch (err) {
       if (timeoutId) clearTimeout(timeoutId);
       console.error('❌ Erreur lors du chargement des tournois:', err.message || err);
-      setTournaments([]);
+      setAllTournaments([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusStyle = (status) => {
+  // Récupérer les jeux uniques pour le filtre
+  const availableGames = useMemo(() => {
+    const games = [...new Set(allTournaments.map(t => t.game).filter(Boolean))];
+    return games.sort();
+  }, [allTournaments]);
+
+  // Filtrer et trier les tournois
+  const filteredAndSortedTournaments = useMemo(() => {
+    let filtered = [...allTournaments];
+
+    // Recherche par nom
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.name?.toLowerCase().includes(query) ||
+        t.game?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filtre par jeu
+    if (gameFilter !== 'all') {
+      filtered = filtered.filter(t => t.game === gameFilter);
+    }
+
+    // Filtre par format
+    if (formatFilter !== 'all') {
+      filtered = filtered.filter(t => t.format === formatFilter);
+    }
+
+    // Filtre par statut
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(t => t.status === statusFilter);
+    }
+
+    // Tri
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return (a.name || '').localeCompare(b.name || '');
+        case 'date':
+        default:
+          return new Date(b.created_at) - new Date(a.created_at);
+      }
+    });
+
+    return filtered;
+  }, [allTournaments, searchQuery, gameFilter, formatFilter, statusFilter, sortBy]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedTournaments.length / itemsPerPage);
+  const paginatedTournaments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedTournaments.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedTournaments, currentPage, itemsPerPage]);
+
+  // Réinitialiser la page quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, gameFilter, formatFilter, statusFilter, sortBy]);
+
+  const getStatusStyle = useCallback((status) => {
     switch (status) {
       case 'draft': return { bg: '#E7632C', text: 'Inscriptions ouvertes', icon: '📝' };
       case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
       default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
     }
-  };
+  }, []);
 
-  const getFormatLabel = (format) => {
+  const getFormatLabel = useCallback((format) => {
     switch (format) {
       case 'elimination': return 'Élimination Directe';
       case 'double_elimination': return 'Double Elimination';
@@ -83,7 +153,7 @@ export default function HomePage() {
       case 'swiss': return 'Système Suisse';
       default: return format;
     }
-  };
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2' }}>
@@ -262,11 +332,207 @@ export default function HomePage() {
 
       {/* CONTENU PRINCIPAL */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 30px' }}>
+        {/* BARRE DE RECHERCHE ET FILTRES */}
+        <div style={{ 
+          background: 'rgba(3, 9, 19, 0.95)', 
+          padding: '25px', 
+          borderRadius: '12px', 
+          border: '2px solid #FF36A3',
+          marginBottom: '30px'
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+            {/* Recherche */}
+            <input
+              type="text"
+              placeholder="🔍 Rechercher un tournoi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                padding: '12px',
+                background: 'rgba(3, 9, 19, 0.8)',
+                border: '2px solid #C10468',
+                color: '#F8F6F2',
+                borderRadius: '8px',
+                fontFamily: "'Protest Riot', sans-serif",
+                fontSize: '0.95rem',
+                transition: 'all 0.3s ease'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            
+            {/* Filtre Jeu */}
+            <select
+              value={gameFilter}
+              onChange={(e) => setGameFilter(e.target.value)}
+              style={{
+                padding: '12px',
+                background: 'rgba(3, 9, 19, 0.8)',
+                border: '2px solid #C10468',
+                color: '#F8F6F2',
+                borderRadius: '8px',
+                fontFamily: "'Protest Riot', sans-serif",
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <option value="all">🎮 Tous les jeux</option>
+              {availableGames.map(game => (
+                <option key={game} value={game}>{game}</option>
+              ))}
+            </select>
+
+            {/* Filtre Format */}
+            <select
+              value={formatFilter}
+              onChange={(e) => setFormatFilter(e.target.value)}
+              style={{
+                padding: '12px',
+                background: 'rgba(3, 9, 19, 0.8)',
+                border: '2px solid #C10468',
+                color: '#F8F6F2',
+                borderRadius: '8px',
+                fontFamily: "'Protest Riot', sans-serif",
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <option value="all">📊 Tous les formats</option>
+              <option value="elimination">Élimination Directe</option>
+              <option value="double_elimination">Double Elimination</option>
+              <option value="round_robin">Championnat</option>
+              <option value="swiss">Système Suisse</option>
+            </select>
+
+            {/* Filtre Statut */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '12px',
+                background: 'rgba(3, 9, 19, 0.8)',
+                border: '2px solid #C10468',
+                color: '#F8F6F2',
+                borderRadius: '8px',
+                fontFamily: "'Protest Riot', sans-serif",
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <option value="all">📝 Tous les statuts</option>
+              <option value="draft">Inscriptions ouvertes</option>
+              <option value="ongoing">En cours</option>
+              <option value="completed">Terminé</option>
+            </select>
+
+            {/* Tri */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                padding: '12px',
+                background: 'rgba(3, 9, 19, 0.8)',
+                border: '2px solid #C10468',
+                color: '#F8F6F2',
+                borderRadius: '8px',
+                fontFamily: "'Protest Riot', sans-serif",
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <option value="date">📅 Par date</option>
+              <option value="name">🔤 Par nom</option>
+            </select>
+          </div>
+
+          {/* Compteur de résultats */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+              {filteredAndSortedTournaments.length} tournoi{filteredAndSortedTournaments.length > 1 ? 's' : ''} trouvé{filteredAndSortedTournaments.length > 1 ? 's' : ''}
+              {searchQuery || gameFilter !== 'all' || formatFilter !== 'all' || statusFilter !== 'all' ? ' (filtré)' : ''}
+            </div>
+            {(searchQuery || gameFilter !== 'all' || formatFilter !== 'all' || statusFilter !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setGameFilter('all');
+                  setFormatFilter('all');
+                  setStatusFilter('all');
+                  setSortBy('date');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  border: '2px solid #C10468',
+                  color: '#F8F6F2',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontFamily: "'Shadows Into Light', cursive",
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#C10468';
+                  e.currentTarget.style.borderColor = '#FF36A3';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = '#C10468';
+                }}
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
           <h2 style={{ margin: 0, fontSize: '2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🏆 Tournois Disponibles</h2>
-          <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
-            {tournaments.length} tournoi{tournaments.length > 1 ? 's' : ''} disponible{tournaments.length > 1 ? 's' : ''}
-          </div>
         </div>
 
         {loading ? (
@@ -274,84 +540,155 @@ export default function HomePage() {
             <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
             <p style={{ fontFamily: "'Protest Riot', sans-serif" }}>Chargement des tournois...</p>
           </div>
-        ) : tournaments.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px' }}>
-            {tournaments.map((t) => {
-              const statusStyle = getStatusStyle(t.status);
-              
-              return (
-                <div
+        ) : paginatedTournaments.length > 0 ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px' }}>
+              {paginatedTournaments.map((t) => (
+                <TournamentCard
                   key={t.id}
-                  onClick={() => navigate(`/tournament/${t.id}/public`)}
+                  tournament={t}
+                  getStatusStyle={getStatusStyle}
+                  getFormatLabel={getFormatLabel}
+                />
+              ))}
+            </div>
+
+            {/* PAGINATION */}
+            {totalPages > 1 && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: '10px', 
+                marginTop: '40px',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
                   style={{
-                    background: 'rgba(3, 9, 19, 0.9)',
-                    padding: '25px',
-                    borderRadius: '12px',
+                    padding: '10px 20px',
+                    background: currentPage === 1 ? 'rgba(193, 4, 104, 0.3)' : '#C10468',
                     border: '2px solid #FF36A3',
-                    cursor: 'pointer',
+                    color: '#F8F6F2',
+                    borderRadius: '8px',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    fontFamily: "'Shadows Into Light', cursive",
+                    fontSize: '0.9rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
                     transition: 'all 0.3s ease',
-                    position: 'relative'
+                    opacity: currentPage === 1 ? 0.5 : 1
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#C10468';
-                    e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
+                    if (currentPage !== 1) {
+                      e.currentTarget.style.background = '#FF36A3';
+                      e.currentTarget.style.borderColor = '#C10468';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    if (currentPage !== 1) {
+                      e.currentTarget.style.background = '#C10468';
+                      e.currentTarget.style.borderColor = '#FF36A3';
+                    }
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: '0 0 10px 0', fontSize: '1.3rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{t.name}</h3>
-                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', flexWrap: 'wrap', fontFamily: "'Protest Riot', sans-serif" }}>
-                        <span>🎮 {t.game}</span>
-                        <span>📊 {getFormatLabel(t.format)}</span>
-                      </div>
-                    </div>
-                    <span style={{
-                      background: statusStyle.bg === '#f39c12' ? '#E7632C' : statusStyle.bg === '#27ae60' ? '#C10468' : '#FF36A3',
-                      padding: '6px 14px',
-                      borderRadius: '6px',
-                      fontSize: '0.85rem',
-                      fontWeight: 'bold',
-                      whiteSpace: 'nowrap',
-                      color: '#F8F6F2',
-                      fontFamily: "'Protest Riot', sans-serif"
-                    }}>
-                      {statusStyle.icon} {statusStyle.text}
-                    </span>
-                  </div>
+                  ← Précédent
+                </button>
 
-                  <div style={{ 
-                    marginTop: '15px', 
-                    paddingTop: '15px', 
-                    borderTop: '2px solid #FF36A3',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
-                      Créé le {new Date(t.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </div>
-                    <div style={{
-                      padding: '6px 12px',
-                      background: '#C10468',
-                      borderRadius: '5px',
-                      fontSize: '0.85rem',
-                      color: '#F8F6F2',
-                      fontWeight: 'bold',
-                      fontFamily: "'Protest Riot', sans-serif"
-                    }}>
-                      Voir le tournoi →
-                    </div>
-                  </div>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '5px', 
+                  alignItems: 'center',
+                  fontFamily: "'Protest Riot', sans-serif",
+                  color: '#F8F6F2'
+                }}>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNum)}
+                        style={{
+                          padding: '10px 15px',
+                          background: currentPage === pageNum ? '#FF36A3' : 'rgba(3, 9, 19, 0.8)',
+                          border: `2px solid ${currentPage === pageNum ? '#C10468' : '#FF36A3'}`,
+                          color: '#F8F6F2',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontFamily: "'Protest Riot', sans-serif",
+                          fontSize: '0.9rem',
+                          fontWeight: currentPage === pageNum ? 'bold' : 'normal',
+                          transition: 'all 0.3s ease',
+                          minWidth: '40px'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (currentPage !== pageNum) {
+                            e.currentTarget.style.background = 'rgba(255, 54, 163, 0.5)';
+                            e.currentTarget.style.borderColor = '#C10468';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (currentPage !== pageNum) {
+                            e.currentTarget.style.background = 'rgba(3, 9, 19, 0.8)';
+                            e.currentTarget.style.borderColor = '#FF36A3';
+                          }
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: '10px 20px',
+                    background: currentPage === totalPages ? 'rgba(193, 4, 104, 0.3)' : '#C10468',
+                    border: '2px solid #FF36A3',
+                    color: '#F8F6F2',
+                    borderRadius: '8px',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    fontFamily: "'Shadows Into Light', cursive",
+                    fontSize: '0.9rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    transition: 'all 0.3s ease',
+                    opacity: currentPage === totalPages ? 0.5 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPage !== totalPages) {
+                      e.currentTarget.style.background = '#FF36A3';
+                      e.currentTarget.style.borderColor = '#C10468';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentPage !== totalPages) {
+                      e.currentTarget.style.background = '#C10468';
+                      e.currentTarget.style.borderColor = '#FF36A3';
+                    }
+                  }}
+                >
+                  Suivant →
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(3, 9, 19, 0.9)', borderRadius: '12px', border: '2px solid #FF36A3' }}>
             <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🏆</div>

@@ -1,27 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './supabaseClient'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
-import Auth from './Auth'
-import HomePage from './HomePage'
-import Dashboard from './Dashboard'
-import OrganizerDashboard from './OrganizerDashboard'
-import PlayerDashboard from './PlayerDashboard'
-import Tournament from './Tournament'
-import Profile from './Profile';
-import CreateTeam from './CreateTeam';
-import MyTeam from './MyTeam';
-import JoinTeam from './JoinTeam';
-import MatchLobby from './MatchLobby';
-import CreateTournament from './CreateTournament';
-import PublicTournament from './PublicTournament';
-import StatsDashboard from './StatsDashboard';
-import Leaderboard from './Leaderboard';
-import StreamOverlay from './stream/StreamOverlay';
-import StreamDashboard from './stream/StreamDashboard';
-import TournamentAPI from './api/TournamentAPI';
 import { getUserRole } from './utils/userRole';
 import { toast } from './utils/toast';
+
+// Lazy loading des composants pour améliorer les performances
+const Auth = lazy(() => import('./Auth'));
+const HomePage = lazy(() => import('./HomePage'));
+const Dashboard = lazy(() => import('./Dashboard'));
+const OrganizerDashboard = lazy(() => import('./OrganizerDashboard'));
+const PlayerDashboard = lazy(() => import('./PlayerDashboard'));
+const Tournament = lazy(() => import('./Tournament'));
+const Profile = lazy(() => import('./Profile'));
+const CreateTeam = lazy(() => import('./CreateTeam'));
+const MyTeam = lazy(() => import('./MyTeam'));
+const JoinTeam = lazy(() => import('./JoinTeam'));
+const MatchLobby = lazy(() => import('./MatchLobby'));
+const CreateTournament = lazy(() => import('./CreateTournament'));
+const PublicTournament = lazy(() => import('./PublicTournament'));
+const StatsDashboard = lazy(() => import('./StatsDashboard'));
+const Leaderboard = lazy(() => import('./Leaderboard'));
+const StreamOverlay = lazy(() => import('./stream/StreamOverlay'));
+const StreamDashboard = lazy(() => import('./stream/StreamDashboard'));
+const TournamentAPI = lazy(() => import('./api/TournamentAPI'));
+
+// Composant de chargement pour Suspense
+const LoadingFallback = () => (
+  <div style={{
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#030913',
+    color: '#F8F6F2',
+    fontFamily: "'Protest Riot', sans-serif"
+  }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
+      <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Chargement...</p>
+    </div>
+  </div>
+);
 
 // Composant pour protéger les routes organisateur
 function OrganizerRoute({ children, session }) {
@@ -96,7 +116,8 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <Routes>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
         
@@ -224,8 +245,9 @@ function App() {
             <Navigate to="/" replace />
           )
         } />
-      </Routes>
-    </Router>
+          </Routes>
+        </Suspense>
+      </Router>
     </ErrorBoundary>
   )
 }
