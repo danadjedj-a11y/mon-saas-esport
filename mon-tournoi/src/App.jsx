@@ -226,6 +226,7 @@ function App() {
         } />
       </Routes>
     </Router>
+    </ErrorBoundary>
   )
 }
 
