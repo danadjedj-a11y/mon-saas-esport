@@ -20,23 +20,32 @@ export default function HomePage() {
   const itemsPerPage = 12;
 
   useEffect(() => {
+    let mounted = true;
+    
     // Vérifier la session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+      if (mounted) setSession(session);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      if (mounted) setSession(session);
     });
 
-    fetchTournaments();
+    // Charger les tournois une seule fois
+    if (mounted) {
+      fetchTournaments();
+    }
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const fetchTournaments = async () => {
+    // Éviter les appels multiples simultanés
+    if (loading) return;
+    
     setLoading(true);
     let timeoutId;
     try {
@@ -63,7 +72,7 @@ export default function HomePage() {
       if (error) {
         console.error('❌ Erreur chargement tournois:', error);
         toast.error(`Erreur: ${error.message}`);
-        setTournaments([]);
+        setAllTournaments([]);
       } else {
         console.log('✅ Tournois chargés:', data?.length || 0);
         setAllTournaments(data || []);

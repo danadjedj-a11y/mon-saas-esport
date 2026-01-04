@@ -302,11 +302,16 @@ export default function PublicTournament() {
         {isBestOf && completedGames.length > 0 && (
           <div style={{
             padding: '10px',
-            background: '#1a1a1a',
-            borderTop: '1px solid #333',
+            background: 'rgba(3, 9, 19, 0.8)',
+            borderTop: '2px solid #FF36A3',
             fontSize: '0.75rem'
           }}>
-            <div style={{ color: '#888', marginBottom: '6px', fontSize: '0.7rem' }}>
+            <div style={{ 
+              color: '#FF36A3', 
+              marginBottom: '6px', 
+              fontSize: '0.7rem',
+              fontFamily: "'Protest Riot', sans-serif"
+            }}>
               📊 Manches terminées:
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -316,32 +321,33 @@ export default function PublicTournament() {
                   <div 
                     key={game.id} 
                     style={{
-                      background: '#2a2a2a',
+                      background: 'rgba(3, 9, 19, 0.9)',
                       padding: '4px 8px',
                       borderRadius: '4px',
-                      border: '1px solid #444',
+                      border: '1px solid #C10468',
                       fontSize: '0.65rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      fontFamily: "'Protest Riot', sans-serif"
                     }}
                   >
-                    <span style={{ color: '#888' }}>#{game.game_number}</span>
+                    <span style={{ color: '#FF36A3' }}>#{game.game_number}</span>
                     <span style={{ 
                       fontWeight: 'bold', 
-                      color: game.team1_score > game.team2_score ? '#4ade80' : '#aaa' 
+                      color: game.team1_score > game.team2_score ? '#FF36A3' : '#F8F6F2' 
                     }}>
                       {game.team1_score}
                     </span>
-                    <span style={{ color: '#666' }}>-</span>
+                    <span style={{ color: '#C10468' }}>-</span>
                     <span style={{ 
                       fontWeight: 'bold', 
-                      color: game.team2_score > game.team1_score ? '#4ade80' : '#aaa' 
+                      color: game.team2_score > game.team1_score ? '#FF36A3' : '#F8F6F2' 
                     }}>
                       {game.team2_score}
                     </span>
                     {game.map_name && (
-                      <span style={{ color: '#888', fontSize: '0.6rem', marginLeft: '2px' }}>
+                      <span style={{ color: '#FF36A3', fontSize: '0.6rem', marginLeft: '2px' }}>
                         🗺️ {game.map_name}
                       </span>
                     )}
@@ -405,8 +411,69 @@ export default function PublicTournament() {
     });
   };
 
-  if (loading) return <div style={{color:'white', padding:'20px', textAlign:'center'}}>Chargement du tournoi...</div>;
-  if (!tournoi) return <div style={{color:'white', padding:'20px', textAlign:'center'}}>Tournoi introuvable</div>;
+  if (loading) return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#030913',
+      color: '#F8F6F2',
+      fontFamily: "'Protest Riot', sans-serif"
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
+        <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Chargement du tournoi...</p>
+      </div>
+    </div>
+  );
+  
+  if (!tournoi) return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#030913',
+      color: '#F8F6F2',
+      fontFamily: "'Protest Riot', sans-serif"
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
+        <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Tournoi introuvable</p>
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          style={{
+            marginTop: '20px',
+            padding: '12px 30px',
+            background: '#C10468',
+            border: '2px solid #FF36A3',
+            color: '#F8F6F2',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontFamily: "'Shadows Into Light', cursive",
+            fontSize: '1rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#FF36A3';
+            e.currentTarget.style.borderColor = '#C10468';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#C10468';
+            e.currentTarget.style.borderColor = '#FF36A3';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+        >
+          Retour à l'accueil
+        </button>
+      </div>
+    </div>
+  );
 
   const winnerMatch = matches.find(m => m.round_number === Math.max(...matches.map(m => m.round_number), 0) && m.status === 'completed');
   const winnerName = winnerMatch ? (winnerMatch.score_p1 > winnerMatch.score_p2 ? winnerMatch.p1_name : winnerMatch.p2_name) : null;
@@ -419,63 +486,153 @@ export default function PublicTournament() {
     { id: 'results', label: '📊 Résultats', icon: '📊' }
   ];
 
+  const getFormatLabel = (format) => {
+    switch (format) {
+      case 'elimination': return 'Élimination Directe';
+      case 'double_elimination': return 'Double Elimination';
+      case 'round_robin': return 'Championnat';
+      case 'swiss': return 'Système Suisse';
+      default: return format;
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'draft': return { bg: '#E7632C', text: 'Inscriptions ouvertes', icon: '📝' };
+      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
+      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+    }
+  };
+
+  const statusStyle = getStatusStyle(tournoi.status);
+
   return (
-    <div style={{ padding: '20px', color: 'white', maxWidth: '1400px', margin: '0 auto', fontFamily: 'Arial', background: '#111', minHeight: '100vh' }}>
-      
-      {/* HEADER */}
-      <div style={{ textAlign: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #333' }}>
-        <h1 style={{ margin: '10px 0', color: '#00d4ff', fontSize: '2.5rem' }}>{tournoi.name}</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '15px', flexWrap: 'wrap' }}>
-          <span style={{ background: '#2a2a2a', padding: '8px 15px', borderRadius: '20px', fontSize: '0.9rem' }}>
-            🎮 {tournoi.game}
-          </span>
-          <span style={{ background: '#2a2a2a', padding: '8px 15px', borderRadius: '20px', fontSize: '0.9rem' }}>
-            📊 {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat' : tournoi.format === 'double_elimination' ? 'Double Elimination' : tournoi.format === 'swiss' ? 'Système Suisse' : tournoi.format}
-          </span>
-          <span style={{ 
-            background: tournoi.status === 'completed' ? '#27ae60' : tournoi.status === 'ongoing' ? '#3498db' : '#f39c12', 
-            padding: '8px 15px', 
-            borderRadius: '20px', 
-            fontSize: '0.9rem',
-            fontWeight: 'bold'
+    <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2', padding: '20px' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        {/* HEADER */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '40px', 
+          paddingBottom: '30px', 
+          borderBottom: '3px solid #FF36A3',
+          background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.1) 0%, rgba(255, 54, 163, 0.05) 100%)',
+          padding: '30px',
+          borderRadius: '15px',
+          border: '2px solid #FF36A3',
+          boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+        }}>
+          <h1 style={{ 
+            margin: '10px 0', 
+            color: '#FF36A3', 
+            fontSize: '3rem',
+            fontFamily: "'Shadows Into Light', cursive",
+            fontWeight: '400'
           }}>
-            {tournoi.status === 'completed' ? '🏁 Terminé' : tournoi.status === 'ongoing' ? '🟢 En cours' : '🟠 Inscriptions'}
-          </span>
+            {tournoi.name}
+          </h1>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
+            <span style={{ 
+              background: 'rgba(3, 9, 19, 0.9)', 
+              padding: '10px 20px', 
+              borderRadius: '8px', 
+              fontSize: '0.95rem',
+              border: '2px solid #FF36A3',
+              fontFamily: "'Protest Riot', sans-serif",
+              color: '#F8F6F2'
+            }}>
+              🎮 {tournoi.game}
+            </span>
+            <span style={{ 
+              background: 'rgba(3, 9, 19, 0.9)', 
+              padding: '10px 20px', 
+              borderRadius: '8px', 
+              fontSize: '0.95rem',
+              border: '2px solid #FF36A3',
+              fontFamily: "'Protest Riot', sans-serif",
+              color: '#F8F6F2'
+            }}>
+              📊 {getFormatLabel(tournoi.format)}
+            </span>
+            <span style={{ 
+              background: statusStyle.bg,
+              padding: '10px 20px', 
+              borderRadius: '8px', 
+              fontSize: '0.95rem',
+              fontWeight: 'bold',
+              border: '2px solid #FF36A3',
+              fontFamily: "'Protest Riot', sans-serif",
+              color: '#F8F6F2'
+            }}>
+              {statusStyle.icon} {statusStyle.text}
+            </span>
+          </div>
         </div>
-      </div>
 
       {/* BANNIÈRE VAINQUEUR */}
       {winnerName && (
         <div style={{
-          background: 'linear-gradient(135deg, #FFD700, #FFA500)', 
-          color:'black', 
-          padding:'25px', 
+          background: 'linear-gradient(135deg, #FF36A3, #C10468)', 
+          color:'#F8F6F2', 
+          padding:'30px', 
           borderRadius:'15px', 
           textAlign:'center', 
           marginBottom:'30px',
-          boxShadow: '0 8px 32px rgba(255, 215, 0, 0.3)'
+          boxShadow: '0 8px 32px rgba(255, 54, 163, 0.5)',
+          border: '3px solid #FF36A3'
         }}>
-          <h2 style={{margin:0, fontSize: '1.8rem'}}>👑 VAINQUEUR : {winnerName.split(' [')[0]} 👑</h2>
+          <h2 style={{
+            margin:0, 
+            fontSize: '2rem',
+            fontFamily: "'Shadows Into Light', cursive",
+            textTransform: 'uppercase',
+            letterSpacing: '2px'
+          }}>
+            👑 VAINQUEUR : {winnerName.split(' [')[0]} 👑
+          </h2>
         </div>
       )}
 
       {/* ONGLETS */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', borderBottom: '2px solid #333', overflowX: 'auto' }}>
+      <div style={{ 
+        display: 'flex', 
+        gap: '10px', 
+        marginBottom: '30px', 
+        borderBottom: '3px solid #FF36A3', 
+        overflowX: 'auto',
+        paddingBottom: '10px'
+      }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
             style={{
               padding: '15px 25px',
-              background: activeTab === tab.id ? '#8e44ad' : 'transparent',
-              color: activeTab === tab.id ? 'white' : '#aaa',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '3px solid #00d4ff' : '3px solid transparent',
+              background: activeTab === tab.id ? '#C10468' : 'transparent',
+              color: activeTab === tab.id ? '#F8F6F2' : '#F8F6F2',
+              border: activeTab === tab.id ? '2px solid #FF36A3' : '2px solid transparent',
+              borderBottom: activeTab === tab.id ? '3px solid #FF36A3' : '3px solid transparent',
               cursor: 'pointer',
               fontSize: '1rem',
+              fontFamily: "'Shadows Into Light', cursive",
               fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
+              transition: 'all 0.3s ease',
+              whiteSpace: 'nowrap',
+              borderRadius: '8px 8px 0 0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.background = 'rgba(193, 4, 104, 0.3)';
+                e.currentTarget.style.borderColor = '#FF36A3';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = 'transparent';
+              }
             }}
           >
             {tab.label}
@@ -488,39 +645,78 @@ export default function PublicTournament() {
         
         {/* ONGLET PRÉSENTATION */}
         {activeTab === 'overview' && (
-          <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-            <h2 style={{ marginTop: 0, color: '#00d4ff' }}>Informations du tournoi</h2>
+          <div style={{ 
+            background: 'rgba(3, 9, 19, 0.95)', 
+            padding: '30px', 
+            borderRadius: '15px', 
+            border: '2px solid #FF36A3',
+            boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+          }}>
+            <h2 style={{ 
+              marginTop: 0, 
+              color: '#FF36A3',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '2rem',
+              marginBottom: '25px'
+            }}>
+              Informations du tournoi
+            </h2>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
-                <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Jeu</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>{tournoi.game}</div>
+              <div style={{ 
+                background: 'rgba(3, 9, 19, 0.8)', 
+                padding: '20px', 
+                borderRadius: '10px',
+                border: '2px solid #C10468'
+              }}>
+                <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Jeu</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{tournoi.game}</div>
               </div>
               
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
-                <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Format</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>
-                  {tournoi.format === 'elimination' ? 'Élimination Directe' : tournoi.format === 'round_robin' ? 'Championnat (Round Robin)' : tournoi.format === 'double_elimination' ? 'Double Elimination' : tournoi.format === 'swiss' ? 'Système Suisse' : tournoi.format}
+              <div style={{ 
+                background: 'rgba(3, 9, 19, 0.8)', 
+                padding: '20px', 
+                borderRadius: '10px',
+                border: '2px solid #C10468'
+              }}>
+                <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Format</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
+                  {getFormatLabel(tournoi.format)}
                 </div>
                 {tournoi.best_of > 1 && (
-                  <div style={{ fontSize: '0.9rem', color: '#00d4ff', marginTop: '5px' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
                     🎮 Best-of-{tournoi.best_of}
                   </div>
                 )}
               </div>
               
-              <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
-                <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Équipes inscrites</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold' }}>
+              <div style={{ 
+                background: 'rgba(3, 9, 19, 0.8)', 
+                padding: '20px', 
+                borderRadius: '10px',
+                border: '2px solid #C10468'
+              }}>
+                <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Équipes inscrites</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
                   {participants.length}
                   {tournoi.max_participants && ` / ${tournoi.max_participants}`}
                 </div>
               </div>
               
               {tournoi.registration_deadline && (
-                <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Date limite d'inscription</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: new Date(tournoi.registration_deadline) < new Date() ? '#e74c3c' : '#fff' }}>
+                <div style={{ 
+                  background: 'rgba(3, 9, 19, 0.8)', 
+                  padding: '20px', 
+                  borderRadius: '10px',
+                  border: '2px solid #C10468'
+                }}>
+                  <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Date limite d'inscription</div>
+                  <div style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: 'bold', 
+                    color: new Date(tournoi.registration_deadline) < new Date() ? '#E7632C' : '#F8F6F2',
+                    fontFamily: "'Protest Riot', sans-serif"
+                  }}>
                     {new Date(tournoi.registration_deadline).toLocaleDateString('fr-FR', { 
                       day: 'numeric', 
                       month: 'short', 
@@ -533,9 +729,14 @@ export default function PublicTournament() {
               )}
               
               {tournoi.start_date && (
-                <div style={{ background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '5px' }}>Date de début</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                <div style={{ 
+                  background: 'rgba(3, 9, 19, 0.8)', 
+                  padding: '20px', 
+                  borderRadius: '10px',
+                  border: '2px solid #C10468'
+                }}>
+                  <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Date de début</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
                     {new Date(tournoi.start_date).toLocaleDateString('fr-FR', { 
                       day: 'numeric', 
                       month: 'long', 
@@ -550,8 +751,22 @@ export default function PublicTournament() {
 
             {/* BOUTON D'INSCRIPTION */}
             {tournoi.status === 'draft' && (
-              <div style={{ marginTop: '30px', background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)', padding: '25px', borderRadius: '10px', border: '1px solid #3498db' }}>
-                <h3 style={{ margin: '0 0 15px 0', color: 'white', fontSize: '1.3rem' }}>🎯 Inscription au Tournoi</h3>
+              <div style={{ 
+                marginTop: '30px', 
+                background: 'linear-gradient(135deg, #C10468 0%, #FF36A3 100%)', 
+                padding: '25px', 
+                borderRadius: '10px', 
+                border: '2px solid #FF36A3',
+                boxShadow: '0 4px 12px rgba(193, 4, 104, 0.4)'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 15px 0', 
+                  color: '#F8F6F2', 
+                  fontSize: '1.5rem',
+                  fontFamily: "'Shadows Into Light', cursive"
+                }}>
+                  🎯 Inscription au Tournoi
+                </h3>
                 {session ? (
                   <TeamJoinButton 
                     tournamentId={id} 
@@ -562,24 +777,40 @@ export default function PublicTournament() {
                   />
                 ) : (
                   <div>
-                    <p style={{ margin: '0 0 15px 0', color: 'rgba(255,255,255,0.9)', fontSize: '0.95rem' }}>
+                    <p style={{ 
+                      margin: '0 0 15px 0', 
+                      color: '#F8F6F2', 
+                      fontSize: '0.95rem',
+                      fontFamily: "'Protest Riot', sans-serif"
+                    }}>
                       Connectez-vous pour vous inscrire à ce tournoi avec votre équipe
                     </p>
                     <button
-                      onClick={() => navigate('/')}
+                      type="button"
+                      onClick={() => navigate('/auth')}
                       style={{
                         padding: '12px 30px',
-                        background: 'white',
-                        color: '#3498db',
-                        border: 'none',
+                        background: '#030913',
+                        color: '#F8F6F2',
+                        border: '2px solid #FF36A3',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        fontWeight: 'bold',
+                        fontFamily: "'Shadows Into Light', cursive",
                         fontSize: '1rem',
-                        transition: 'transform 0.2s'
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        transition: 'all 0.3s ease'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#FF36A3';
+                        e.currentTarget.style.borderColor = '#C10468';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#030913';
+                        e.currentTarget.style.borderColor = '#FF36A3';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
                     >
                       🔐 Se Connecter
                     </button>
@@ -590,13 +821,26 @@ export default function PublicTournament() {
 
             {/* RÈGLEMENT */}
             {tournoi.rules && (
-              <div style={{ marginTop: '30px', background: '#2a2a2a', padding: '25px', borderRadius: '10px', border: '1px solid #444' }}>
-                <h3 style={{ margin: '0 0 15px 0', color: '#00d4ff', fontSize: '1.3rem' }}>📋 Règlement du Tournoi</h3>
+              <div style={{ 
+                marginTop: '30px', 
+                background: 'rgba(3, 9, 19, 0.8)', 
+                padding: '25px', 
+                borderRadius: '10px', 
+                border: '2px solid #C10468'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 15px 0', 
+                  color: '#FF36A3', 
+                  fontSize: '1.5rem',
+                  fontFamily: "'Shadows Into Light', cursive"
+                }}>
+                  📋 Règlement du Tournoi
+                </h3>
                 <div style={{ 
-                  color: '#ddd', 
+                  color: '#F8F6F2', 
                   lineHeight: '1.8', 
                   whiteSpace: 'pre-wrap',
-                  fontFamily: 'Arial, sans-serif',
+                  fontFamily: "'Protest Riot', sans-serif",
                   fontSize: '0.95rem'
                 }}>
                   {tournoi.rules}
@@ -605,23 +849,42 @@ export default function PublicTournament() {
             )}
 
             {matches.length > 0 && (
-              <div style={{ marginTop: '30px', background: '#2a2a2a', padding: '20px', borderRadius: '10px' }}>
-                <div style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '10px' }}>Progression</div>
-                <div style={{ fontSize: '1.1rem' }}>
+              <div style={{ 
+                marginTop: '30px', 
+                background: 'rgba(3, 9, 19, 0.8)', 
+                padding: '20px', 
+                borderRadius: '10px',
+                border: '2px solid #C10468'
+              }}>
+                <div style={{ 
+                  fontSize: '0.9rem', 
+                  color: '#FF36A3', 
+                  marginBottom: '10px',
+                  fontFamily: "'Protest Riot', sans-serif"
+                }}>
+                  Progression
+                </div>
+                <div style={{ 
+                  fontSize: '1.1rem',
+                  color: '#F8F6F2',
+                  fontFamily: "'Protest Riot', sans-serif",
+                  marginBottom: '10px'
+                }}>
                   {matches.filter(m => m.status === 'completed').length} / {matches.length} matchs joués
                 </div>
                 <div style={{ 
                   width: '100%', 
-                  height: '10px', 
-                  background: '#1a1a1a', 
-                  borderRadius: '5px', 
+                  height: '12px', 
+                  background: 'rgba(3, 9, 19, 0.5)', 
+                  borderRadius: '6px', 
                   marginTop: '10px',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  border: '1px solid #FF36A3'
                 }}>
                   <div style={{ 
                     width: `${(matches.filter(m => m.status === 'completed').length / matches.length) * 100}%`, 
                     height: '100%', 
-                    background: 'linear-gradient(90deg, #8e44ad, #3498db)',
+                    background: 'linear-gradient(90deg, #C10468, #FF36A3)',
                     transition: 'width 0.3s'
                   }}></div>
                 </div>
@@ -632,8 +895,20 @@ export default function PublicTournament() {
 
         {/* ONGLET PARTICIPANTS */}
         {activeTab === 'participants' && (
-          <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-            <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '20px' }}>
+          <div style={{ 
+            background: 'rgba(3, 9, 19, 0.95)', 
+            padding: '30px', 
+            borderRadius: '15px', 
+            border: '2px solid #FF36A3',
+            boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+          }}>
+            <h2 style={{ 
+              marginTop: 0, 
+              color: '#FF36A3', 
+              marginBottom: '20px',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '2rem'
+            }}>
               Participants ({participants.length})
             </h2>
             
@@ -642,29 +917,59 @@ export default function PublicTournament() {
                 <div 
                   key={p.id}
                   style={{ 
-                    background: '#2a2a2a', 
+                    background: 'rgba(3, 9, 19, 0.8)', 
                     padding: '15px', 
                     borderRadius: '10px', 
                     textAlign: 'center',
-                    border: '1px solid #333',
-                    transition: 'transform 0.2s'
+                    border: '2px solid #C10468',
+                    transition: 'all 0.3s ease'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-5px)';
+                    e.currentTarget.style.borderColor = '#FF36A3';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = '#C10468';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
                   <img 
                     src={p.teams?.logo_url || `https://ui-avatars.com/api/?name=${p.teams?.tag || '?'}&background=random&size=128`}
                     alt=""
-                    style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover', marginBottom: '10px' }}
+                    style={{ 
+                      width: '60px', 
+                      height: '60px', 
+                      borderRadius: '10px', 
+                      objectFit: 'cover', 
+                      marginBottom: '10px',
+                      border: '2px solid #FF36A3'
+                    }}
                   />
-                  <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{p.teams?.name || 'Équipe inconnue'}</div>
-                  <div style={{ color: '#00d4ff', fontSize: '0.85rem', marginTop: '5px' }}>[{p.teams?.tag || '?'}]</div>
+                  <div style={{ 
+                    fontWeight: 'bold', 
+                    fontSize: '1rem',
+                    color: '#F8F6F2',
+                    fontFamily: "'Shadows Into Light', cursive"
+                  }}>
+                    {p.teams?.name || 'Équipe inconnue'}
+                  </div>
+                  <div style={{ 
+                    color: '#FF36A3', 
+                    fontSize: '0.85rem', 
+                    marginTop: '5px',
+                    fontFamily: "'Protest Riot', sans-serif"
+                  }}>
+                    [{p.teams?.tag || '?'}]
+                  </div>
                   {p.seed_order && (
                     <div style={{ 
                       marginTop: '8px', 
                       fontSize: '0.75rem', 
-                      color: p.seed_order <= 3 ? '#f1c40f' : '#aaa',
-                      fontWeight: p.seed_order <= 3 ? 'bold' : 'normal'
+                      color: p.seed_order <= 3 ? '#FF36A3' : '#F8F6F2',
+                      fontWeight: p.seed_order <= 3 ? 'bold' : 'normal',
+                      fontFamily: "'Protest Riot', sans-serif"
                     }}>
                       Seed #{p.seed_order}
                     </div>
@@ -674,7 +979,14 @@ export default function PublicTournament() {
             </div>
             
             {participants.length === 0 && (
-              <p style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>Aucun participant pour le moment.</p>
+              <p style={{ 
+                textAlign: 'center', 
+                color: '#F8F6F2', 
+                marginTop: '50px',
+                fontFamily: "'Protest Riot', sans-serif"
+              }}>
+                Aucun participant pour le moment.
+              </p>
             )}
           </div>
         )}
@@ -684,36 +996,166 @@ export default function PublicTournament() {
           <div>
             {tournoi.format === 'round_robin' ? (
               // CLASSEMENT (Round Robin)
-              <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-                <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>🏆 Classement</h2>
+              <div style={{ 
+                background: 'rgba(3, 9, 19, 0.95)', 
+                padding: '30px', 
+                borderRadius: '15px', 
+                border: '2px solid #FF36A3',
+                boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+              }}>
+                <h2 style={{ 
+                  marginTop: 0, 
+                  color: '#FF36A3', 
+                  marginBottom: '25px',
+                  fontFamily: "'Shadows Into Light', cursive",
+                  fontSize: '2rem'
+                }}>
+                  🏆 Classement
+                </h2>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', color: '#F8F6F2' }}>
                     <thead>
-                      <tr style={{ background: '#252525', textAlign: 'left' }}>
-                        <th style={{ padding: '12px', borderRadius:'5px 0 0 5px' }}>Rang</th>
-                        <th style={{ padding: '12px' }}>Équipe</th>
-                        <th style={{ padding: '12px', textAlign:'center' }}>Pts</th>
-                        <th style={{ padding: '12px', textAlign:'center' }}>J</th>
-                        <th style={{ padding: '12px', textAlign:'center' }}>V</th>
-                        <th style={{ padding: '12px', textAlign:'center' }}>N</th>
-                        <th style={{ padding: '12px', textAlign:'center', borderRadius:'0 5px 5px 0' }}>D</th>
+                      <tr style={{ 
+                        background: 'rgba(193, 4, 104, 0.3)', 
+                        textAlign: 'left',
+                        borderBottom: '2px solid #FF36A3'
+                      }}>
+                        <th style={{ 
+                          padding: '12px', 
+                          borderRadius:'5px 0 0 5px',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          Rang
+                        </th>
+                        <th style={{ 
+                          padding: '12px',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          Équipe
+                        </th>
+                        <th style={{ 
+                          padding: '12px', 
+                          textAlign:'center',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          Pts
+                        </th>
+                        <th style={{ 
+                          padding: '12px', 
+                          textAlign:'center',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          J
+                        </th>
+                        <th style={{ 
+                          padding: '12px', 
+                          textAlign:'center',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          V
+                        </th>
+                        <th style={{ 
+                          padding: '12px', 
+                          textAlign:'center',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          N
+                        </th>
+                        <th style={{ 
+                          padding: '12px', 
+                          textAlign:'center', 
+                          borderRadius:'0 5px 5px 0',
+                          fontFamily: "'Shadows Into Light', cursive",
+                          color: '#FF36A3'
+                        }}>
+                          D
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {getStandings().map((team, index) => (
-                        <tr key={team.id} style={{ borderBottom: '1px solid #333' }}>
-                          <td style={{ padding: '12px', fontWeight: index === 0 ? 'bold' : 'normal', color: index === 0 ? '#f1c40f' : 'white', fontSize: '1.1rem' }}>
+                        <tr key={team.id} style={{ borderBottom: '1px solid rgba(255, 54, 163, 0.3)' }}>
+                          <td style={{ 
+                            padding: '12px', 
+                            fontWeight: index === 0 ? 'bold' : 'normal', 
+                            color: index === 0 ? '#FF36A3' : '#F8F6F2', 
+                            fontSize: '1.1rem',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
                             #{index + 1}
                           </td>
-                          <td style={{ padding: '12px', display:'flex', alignItems:'center', gap:'10px' }}>
-                            <img src={team.teams?.logo_url || `https://ui-avatars.com/api/?name=${team.teams?.tag}`} style={{width:'32px', height:'32px', borderRadius:'50%'}} alt=""/>
-                            <span style={{ fontWeight: index === 0 ? 'bold' : 'normal' }}>{team.teams?.name}</span>
+                          <td style={{ 
+                            padding: '12px', 
+                            display:'flex', 
+                            alignItems:'center', 
+                            gap:'10px'
+                          }}>
+                            <img 
+                              src={team.teams?.logo_url || `https://ui-avatars.com/api/?name=${team.teams?.tag}`} 
+                              style={{
+                                width:'32px', 
+                                height:'32px', 
+                                borderRadius:'50%',
+                                border: '2px solid #FF36A3'
+                              }} 
+                              alt=""
+                            />
+                            <span style={{ 
+                              fontWeight: index === 0 ? 'bold' : 'normal',
+                              color: '#F8F6F2',
+                              fontFamily: "'Protest Riot', sans-serif"
+                            }}>
+                              {team.teams?.name}
+                            </span>
                           </td>
-                          <td style={{ padding: '12px', textAlign:'center', fontWeight:'bold', fontSize:'1.2rem', color:'#4ade80' }}>{team.points}</td>
-                          <td style={{ padding: '12px', textAlign:'center', color:'#888' }}>{team.played}</td>
-                          <td style={{ padding: '12px', textAlign:'center' }}>{team.wins}</td>
-                          <td style={{ padding: '12px', textAlign:'center' }}>{team.draws}</td>
-                          <td style={{ padding: '12px', textAlign:'center' }}>{team.losses}</td>
+                          <td style={{ 
+                            padding: '12px', 
+                            textAlign:'center', 
+                            fontWeight:'bold', 
+                            fontSize:'1.2rem', 
+                            color:'#FF36A3',
+                            fontFamily: "'Shadows Into Light', cursive"
+                          }}>
+                            {team.points}
+                          </td>
+                          <td style={{ 
+                            padding: '12px', 
+                            textAlign:'center', 
+                            color:'#F8F6F2',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
+                            {team.played}
+                          </td>
+                          <td style={{ 
+                            padding: '12px', 
+                            textAlign:'center',
+                            color: '#F8F6F2',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
+                            {team.wins}
+                          </td>
+                          <td style={{ 
+                            padding: '12px', 
+                            textAlign:'center',
+                            color: '#F8F6F2',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
+                            {team.draws}
+                          </td>
+                          <td style={{ 
+                            padding: '12px', 
+                            textAlign:'center',
+                            color: '#F8F6F2',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
+                            {team.losses}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -722,17 +1164,47 @@ export default function PublicTournament() {
               </div>
             ) : tournoi.format === 'double_elimination' ? (
               // DOUBLE ELIMINATION
-              <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333', overflowX: 'auto' }}>
-                <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>🏆 Arbre du Tournoi</h2>
+              <div style={{ 
+                background: 'rgba(3, 9, 19, 0.95)', 
+                padding: '30px', 
+                borderRadius: '15px', 
+                border: '2px solid #FF36A3',
+                boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)',
+                overflowX: 'auto' 
+              }}>
+                <h2 style={{ 
+                  marginTop: 0, 
+                  color: '#FF36A3', 
+                  marginBottom: '25px',
+                  fontFamily: "'Shadows Into Light', cursive",
+                  fontSize: '2rem'
+                }}>
+                  🏆 Arbre du Tournoi
+                </h2>
                 {matches.length > 0 ? (
                   <div style={{display:'flex', gap:'40px', paddingBottom:'20px', minWidth: 'fit-content'}}>
                     {/* Winners Bracket */}
                     <div style={{flex: 1}}>
-                      <h3 style={{textAlign:'center', color:'#4ade80', marginBottom: '20px'}}>🏆 Winners Bracket</h3>
+                      <h3 style={{
+                        textAlign:'center', 
+                        color:'#FF36A3', 
+                        marginBottom: '20px',
+                        fontFamily: "'Shadows Into Light', cursive",
+                        fontSize: '1.5rem'
+                      }}>
+                        🏆 Winners Bracket
+                      </h3>
                       <div style={{display:'flex', gap:'40px'}}>
                         {[...new Set(matches.filter(m => m.bracket_type === 'winners').map(m=>m.round_number))].sort().map(round => (
                           <div key={`winners-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                            <h4 style={{textAlign:'center', color:'#666', marginBottom: '15px'}}>Round {round}</h4>
+                            <h4 style={{
+                              textAlign:'center', 
+                              color:'#F8F6F2', 
+                              marginBottom: '15px',
+                              fontFamily: "'Protest Riot', sans-serif"
+                            }}>
+                              Round {round}
+                            </h4>
                             {matches.filter(m => m.bracket_type === 'winners' && m.round_number === round).map(m => (
                               <MatchCard key={m.id} match={m} />
                             ))}
@@ -743,11 +1215,26 @@ export default function PublicTournament() {
                     
                     {/* Losers Bracket */}
                     <div style={{flex: 1}}>
-                      <h3 style={{textAlign:'center', color:'#e74c3c', marginBottom: '20px'}}>💀 Losers Bracket</h3>
+                      <h3 style={{
+                        textAlign:'center', 
+                        color:'#C10468', 
+                        marginBottom: '20px',
+                        fontFamily: "'Shadows Into Light', cursive",
+                        fontSize: '1.5rem'
+                      }}>
+                        💀 Losers Bracket
+                      </h3>
                       <div style={{display:'flex', gap:'40px'}}>
                         {[...new Set(matches.filter(m => m.bracket_type === 'losers').map(m=>m.round_number))].sort().map(round => (
                           <div key={`losers-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                            <h4 style={{textAlign:'center', color:'#666', marginBottom: '15px'}}>Round {round}</h4>
+                            <h4 style={{
+                              textAlign:'center', 
+                              color:'#F8F6F2', 
+                              marginBottom: '15px',
+                              fontFamily: "'Protest Riot', sans-serif"
+                            }}>
+                              Round {round}
+                            </h4>
                             {matches.filter(m => m.bracket_type === 'losers' && m.round_number === round).map(m => (
                               <MatchCard key={m.id} match={m} />
                             ))}
@@ -757,8 +1244,16 @@ export default function PublicTournament() {
                       
                       {/* Grand Finals */}
                       {matches.filter(m => !m.bracket_type && !m.is_reset).length > 0 && (
-                        <div style={{marginTop:'40px', paddingTop:'20px', borderTop:'2px solid #444'}}>
-                          <h3 style={{textAlign:'center', color:'#f1c40f', marginBottom: '20px'}}>🏅 Grand Finals</h3>
+                        <div style={{marginTop:'40px', paddingTop:'20px', borderTop:'3px solid #FF36A3'}}>
+                          <h3 style={{
+                            textAlign:'center', 
+                            color:'#FF36A3', 
+                            marginBottom: '20px',
+                            fontFamily: "'Shadows Into Light', cursive",
+                            fontSize: '1.8rem'
+                          }}>
+                            🏅 Grand Finals
+                          </h3>
                           <div style={{display:'flex', justifyContent:'center'}}>
                             {matches.filter(m => !m.bracket_type && !m.is_reset).map(m => {
                               const isCompleted = m.status === 'completed';
@@ -850,8 +1345,16 @@ export default function PublicTournament() {
                       
                       {/* Reset Match */}
                       {matches.filter(m => m.is_reset && m.player1_id && m.player2_id).length > 0 && (
-                        <div style={{marginTop:'20px', paddingTop:'20px', borderTop:'2px solid #444'}}>
-                          <h4 style={{textAlign:'center', color:'#f39c12', marginBottom:'10px'}}>🔄 Reset Match</h4>
+                        <div style={{marginTop:'20px', paddingTop:'20px', borderTop:'3px solid #FF36A3'}}>
+                          <h4 style={{
+                            textAlign:'center', 
+                            color:'#E7632C', 
+                            marginBottom:'10px',
+                            fontFamily: "'Shadows Into Light', cursive",
+                            fontSize: '1.3rem'
+                          }}>
+                            🔄 Reset Match
+                          </h4>
                           <div style={{display:'flex', justifyContent:'center'}}>
                             {matches.filter(m => m.is_reset).map(m => (
                               <MatchCard key={m.id} match={m} />
@@ -862,7 +1365,15 @@ export default function PublicTournament() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{textAlign:'center', padding:'50px', border:'2px dashed #333', borderRadius:'8px', color:'#666'}}>
+                  <div style={{
+                    textAlign:'center', 
+                    padding:'50px', 
+                    border:'2px dashed #FF36A3', 
+                    borderRadius:'8px', 
+                    color:'#F8F6F2',
+                    background: 'rgba(3, 9, 19, 0.5)',
+                    fontFamily: "'Protest Riot', sans-serif"
+                  }}>
                     L'arbre apparaîtra une fois le tournoi lancé.
                   </div>
                 )}
@@ -872,18 +1383,79 @@ export default function PublicTournament() {
               <div>
                 {/* Classement Suisse */}
                 {swissScores.length > 0 && (
-                  <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333', marginBottom: '40px' }}>
-                    <h2 style={{ marginTop: 0, color: '#3498db', marginBottom: '25px' }}>🇨🇭 Classement Suisse</h2>
+                  <div style={{ 
+                    background: 'rgba(3, 9, 19, 0.95)', 
+                    padding: '30px', 
+                    borderRadius: '15px', 
+                    border: '2px solid #FF36A3',
+                    boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)',
+                    marginBottom: '40px' 
+                  }}>
+                    <h2 style={{ 
+                      marginTop: 0, 
+                      color: '#FF36A3', 
+                      marginBottom: '25px',
+                      fontFamily: "'Shadows Into Light', cursive",
+                      fontSize: '2rem'
+                    }}>
+                      🇨🇭 Classement Suisse
+                    </h2>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
                         <thead>
-                          <tr style={{ background: '#252525', textAlign: 'left' }}>
-                            <th style={{ padding: '12px', borderRadius:'5px 0 0 5px' }}>Rang</th>
-                            <th style={{ padding: '12px' }}>Équipe</th>
-                            <th style={{ padding: '12px', textAlign:'center' }}>Victoires</th>
-                            <th style={{ padding: '12px', textAlign:'center' }}>Défaites</th>
-                            <th style={{ padding: '12px', textAlign:'center' }}>Nuls</th>
-                            <th style={{ padding: '12px', textAlign:'center', borderRadius:'0 5px 5px 0' }}>Buchholz</th>
+                          <tr style={{ 
+                            background: 'rgba(193, 4, 104, 0.3)', 
+                            textAlign: 'left',
+                            borderBottom: '2px solid #FF36A3'
+                          }}>
+                            <th style={{ 
+                              padding: '12px', 
+                              borderRadius:'5px 0 0 5px',
+                              fontFamily: "'Shadows Into Light', cursive",
+                              color: '#FF36A3'
+                            }}>
+                              Rang
+                            </th>
+                            <th style={{ 
+                              padding: '12px',
+                              fontFamily: "'Shadows Into Light', cursive",
+                              color: '#FF36A3'
+                            }}>
+                              Équipe
+                            </th>
+                            <th style={{ 
+                              padding: '12px', 
+                              textAlign:'center',
+                              fontFamily: "'Shadows Into Light', cursive",
+                              color: '#FF36A3'
+                            }}>
+                              Victoires
+                            </th>
+                            <th style={{ 
+                              padding: '12px', 
+                              textAlign:'center',
+                              fontFamily: "'Shadows Into Light', cursive",
+                              color: '#FF36A3'
+                            }}>
+                              Défaites
+                            </th>
+                            <th style={{ 
+                              padding: '12px', 
+                              textAlign:'center',
+                              fontFamily: "'Shadows Into Light', cursive",
+                              color: '#FF36A3'
+                            }}>
+                              Nuls
+                            </th>
+                            <th style={{ 
+                              padding: '12px', 
+                              textAlign:'center', 
+                              borderRadius:'0 5px 5px 0',
+                              fontFamily: "'Shadows Into Light', cursive",
+                              color: '#FF36A3'
+                            }}>
+                              Buchholz
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -894,18 +1466,70 @@ export default function PublicTournament() {
                           }).map((score, index) => {
                             const team = participants.find(p => p.team_id === score.team_id);
                             return (
-                              <tr key={score.id} style={{ borderBottom: '1px solid #333' }}>
-                                <td style={{ padding: '12px', fontWeight: index === 0 ? 'bold' : 'normal', color: index === 0 ? '#f1c40f' : 'white', fontSize: '1.1rem' }}>
+                              <tr key={score.id} style={{ borderBottom: '1px solid rgba(255, 54, 163, 0.3)' }}>
+                                <td style={{ 
+                                  padding: '12px', 
+                                  fontWeight: index === 0 ? 'bold' : 'normal', 
+                                  color: index === 0 ? '#FF36A3' : '#F8F6F2', 
+                                  fontSize: '1.1rem',
+                                  fontFamily: "'Protest Riot', sans-serif"
+                                }}>
                                   #{index + 1}
                                 </td>
                                 <td style={{ padding: '12px', display:'flex', alignItems:'center', gap:'10px' }}>
-                                  <img src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} style={{width:'32px', height:'32px', borderRadius:'50%'}} alt=""/>
-                                  <span style={{ fontWeight: index === 0 ? 'bold' : 'normal' }}>{team?.teams?.name || 'Inconnu'}</span>
+                                  <img 
+                                    src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} 
+                                    style={{
+                                      width:'32px', 
+                                      height:'32px', 
+                                      borderRadius:'50%',
+                                      border: '2px solid #FF36A3'
+                                    }} 
+                                    alt=""
+                                  />
+                                  <span style={{ 
+                                    fontWeight: index === 0 ? 'bold' : 'normal',
+                                    color: '#F8F6F2',
+                                    fontFamily: "'Protest Riot', sans-serif"
+                                  }}>
+                                    {team?.teams?.name || 'Inconnu'}
+                                  </span>
                                 </td>
-                                <td style={{ padding: '12px', textAlign:'center', fontWeight:'bold', fontSize:'1.1rem', color:'#2ecc71' }}>{score.wins}</td>
-                                <td style={{ padding: '12px', textAlign:'center', color:'#e74c3c' }}>{score.losses}</td>
-                                <td style={{ padding: '12px', textAlign:'center', color:'#f39c12' }}>{score.draws}</td>
-                                <td style={{ padding: '12px', textAlign:'center', color:'#3498db', fontWeight:'bold' }}>{parseFloat(score.buchholz_score || 0).toFixed(1)}</td>
+                                <td style={{ 
+                                  padding: '12px', 
+                                  textAlign:'center', 
+                                  fontWeight:'bold', 
+                                  fontSize:'1.1rem', 
+                                  color:'#FF36A3',
+                                  fontFamily: "'Shadows Into Light', cursive"
+                                }}>
+                                  {score.wins}
+                                </td>
+                                <td style={{ 
+                                  padding: '12px', 
+                                  textAlign:'center', 
+                                  color:'#F8F6F2',
+                                  fontFamily: "'Protest Riot', sans-serif"
+                                }}>
+                                  {score.losses}
+                                </td>
+                                <td style={{ 
+                                  padding: '12px', 
+                                  textAlign:'center', 
+                                  color:'#F8F6F2',
+                                  fontFamily: "'Protest Riot', sans-serif"
+                                }}>
+                                  {score.draws}
+                                </td>
+                                <td style={{ 
+                                  padding: '12px', 
+                                  textAlign:'center', 
+                                  color:'#FF36A3', 
+                                  fontWeight:'bold',
+                                  fontFamily: "'Shadows Into Light', cursive"
+                                }}>
+                                  {parseFloat(score.buchholz_score || 0).toFixed(1)}
+                                </td>
                               </tr>
                             );
                           })}
@@ -917,12 +1541,36 @@ export default function PublicTournament() {
 
                 {/* Rounds Suisses */}
                 {matches.length > 0 && (
-                  <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333', overflowX: 'auto' }}>
-                    <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>🇨🇭 Rounds</h2>
+                  <div style={{ 
+                    background: 'rgba(3, 9, 19, 0.95)', 
+                    padding: '30px', 
+                    borderRadius: '15px', 
+                    border: '2px solid #FF36A3',
+                    boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)',
+                    overflowX: 'auto' 
+                  }}>
+                    <h2 style={{ 
+                      marginTop: 0, 
+                      color: '#FF36A3', 
+                      marginBottom: '25px',
+                      fontFamily: "'Shadows Into Light', cursive",
+                      fontSize: '2rem'
+                    }}>
+                      🇨🇭 Rounds
+                    </h2>
                     <div style={{display:'flex', gap:'40px', paddingBottom:'20px', minWidth: 'fit-content'}}>
                       {[...new Set(matches.filter(m => m.bracket_type === 'swiss').map(m=>m.round_number))].sort().map(round => (
                         <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                          <h4 style={{textAlign:'center', color:'#3498db', fontWeight:'bold', marginBottom: '15px'}}>🇨🇭 Round {round}</h4>
+                          <h4 style={{
+                            textAlign:'center', 
+                            color:'#FF36A3', 
+                            fontWeight:'bold', 
+                            marginBottom: '15px',
+                            fontFamily: "'Shadows Into Light', cursive",
+                            fontSize: '1.3rem'
+                          }}>
+                            🇨🇭 Round {round}
+                          </h4>
                           {matches.filter(m=>m.round_number === round && m.bracket_type === 'swiss').map(m => {
                             const isCompleted = m.status === 'completed';
                             const isScheduled = m.scheduled_at && !isCompleted;
@@ -1015,8 +1663,23 @@ export default function PublicTournament() {
               </div>
             ) : (
               // ARBRE SIMPLE (Single Elimination)
-              <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333', overflowX: 'auto' }}>
-                <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>🏆 Arbre du Tournoi</h2>
+              <div style={{ 
+                background: 'rgba(3, 9, 19, 0.95)', 
+                padding: '30px', 
+                borderRadius: '15px', 
+                border: '2px solid #FF36A3',
+                boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)',
+                overflowX: 'auto' 
+              }}>
+                <h2 style={{ 
+                  marginTop: 0, 
+                  color: '#FF36A3', 
+                  marginBottom: '25px',
+                  fontFamily: "'Shadows Into Light', cursive",
+                  fontSize: '2rem'
+                }}>
+                  🏆 Arbre du Tournoi
+                </h2>
                 {matches.length > 0 ? (
                   <div style={{display:'flex', gap:'40px', paddingBottom:'20px', minWidth: 'fit-content'}}>
                     {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
@@ -1029,7 +1692,15 @@ export default function PublicTournament() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{textAlign:'center', padding:'50px', border:'2px dashed #333', borderRadius:'8px', color:'#666'}}>
+                  <div style={{
+                    textAlign:'center', 
+                    padding:'50px', 
+                    border:'2px dashed #FF36A3', 
+                    borderRadius:'8px', 
+                    color:'#F8F6F2',
+                    background: 'rgba(3, 9, 19, 0.5)',
+                    fontFamily: "'Protest Riot', sans-serif"
+                  }}>
                     L'arbre apparaîtra une fois le tournoi lancé.
                   </div>
                 )}
@@ -1040,8 +1711,22 @@ export default function PublicTournament() {
 
         {/* ONGLET PLANNING */}
         {activeTab === 'schedule' && (
-          <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-            <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>📅 Planning des Matchs</h2>
+          <div style={{ 
+            background: 'rgba(3, 9, 19, 0.95)', 
+            padding: '30px', 
+            borderRadius: '15px', 
+            border: '2px solid #FF36A3',
+            boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+          }}>
+            <h2 style={{ 
+              marginTop: 0, 
+              color: '#FF36A3', 
+              marginBottom: '25px',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '2rem'
+            }}>
+              📅 Planning des Matchs
+            </h2>
             
             {matches.filter(m => m.scheduled_at && m.status !== 'completed').length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1060,10 +1745,10 @@ export default function PublicTournament() {
                       <div 
                         key={m.id}
                         style={{ 
-                          background: isPast ? '#3a2a2a' : (isToday ? '#2a3a2a' : '#2a2a2a'), 
+                          background: isPast ? 'rgba(231, 99, 44, 0.2)' : (isToday ? 'rgba(193, 4, 104, 0.3)' : 'rgba(3, 9, 19, 0.8)'), 
                           padding: '20px', 
                           borderRadius: '10px', 
-                          border: isPast ? '1px solid #e74c3c' : (isToday ? '1px solid #4ade80' : '1px solid #3498db'),
+                          border: isPast ? '2px solid #E7632C' : (isToday ? '2px solid #FF36A3' : '2px solid #C10468'),
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
@@ -1072,23 +1757,69 @@ export default function PublicTournament() {
                         }}
                       >
                         <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>
+                          <div style={{ 
+                            fontSize: '0.85rem', 
+                            color: '#FF36A3', 
+                            marginBottom: '8px',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
                             Round {m.round_number} - Match #{m.match_number}
                             {m.bracket_type && (
-                              <span style={{ marginLeft: '10px', color: m.bracket_type === 'winners' ? '#4ade80' : '#e74c3c' }}>
+                              <span style={{ 
+                                marginLeft: '10px', 
+                                color: m.bracket_type === 'winners' ? '#FF36A3' : '#C10468',
+                                fontFamily: "'Protest Riot', sans-serif"
+                              }}>
                                 {m.bracket_type === 'winners' ? '🏆 Winners' : '💀 Losers'}
                               </span>
                             )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                              <img src={m.p1_avatar} style={{width:'40px', height:'40px', borderRadius:'50%', objectFit:'cover'}} alt="" />
-                              <span>{m.p1_name.split(' [')[0]}</span>
+                              <img 
+                                src={m.p1_avatar} 
+                                style={{
+                                  width:'40px', 
+                                  height:'40px', 
+                                  borderRadius:'50%', 
+                                  objectFit:'cover',
+                                  border: '2px solid #FF36A3'
+                                }} 
+                                alt="" 
+                              />
+                              <span style={{
+                                color: '#F8F6F2',
+                                fontFamily: "'Protest Riot', sans-serif"
+                              }}>
+                                {m.p1_name.split(' [')[0]}
+                              </span>
                             </div>
-                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>VS</div>
+                            <div style={{ 
+                              fontSize: '1.2rem', 
+                              fontWeight: 'bold',
+                              color: '#FF36A3',
+                              fontFamily: "'Shadows Into Light', cursive"
+                            }}>
+                              VS
+                            </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: 'flex-end' }}>
-                              <span>{m.p2_name.split(' [')[0]}</span>
-                              <img src={m.p2_avatar} style={{width:'40px', height:'40px', borderRadius:'50%', objectFit:'cover'}} alt="" />
+                              <span style={{
+                                color: '#F8F6F2',
+                                fontFamily: "'Protest Riot', sans-serif"
+                              }}>
+                                {m.p2_name.split(' [')[0]}
+                              </span>
+                              <img 
+                                src={m.p2_avatar} 
+                                style={{
+                                  width:'40px', 
+                                  height:'40px', 
+                                  borderRadius:'50%', 
+                                  objectFit:'cover',
+                                  border: '2px solid #FF36A3'
+                                }} 
+                                alt="" 
+                              />
                             </div>
                           </div>
                         </div>
@@ -1096,12 +1827,17 @@ export default function PublicTournament() {
                           <div style={{ 
                             fontSize: '1.1rem', 
                             fontWeight: 'bold',
-                            color: isPast ? '#e74c3c' : (isToday ? '#4ade80' : '#3498db'),
-                            marginBottom: '5px'
+                            color: isPast ? '#E7632C' : (isToday ? '#FF36A3' : '#C10468'),
+                            marginBottom: '5px',
+                            fontFamily: "'Shadows Into Light', cursive"
                           }}>
                             {isPast ? '⏰ Passé' : isToday ? '🟢 Aujourd\'hui' : '📅 À venir'}
                           </div>
-                          <div style={{ fontSize: '0.9rem', color: '#aaa' }}>
+                          <div style={{ 
+                            fontSize: '0.9rem', 
+                            color: '#F8F6F2',
+                            fontFamily: "'Protest Riot', sans-serif"
+                          }}>
                             {scheduledDate.toLocaleDateString('fr-FR', { 
                               weekday: 'long',
                               day: 'numeric', 
@@ -1109,7 +1845,13 @@ export default function PublicTournament() {
                               year: 'numeric'
                             })}
                           </div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#00d4ff', marginTop: '5px' }}>
+                          <div style={{ 
+                            fontSize: '1.1rem', 
+                            fontWeight: 'bold', 
+                            color: '#FF36A3', 
+                            marginTop: '5px',
+                            fontFamily: "'Shadows Into Light', cursive"
+                          }}>
                             {scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
@@ -1118,7 +1860,12 @@ export default function PublicTournament() {
                   })}
               </div>
             ) : (
-              <p style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>
+              <p style={{ 
+                textAlign: 'center', 
+                color: '#F8F6F2', 
+                marginTop: '50px',
+                fontFamily: "'Protest Riot', sans-serif"
+              }}>
                 Aucun match planifié pour le moment.
               </p>
             )}
@@ -1127,8 +1874,22 @@ export default function PublicTournament() {
 
         {/* ONGLET RÉSULTATS */}
         {activeTab === 'results' && (
-          <div style={{ background: '#1a1a1a', padding: '30px', borderRadius: '15px', border: '1px solid #333' }}>
-            <h2 style={{ marginTop: 0, color: '#00d4ff', marginBottom: '25px' }}>📊 Résultats des matchs</h2>
+          <div style={{ 
+            background: 'rgba(3, 9, 19, 0.95)', 
+            padding: '30px', 
+            borderRadius: '15px', 
+            border: '2px solid #FF36A3',
+            boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+          }}>
+            <h2 style={{ 
+              marginTop: 0, 
+              color: '#FF36A3', 
+              marginBottom: '25px',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '2rem'
+            }}>
+              📊 Résultats des matchs
+            </h2>
             
             {matches.filter(m => m.status === 'completed').length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1143,18 +1904,60 @@ export default function PublicTournament() {
                   ))}
               </div>
             ) : (
-              <p style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>Aucun résultat pour le moment.</p>
+              <p style={{ 
+                textAlign: 'center', 
+                color: '#F8F6F2', 
+                marginTop: '50px',
+                fontFamily: "'Protest Riot', sans-serif"
+              }}>
+                Aucun résultat pour le moment.
+              </p>
             )}
           </div>
         )}
       </div>
 
       {/* FOOTER */}
-      <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #333', textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>
+      <div style={{ 
+        marginTop: '40px', 
+        paddingTop: '20px', 
+        borderTop: '3px solid #FF36A3', 
+        textAlign: 'center', 
+        color: '#F8F6F2', 
+        fontSize: '0.9rem',
+        fontFamily: "'Protest Riot', sans-serif"
+      }}>
         <p>Vue publique - Les résultats sont mis à jour en temps réel</p>
-        <p style={{ marginTop: '5px' }}>
-          <a href="/" style={{ color: '#00d4ff', textDecoration: 'none' }}>← Retour à l'accueil</a>
+        <p style={{ marginTop: '10px' }}>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            style={{
+              background: 'transparent',
+              border: '2px solid #C10468',
+              color: '#FF36A3',
+              padding: '8px 20px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '0.9rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#C10468';
+              e.currentTarget.style.borderColor = '#FF36A3';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = '#C10468';
+            }}
+          >
+            ← Retour à l'accueil
+          </button>
         </p>
+      </div>
       </div>
     </div>
   );
