@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from './utils/toast';
 
 const JoinButton = ({ tournamentId, supabase, session }) => {
   const [isRegistered, setIsRegistered] = useState(false);
@@ -29,7 +30,10 @@ const JoinButton = ({ tournamentId, supabase, session }) => {
 
   // Fonction pour rejoindre
   const handleJoin = async () => {
-    if (!session?.user) return alert("Connecte-toi d'abord !");
+    if (!session?.user) {
+      toast.warning("Connecte-toi d'abord !");
+      return;
+    }
 
     // On utilise l'email comme pseudo par défaut (ou une partie de l'email)
     const pseudo = session.user.email.split('@')[0];
@@ -45,10 +49,10 @@ const JoinButton = ({ tournamentId, supabase, session }) => {
       ]);
 
     if (error) {
-      alert("Erreur lors de l'inscription : " + error.message);
+      toast.error("Erreur lors de l'inscription : " + error.message);
     } else {
       setIsRegistered(true);
-      alert("Tu es inscrit ! 🎉");
+      toast.success("Tu es inscrit ! 🎉");
       window.location.reload(); // On rafraîchit pour voir son nom dans la liste
     }
   };

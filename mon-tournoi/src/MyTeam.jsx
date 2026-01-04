@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from './utils/toast';
 
 export default function MyTeam({ session, supabase }) {
   const [allTeams, setAllTeams] = useState([]); // Liste de toutes mes équipes
@@ -104,10 +105,10 @@ export default function MyTeam({ session, supabase }) {
       // Mettre à jour aussi la liste globale pour que le logo change dans le sélecteur si besoin
       setAllTeams(prev => prev.map(t => t.id === currentTeam.id ? { ...t, logo_url: publicUrl } : t));
       
-      alert("Logo mis à jour !");
+      toast.success("Logo mis à jour !");
 
     } catch (error) {
-      alert('Erreur : ' + error.message);
+      toast.error('Erreur : ' + error.message);
     } finally {
       setUploading(false);
     }
@@ -116,7 +117,7 @@ export default function MyTeam({ session, supabase }) {
   const copyInviteLink = () => {
     const link = `${window.location.origin}/join-team/${currentTeam.id}`;
     navigator.clipboard.writeText(link);
-    alert("Lien d'invitation copié !");
+    toast.success("Lien d'invitation copié !");
   };
 
   const kickMember = async (userId) => {

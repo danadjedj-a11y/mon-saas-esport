@@ -46,13 +46,27 @@ La Phase 1 a été entièrement implémentée avec succès !
 **Fichier** : `backend_validation_triggers.sql`
 
 ### 5. Remplacement des alert() par toasts ✅
-- ✅ Fichiers principaux complétés :
+- ✅ **TOUS les alert() remplacés** (75 occurrences dans 13 fichiers) :
+  - `src/MatchLobby.jsx` (18 occurrences) ✅
+  - `src/Tournament.jsx` (17 occurrences) ✅
+  - `src/AdminPanel.jsx` (8 occurrences) ✅
+  - `src/TeamJoinButton.jsx` (7 occurrences) ✅
+  - `src/Chat.jsx` (5 occurrences) ✅
+  - `src/JoinTeam.jsx` (4 occurrences) ✅
+  - `src/MyTeam.jsx` (3 occurrences) ✅
+  - `src/CheckInButton.jsx` (3 occurrences) ✅
+  - `src/JoinButton.jsx` (3 occurrences) ✅
+  - `src/Profile.jsx` (2 occurrences) ✅
+  - `src/SchedulingModal.jsx` (2 occurrences) ✅
+  - `src/Home.jsx` (2 occurrences) ✅
+  - `src/SeedingModal.jsx` (1 occurrence) ✅
+- ✅ Fichiers déjà complétés précédemment :
   - `src/Auth.jsx`
   - `src/CreateTournament.jsx`
   - `src/CreateTeam.jsx`
   - `src/OrganizerDashboard.jsx`
-  - `src/App.jsx` (partiel)
-- ⚠️ Environ 35-40 alert() restants dans d'autres fichiers (à faire progressivement)
+  - `src/App.jsx`
+  - `src/HomePage.jsx`
 
 ---
 
@@ -114,9 +128,10 @@ logger.debug('Debug info', data);
    - Forcer une erreur dans un composant pour tester
    - Vérifier que l'UI de repli s'affiche
 
-3. **Remplacer les alert() restants** (progressif)
-   - Fichiers restants : Tournament.jsx, MatchLobby.jsx, PlayerDashboard.jsx, etc.
-   - À faire au fur et à mesure lors des modifications
+3. ~~**Remplacer les alert() restants**~~ ✅ **TERMINÉ**
+   - Tous les alert() ont été remplacés par des toasts
+   - 75 occurrences remplacées dans 13 fichiers
+   - Aucun alert() restant dans le codebase
 
 4. **Intégrer le logger progressivement** (optionnel)
    - Remplacer les `console.log/error` par `logger.info/error`
@@ -128,13 +143,13 @@ logger.debug('Debug info', data);
 
 ### Avant Phase 1
 - ❌ Aucune gestion d'erreurs globale
-- ❌ 44+ alert() intrusifs
+- ❌ 75 alert() intrusifs dans 13 fichiers
 - ❌ Pas de logging centralisé
 - ❌ Validation uniquement côté client
 
 ### Après Phase 1
 - ✅ Error Boundary capturant les erreurs React
-- ✅ Système de toasts élégant et non-intrusif
+- ✅ Système de toasts élégant et non-intrusif (0 alert() restant)
 - ✅ Logger centralisé avec niveaux
 - ✅ Validation backend complémentaire (après exécution SQL)
 - ✅ Meilleure expérience utilisateur
@@ -144,17 +159,22 @@ logger.debug('Debug info', data);
 
 ## 🎯 Résultat
 
-La Phase 1 est **complète et fonctionnelle** ! 
+La Phase 1 est **100% complète et fonctionnelle** ! 
 
 L'application est maintenant :
 - ✅ Plus stable (Error Boundary)
-- ✅ Plus agréable (toasts au lieu d'alert)
+- ✅ Plus agréable (toasts au lieu d'alert - **0 alert() restant**)
 - ✅ Plus facile à déboguer (logger)
 - ✅ Plus sécurisée (validation backend complète)
 
-**✅ Les triggers SQL ont été exécutés avec succès !**
+**✅ Tous les alert() ont été remplacés par des toasts !**
+- 75 occurrences remplacées dans 13 fichiers
+- Aucun alert() restant dans le codebase
+- Expérience utilisateur considérablement améliorée
 
-La validation backend est maintenant active et protégera votre base de données contre les données invalides, même si quelqu'un contourne la validation côté client.
+**⚠️ Action requise : Exécuter les triggers SQL**
+- Les fichiers SQL sont prêts dans `backend_validation_triggers.sql`
+- À exécuter dans Supabase SQL Editor pour activer la validation backend
 
 ---
 

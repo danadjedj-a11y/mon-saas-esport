@@ -13,6 +13,7 @@ import SchedulingModal from './SchedulingModal';
 import { notifyMatchResult } from './notificationUtils';
 import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores, recalculateBuchholzScores } from './swissUtils';
 import { exportTournamentToPDF } from './utils/pdfExport';
+import { toast } from './utils/toast';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -183,7 +184,10 @@ export default function Tournament({ session }) {
   // ==============================================================================
 
   const startTournament = async () => {
-    if (participants.length < 2) return alert("Il faut au moins 2 équipes pour lancer !");
+    if (participants.length < 2) {
+      toast.error("Il faut au moins 2 équipes pour lancer !");
+      return;
+    }
     if (!confirm("Lancer le tournoi ? Plus aucune inscription ne sera possible.")) return;
     
     setLoading(true);
@@ -192,7 +196,7 @@ export default function Tournament({ session }) {
     const checkedInParticipants = participants.filter(p => p.checked_in && !p.disqualified);
     
     if (checkedInParticipants.length < 2) {
-      alert("⚠️ Moins de 2 équipes ont fait leur check-in. Impossible de lancer.");
+      toast.warning("Moins de 2 équipes ont fait leur check-in. Impossible de lancer.");
       setLoading(false);
       return;
     }
@@ -409,7 +413,7 @@ export default function Tournament({ session }) {
     }
 
     const { error: matchError } = await supabase.from('matches').insert(matchesToCreate);
-    if (matchError) alert("Erreur création matchs : " + matchError.message);
+    if (matchError) toast.error("Erreur création matchs : " + matchError.message);
     
     await fetchData();
   };
@@ -425,7 +429,7 @@ export default function Tournament({ session }) {
 
       const currentCount = count || 0;
       if (currentCount >= tournoi.max_participants) {
-        alert('❌ Le tournoi est complet. Impossible de promouvoir cette équipe.');
+        toast.error('Le tournoi est complet. Impossible de promouvoir cette équipe.');
         return;
       }
     }
@@ -442,7 +446,7 @@ export default function Tournament({ session }) {
 
     if (insertError) {
       console.error('Erreur lors de la promotion:', insertError);
-      alert('❌ Erreur lors de la promotion : ' + insertError.message);
+      toast.error('Erreur lors de la promotion : ' + insertError.message);
       return;
     }
 
@@ -472,7 +476,7 @@ export default function Tournament({ session }) {
       }
     }
 
-    alert('✅ Équipe promue avec succès !');
+    toast.success('Équipe promue avec succès !');
     fetchData();
   };
 
@@ -483,7 +487,7 @@ export default function Tournament({ session }) {
     
     if (error) {
       console.error('Erreur lors de la suppression:', error);
-      alert('❌ Erreur lors de la suppression : ' + error.message);
+      toast.error('Erreur lors de la suppression : ' + error.message);
       return;
     }
     
@@ -499,7 +503,7 @@ export default function Tournament({ session }) {
     
     if (error) {
       console.error('Erreur lors du check-in:', error);
-      alert('❌ Erreur lors du check-in : ' + error.message);
+      toast.error('Erreur lors du check-in : ' + error.message);
       return;
     }
     
@@ -509,15 +513,15 @@ export default function Tournament({ session }) {
   const copyPublicLink = () => {
     const publicUrl = `${window.location.origin}/tournament/${id}/public`;
     navigator.clipboard.writeText(publicUrl).then(() => {
-      alert('✅ Lien public copié dans le presse-papier !');
+      toast.success('Lien public copié dans le presse-papier !');
     }).catch(() => {
-      alert('Erreur lors de la copie du lien');
+      toast.error('Erreur lors de la copie du lien');
     });
   };
 
   const exportToPDF = () => {
     if (!tournoi || !participants || !matches) {
-      alert('Données incomplètes pour l\'export PDF');
+      toast.error('Données incomplètes pour l\'export PDF');
       return;
     }
     
@@ -601,7 +605,7 @@ export default function Tournament({ session }) {
     const allCompleted = lastRoundMatches.every(m => m.status === 'completed');
     
     if (!allCompleted) {
-      alert('⚠️ Tous les matchs du round actuel doivent être terminés avant de générer le round suivant.');
+      toast.warning('Tous les matchs du round actuel doivent être terminés avant de générer le round suivant.');
       return;
     }
     
@@ -613,7 +617,7 @@ export default function Tournament({ session }) {
       // Tournoi terminé
       await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
       triggerConfetti();
-      alert('🏆 Tous les rounds sont terminés ! Le tournoi est complété.');
+      toast.success('Tous les rounds sont terminés ! Le tournoi est complété.');
       fetchData();
       return;
     }
@@ -622,7 +626,7 @@ export default function Tournament({ session }) {
     const pairs = swissPairing(swissScores, allMatches || []);
     
     if (pairs.length === 0) {
-      alert('⚠️ Impossible de générer des paires. Vérifiez les scores suisses.');
+      toast.warning('Impossible de générer des paires. Vérifiez les scores suisses.');
       return;
     }
     
@@ -641,11 +645,11 @@ export default function Tournament({ session }) {
     
     const { error } = await supabase.from('matches').insert(matchesToCreate);
     if (error) {
-      alert('Erreur lors de la création du round : ' + error.message);
+      toast.error('Erreur lors de la création du round : ' + error.message);
       return;
     }
     
-    alert(`✅ Round ${nextRound} généré avec ${pairs.length} matchs !`);
+    toast.success(`Round ${nextRound} généré avec ${pairs.length} matchs !`);
     fetchData();
   };
 
@@ -677,7 +681,10 @@ export default function Tournament({ session }) {
       .update({ score_p1: s1, score_p2: s2, status: 'completed' })
       .eq('id', currentMatch.id);
 
-    if (error) return alert('Erreur score : ' + error.message);
+    if (error) {
+      toast.error('Erreur score : ' + error.message);
+      return;
+    }
 
     // Récupérer le match mis à jour depuis la DB (comme pour les brackets)
     const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', currentMatch.id).single();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from './utils/toast';
 
 export default function JoinTeam({ session, supabase }) {
   const { teamId } = useParams();
@@ -18,17 +19,20 @@ export default function JoinTeam({ session, supabase }) {
   };
 
   const handleJoin = async () => {
-    if (!session) return alert("Connecte-toi d'abord !");
+    if (!session) {
+      toast.warning("Connecte-toi d'abord !");
+      return;
+    }
 
     const { error } = await supabase
       .from('team_members')
       .insert([{ team_id: teamId, user_id: session.user.id }]);
 
     if (error) {
-      if (error.code === '23505') alert("Tu es déjà dans cette équipe !");
-      else alert("Erreur : " + error.message);
+      if (error.code === '23505') toast.warning("Tu es déjà dans cette équipe !");
+      else toast.error("Erreur : " + error.message);
     } else {
-      alert(`Bienvenue chez ${team.name} !`);
+      toast.success(`Bienvenue chez ${team.name} !`);
       navigate('/dashboard');
     }
   };

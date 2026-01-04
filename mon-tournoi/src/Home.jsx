@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from './utils/toast';
 
 export default function Home({ session }) {
   const [nomTournoi, setNomTournoi] = useState('');
@@ -17,7 +18,10 @@ export default function Home({ session }) {
   }, []);
 
   const creerTournoi = async () => {
-    if (!nomTournoi) return alert("Donne un nom !");
+    if (!nomTournoi) {
+      toast.warning("Donne un nom !");
+      return;
+    }
     
     // NOUVEAU CODE : On utilise la nouvelle structure SQL "Pro"
     const { data, error } = await supabase
@@ -33,7 +37,7 @@ export default function Home({ session }) {
 
     if (error) {
       console.error(error);
-      alert("Erreur: " + error.message);
+      toast.error("Erreur: " + error.message);
     } else {
       navigate(`/tournoi/${data[0].id}`);
     }

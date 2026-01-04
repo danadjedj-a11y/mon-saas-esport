@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { toast } from './utils/toast';
 
 export default function Profile({ session }) {
   const [username, setUsername] = useState('');
@@ -116,8 +117,8 @@ export default function Profile({ session }) {
       avatar_url: avatarUrl,
       updated_at: new Date(),
     });
-    if (error) alert("Erreur : " + error.message);
-    else alert("Profil mis à jour !");
+    if (error) toast.error("Erreur : " + error.message);
+    else toast.success("Profil mis à jour !");
   }
 
   return (

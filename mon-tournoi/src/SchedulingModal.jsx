@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { notifyMatchUpcoming } from './notificationUtils';
+import { toast } from './utils/toast';
 
 export default function SchedulingModal({ isOpen, onClose, match, supabase, onSave }) {
   const [scheduledDateTime, setScheduledDateTime] = useState('');
@@ -59,7 +60,7 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
       if (onSave) onSave();
       onClose();
     } catch (error) {
-      alert('Erreur lors de la planification : ' + error.message);
+      toast.error('Erreur lors de la planification : ' + error.message);
       console.error(error);
     } finally {
       setLoading(false);
@@ -82,7 +83,7 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
       if (onSave) onSave();
       onClose();
     } catch (error) {
-      alert('Erreur : ' + error.message);
+      toast.error('Erreur : ' + error.message);
     } finally {
       setLoading(false);
     }

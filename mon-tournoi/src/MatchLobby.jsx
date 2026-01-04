@@ -4,6 +4,7 @@ import Chat from './Chat';
 import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
 import { updateSwissScores } from './swissUtils'; // <--- IMPORT AJOUTÉ
 import { calculateMatchWinner, getNextVetoTeam, generateVetoOrder, getAvailableMaps, getMapForGame } from './bofUtils'; // <--- IMPORT BEST-OF-X
+import { toast } from './utils/toast';
 
 export default function MatchLobby({ session, supabase }) {
   const { id } = useParams();
@@ -334,8 +335,14 @@ export default function MatchLobby({ session, supabase }) {
   // ------------------------------------------------------------------
 
   const submitScoreReport = async () => {
-    if (!myTeamId || !session) return alert("Tu dois être connecté et membre d'une équipe pour déclarer un score.");
-    if (myScore < 0 || opponentScore < 0) return alert("Les scores ne peuvent pas être négatifs.");
+    if (!myTeamId || !session) {
+      toast.error("Tu dois être connecté et membre d'une équipe pour déclarer un score.");
+      return;
+    }
+    if (myScore < 0 || opponentScore < 0) {
+      toast.error("Les scores ne peuvent pas être négatifs.");
+      return;
+    }
 
     const isTeam1 = myTeamId === match.player1_id;
     const scoreForTeam1 = isTeam1 ? myScore : opponentScore;
@@ -404,7 +411,7 @@ export default function MatchLobby({ session, supabase }) {
                 await supabase.from('score_reports').update({ is_resolved: true }).in('id', reportIds);
               }
 
-              alert('✅ Scores concordent ! Le match est validé et l\'arbre va se mettre à jour.');
+              toast.success('Scores concordent ! Le match est validé et l\'arbre va se mettre à jour.');
               
               // C. Récupérer le match mis à jour
               const updatedMatch = { ...currentMatch, score_p1: team1Report.score_team, score_p2: team1Report.score_opponent, status: 'completed' };
@@ -455,7 +462,7 @@ export default function MatchLobby({ session, supabase }) {
                 await notifyScoreDispute(id, match.player1_id, match.player2_id);
               }
               
-              alert('⚠️ Conflit : Les scores ne correspondent pas. Un admin doit intervenir.');
+              toast.warning('Conflit : Les scores ne correspondent pas. Un admin doit intervenir.');
             }
           }
         }
@@ -463,12 +470,15 @@ export default function MatchLobby({ session, supabase }) {
 
       fetchMatchDetails();
     } catch (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     }
   };
 
   const resolveConflict = async (scoreP1, scoreP2) => {
-    if (!isAdmin) return alert("Seul l'administrateur peut résoudre un conflit.");
+    if (!isAdmin) {
+      toast.error("Seul l'administrateur peut résoudre un conflit.");
+      return;
+    }
 
     // 1. Update Match
     await supabase.from('matches').update({ 
@@ -479,7 +489,7 @@ export default function MatchLobby({ session, supabase }) {
     // 2. Resolve reports
     await supabase.from('score_reports').update({ is_resolved: true }).eq('match_id', id);
 
-    alert("✅ Conflit résolu !");
+    toast.success("Conflit résolu !");
     
     // 3. Avancer Bracket / Calculer Points
     const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', id).single();
@@ -545,8 +555,14 @@ export default function MatchLobby({ session, supabase }) {
 
   // Déclarer le score d'une manche (avec système de validation)
   const submitGameScore = async (gameNumber, myTeamScore, opponentScore) => {
-    if (!myTeamId || !session) return alert("Tu dois être connecté et membre d'une équipe pour déclarer un score.");
-    if (myTeamScore < 0 || opponentScore < 0) return alert("Les scores ne peuvent pas être négatifs.");
+    if (!myTeamId || !session) {
+      toast.error("Tu dois être connecté et membre d'une équipe pour déclarer un score.");
+      return;
+    }
+    if (myTeamScore < 0 || opponentScore < 0) {
+      toast.error("Les scores ne peuvent pas être négatifs.");
+      return;
+    }
     
     const isTeam1 = myTeamId === match.player1_id;
     const scoreForTeam1 = isTeam1 ? myTeamScore : opponentScore;
@@ -579,7 +595,7 @@ export default function MatchLobby({ session, supabase }) {
       }
       
       if (!existingGame) {
-        alert('Erreur : Impossible de créer/récupérer la manche.');
+        toast.error('Erreur : Impossible de créer/récupérer la manche.');
         return;
       }
       
@@ -692,9 +708,9 @@ export default function MatchLobby({ session, supabase }) {
                     }, 1000);
                   }
                   
-                  alert(`✅ Match terminé ! ${finalScore1} - ${finalScore2}`);
+                  toast.success(`Match terminé ! ${finalScore1} - ${finalScore2}`);
                 } else {
-                  alert('✅ Manche validée ! Les scores concordent.');
+                  toast.success('Manche validée ! Les scores concordent.');
                 }
               }
               
@@ -702,23 +718,26 @@ export default function MatchLobby({ session, supabase }) {
               // ❌ CONFLIT
               await supabase.from('match_games').update({ score_status: 'disputed' }).eq('id', existingGame.id);
               
-              alert('⚠️ Conflit : Les scores ne correspondent pas. Un admin doit intervenir.');
+              toast.warning('Conflit : Les scores ne correspondent pas. Un admin doit intervenir.');
             }
           }
         }
       } else {
-        alert('✅ Score déclaré ! En attente de la déclaration de l\'adversaire.');
+        toast.success('Score déclaré ! En attente de la déclaration de l\'adversaire.');
       }
       
       fetchMatchDetails();
     } catch (error) {
-      alert('Erreur : ' + error.message);
+      toast.error('Erreur : ' + error.message);
     }
   };
   
   // Résoudre un conflit de score pour une manche (Admin)
   const resolveGameConflict = async (gameId, scoreTeam1, scoreTeam2) => {
-    if (!isAdmin) return alert("Seul l'administrateur peut résoudre un conflit.");
+    if (!isAdmin) {
+      toast.error("Seul l'administrateur peut résoudre un conflit.");
+      return;
+    }
 
     const winnerTeamId = scoreTeam1 > scoreTeam2 ? match.player1_id : (scoreTeam2 > scoreTeam1 ? match.player2_id : null);
     
@@ -739,7 +758,7 @@ export default function MatchLobby({ session, supabase }) {
     // 2. Resolve reports
     await supabase.from('game_score_reports').update({ is_resolved: true }).eq('game_id', gameId);
 
-    alert("✅ Conflit résolu !");
+    toast.success("Conflit résolu !");
     
     // 3. Vérifier si le match est terminé
     const { data: allGames } = await supabase
@@ -801,7 +820,7 @@ export default function MatchLobby({ session, supabase }) {
       setProofUrl(publicUrl);
 
     } catch (err) {
-      alert("Erreur upload: " + err.message);
+      toast.error("Erreur upload: " + err.message);
     } finally {
       setUploading(false);
     }

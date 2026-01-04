@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from './utils/toast';
 
 export default function SeedingModal({ isOpen, onClose, participants, tournamentId, supabase, onSave }) {
   const [seededTeams, setSeededTeams] = useState([]);
@@ -96,7 +97,7 @@ export default function SeedingModal({ isOpen, onClose, participants, tournament
     }
 
     if (onSave) onSave();
-    alert('✅ Seeding sauvegardé ! Les équipes seront placées dans cet ordre lors de la génération.');
+    toast.success('Seeding sauvegardé ! Les équipes seront placées dans cet ordre lors de la génération.');
     onClose();
   };
 

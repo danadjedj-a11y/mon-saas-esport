@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from './utils/toast';
 
 const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -136,7 +137,7 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
     if (!confirm("Confirmes-tu ta présence pour le tournoi ?")) return;
 
     if (!myParticipant?.team_id) {
-      alert("Erreur: Impossible de trouver votre équipe.");
+      toast.error("Erreur: Impossible de trouver votre équipe.");
       return;
     }
 
@@ -148,7 +149,7 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
       .eq('team_id', myParticipant.team_id);
 
     if (error) {
-      alert("Erreur check-in : " + error.message);
+      toast.error("Erreur check-in : " + error.message);
       console.error("Erreur check-in:", error);
       return;
     }
@@ -162,7 +163,7 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
       await checkStatus();
     }, 200);
     
-    alert("✅ Présence validée ! Prêt pour le combat. ⚔️");
+    toast.success("Présence validée ! Prêt pour le combat. ⚔️");
   };
 
   if (loading) return null;

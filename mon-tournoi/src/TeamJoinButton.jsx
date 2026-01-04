@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from './utils/toast';
 
 export default function TeamJoinButton({ tournamentId, supabase, session, onJoinSuccess, tournament }) {
   const [myTeams, setMyTeams] = useState([]);
@@ -172,7 +173,7 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
 
   const handleJoin = async () => {
     if (!canRegister) {
-      alert(registrationMessage);
+      toast.warning(registrationMessage);
       return;
     }
 
@@ -211,14 +212,14 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
 
         if (waitlistError) {
           if (waitlistError.code === '23505') {
-            alert('Votre équipe est déjà en liste d\'attente pour ce tournoi.');
+            toast.warning('Votre équipe est déjà en liste d\'attente pour ce tournoi.');
           } else {
-            alert('Erreur lors de l\'ajout à la liste d\'attente : ' + waitlistError.message);
+            toast.error('Erreur lors de l\'ajout à la liste d\'attente : ' + waitlistError.message);
           }
         } else {
           setIsInWaitlist(true);
           setWaitlistPosition(nextPosition);
-          alert(`✅ Votre équipe a été ajoutée à la liste d'attente (position #${nextPosition}). Vous serez automatiquement inscrit si une place se libère.`);
+          toast.success(`Votre équipe a été ajoutée à la liste d'attente (position #${nextPosition}). Vous serez automatiquement inscrit si une place se libère.`);
         }
       } else {
         // Il y a de la place, inscription normale
@@ -232,15 +233,15 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
           }]);
 
         if (error) {
-          alert("Erreur : " + error.message);
+          toast.error("Erreur : " + error.message);
         } else {
           setIsJoined(true);
-          alert('✅ Votre équipe a été inscrite au tournoi !');
+          toast.success('Votre équipe a été inscrite au tournoi !');
           if (onJoinSuccess) onJoinSuccess(); // Pour rafraîchir la liste
         }
       }
     } catch (error) {
-      alert('Erreur : ' + error.message);
+      toast.error('Erreur : ' + error.message);
     } finally {
       setLoading(false);
     }

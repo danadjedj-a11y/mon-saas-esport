@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { toast } from './utils/toast';
 
 export default function Chat({ tournamentId, matchId, session, supabase }) {
   const [messages, setMessages] = useState([]);
@@ -88,7 +89,7 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
 
     // Vérifier la longueur
     if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
-      alert(`Message trop long (maximum ${MAX_MESSAGE_LENGTH} caractères)`);
+      toast.warning(`Message trop long (maximum ${MAX_MESSAGE_LENGTH} caractères)`);
       return;
     }
 
@@ -104,13 +105,13 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
     // Vérifier le nombre de messages dans la fenêtre
     if (messageCountRef.current >= RATE_LIMIT_MESSAGES) {
       const timeLeft = Math.ceil((RATE_LIMIT_WINDOW - (now - rateLimitResetRef.current)) / 1000);
-      alert(`Trop de messages envoyés. Veuillez attendre ${timeLeft} seconde(s).`);
+      toast.warning(`Trop de messages envoyés. Veuillez attendre ${timeLeft} seconde(s).`);
       return;
     }
 
     // Vérifier le temps minimum entre les messages
     if (now - lastMessageTimeRef.current < MIN_TIME_BETWEEN_MESSAGES) {
-      alert('Veuillez attendre avant d\'envoyer un nouveau message.');
+      toast.warning('Veuillez attendre avant d\'envoyer un nouveau message.');
       return;
     }
 
@@ -134,14 +135,14 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
       const { error } = await supabase.from('messages').insert([messageData]);
 
       if (error) {
-        alert("Erreur envoi : " + error.message);
+        toast.error("Erreur envoi : " + error.message);
         messageCountRef.current -= 1; // Annuler le compteur en cas d'erreur
       } else {
         setNewMessage('');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi du message:', error);
-      alert('Erreur lors de l\'envoi du message');
+      toast.error('Erreur lors de l\'envoi du message');
       messageCountRef.current -= 1;
     } finally {
       setSending(false);

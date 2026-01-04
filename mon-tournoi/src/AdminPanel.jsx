@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { calculateMatchWinner } from './bofUtils';
+import { toast } from './utils/toast';
 
 export default function AdminPanel({ tournamentId, supabase, session, participants, matches, onUpdate, onScheduleMatch, tournament }) {
   const navigate = useNavigate();
@@ -233,7 +234,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', participantId);
     
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       if (onUpdate) onUpdate();
     }
@@ -248,7 +249,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', participantId);
     
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       if (onUpdate) onUpdate();
     }
@@ -263,7 +264,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', participantId);
     
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       if (onUpdate) onUpdate();
     }
@@ -287,7 +288,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', matchId);
 
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       fetchConflicts();
       if (onUpdate) onUpdate();
@@ -304,7 +305,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .single();
 
     if (!matchData) {
-      alert("Erreur : Match non trouvé");
+      toast.error("Erreur : Match non trouvé");
       return;
     }
 
@@ -327,7 +328,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', gameId);
 
     if (gameError) {
-      alert("Erreur : " + gameError.message);
+      toast.error("Erreur : " + gameError.message);
       return;
     }
 
@@ -397,7 +398,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', selectedMatch.id);
 
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       setEditScoreModal(false);
       setSelectedMatch(null);
@@ -423,7 +424,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('id', matchId);
 
     if (error) {
-      alert("Erreur : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       if (onUpdate) onUpdate();
     }
