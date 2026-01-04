@@ -7,6 +7,7 @@ import TeamJoinButton from './TeamJoinButton';
 import FollowButton from './components/FollowButton';
 import CommentSection from './components/CommentSection';
 import RatingDisplay from './components/RatingDisplay';
+import Skeleton from './components/Skeleton';
 
 export default function PublicTournament() {
   const { id } = useParams();
@@ -414,22 +415,30 @@ export default function PublicTournament() {
     });
   };
 
-  if (loading) return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#030913',
-      color: '#F8F6F2',
-      fontFamily: "'Protest Riot', sans-serif"
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
-        <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Chargement du tournoi...</p>
+  if (loading || !tournoi) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2', padding: '40px' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <Skeleton variant="text" height="50px" width="60%" style={{ marginBottom: '30px' }} />
+          <Skeleton variant="text" height="30px" width="40%" style={{ marginBottom: '20px' }} />
+          <div style={{ display: 'flex', gap: '15px', marginBottom: '40px' }}>
+            <Skeleton variant="text" height="40px" width="120px" />
+            <Skeleton variant="text" height="40px" width="120px" />
+            <Skeleton variant="text" height="40px" width="120px" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} style={{ background: 'rgba(3, 9, 19, 0.8)', padding: '20px', borderRadius: '12px', border: '2px solid #C10468' }}>
+                <Skeleton variant="text" height="24px" width="70%" style={{ marginBottom: '15px' }} />
+                <Skeleton variant="text" height="16px" width="50%" style={{ marginBottom: '10px' }} />
+                <Skeleton variant="text" height="14px" count={2} />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   
   if (!tournoi) return (
     <div style={{

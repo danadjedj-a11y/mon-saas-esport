@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import Skeleton from './components/Skeleton';
+import { EmptyNotifications } from './components/EmptyState';
 
 export default function NotificationCenter({ session }) {
   const [notifications, setNotifications] = useState([]);
@@ -263,12 +265,18 @@ export default function NotificationCenter({ session }) {
           {/* Liste des notifications */}
           <div>
             {loading ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                Chargement...
+              <div style={{ padding: '20px' }}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} style={{ marginBottom: '15px' }}>
+                    <Skeleton variant="text" height="20px" width="60%" style={{ marginBottom: '8px' }} />
+                    <Skeleton variant="text" height="14px" width="80%" style={{ marginBottom: '5px' }} />
+                    <Skeleton variant="text" height="12px" width="40%" />
+                  </div>
+                ))}
               </div>
             ) : notifications.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-                Aucune notification
+              <div style={{ padding: '20px' }}>
+                <EmptyNotifications />
               </div>
             ) : (
               notifications.map((notification) => (

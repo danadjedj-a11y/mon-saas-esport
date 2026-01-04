@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import NotificationCenter from './NotificationCenter';
+import { TournamentCardSkeleton } from './components/Skeleton';
+import { EmptyTournaments } from './components/EmptyState';
 
 export default function PlayerDashboard({ session }) {
   const [myTournaments, setMyTournaments] = useState([]);
@@ -135,7 +137,19 @@ export default function PlayerDashboard({ session }) {
     }
   };
 
-  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif"}}>Chargement...</div>;
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2', padding: '30px' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <TournamentCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2' }}>
@@ -564,10 +578,7 @@ export default function PlayerDashboard({ session }) {
                 })}
               
               {availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length === 0 && (
-                <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '40px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🌟</div>
-                  <p style={{ color: '#F8F6F2', margin: 0, fontFamily: "'Protest Riot', sans-serif" }}>Aucun tournoi disponible</p>
-                </div>
+                <EmptyTournaments />
               )}
             </div>
           </div>

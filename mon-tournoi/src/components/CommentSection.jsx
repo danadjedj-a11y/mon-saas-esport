@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { toast } from '../utils/toast';
 import { notifyCommentLike, notifyCommentReply } from '../utils/notifications';
+import { CommentSkeleton } from './Skeleton';
+import { EmptyComments } from './EmptyState';
 
 export default function CommentSection({ tournamentId, session }) {
   const [comments, setComments] = useState([]);
@@ -315,8 +317,10 @@ export default function CommentSection({ tournamentId, session }) {
 
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
-        Chargement des commentaires...
+      <div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <CommentSkeleton key={i} />
+        ))}
       </div>
     );
   }
@@ -447,18 +451,7 @@ export default function CommentSection({ tournamentId, session }) {
 
       {/* Liste des commentaires */}
       {comments.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: '#F8F6F2',
-          fontFamily: "'Protest Riot', sans-serif"
-        }}>
-          <div style={{ fontSize: '3rem', marginBottom: '15px' }}>💭</div>
-          <p>Aucun commentaire pour le moment</p>
-          <p style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '5px' }}>
-            Soyez le premier à partager votre expérience !
-          </p>
-        </div>
+        <EmptyComments />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {comments.map((comment) => (

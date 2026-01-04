@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import BadgeDisplay from './components/BadgeDisplay';
+import Skeleton from './components/Skeleton';
 
 export default function Leaderboard({ session, supabase }) {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -173,8 +174,21 @@ export default function Leaderboard({ session, supabase }) {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', color: '#F8F6F2', textAlign: 'center', background: '#030913', minHeight: '100vh', fontFamily: "'Protest Riot', sans-serif" }}>
-        <div>Chargement du classement...</div>
+      <div style={{ padding: '40px', color: '#F8F6F2', background: '#030913', minHeight: '100vh', maxWidth: '1200px', margin: '0 auto' }}>
+        <Skeleton variant="text" height="40px" width="300px" style={{ marginBottom: '30px' }} />
+        <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '20px', borderRadius: '15px', border: '2px solid #FF36A3' }}>
+          <Skeleton variant="text" height="30px" width="100%" style={{ marginBottom: '20px' }} />
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '60px 2fr 1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid rgba(255, 54, 163, 0.3)' }}>
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

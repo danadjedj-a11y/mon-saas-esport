@@ -1,4 +1,5 @@
 import React from 'react';
+import monitoring from '../utils/monitoring';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -21,8 +22,11 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
 
-    // Ici, vous pourriez envoyer l'erreur à un service de logging comme Sentry
-    // Example: Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack } } });
+    // Envoyer à Sentry
+    monitoring.captureError(error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true
+    });
   }
 
   handleReload = () => {

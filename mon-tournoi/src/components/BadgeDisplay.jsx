@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { getBadgeRarityColor, getRarityLabel, getCategoryLabel } from '../utils/badges';
+import Skeleton from './Skeleton';
+import { EmptyBadges } from './EmptyState';
 
 export default function BadgeDisplay({ userId, session, compact = false }) {
   const [badges, setBadges] = useState([]);
@@ -56,13 +58,17 @@ export default function BadgeDisplay({ userId, session, compact = false }) {
 
   if (loading) {
     return (
-      <div style={{ 
-        padding: '20px', 
-        textAlign: 'center',
-        color: '#F8F6F2',
-        fontFamily: "'Protest Riot', sans-serif"
-      }}>
-        Chargement...
+      <div>
+        <Skeleton variant="text" height="30px" width="200px" style={{ marginBottom: '20px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ background: 'rgba(3, 9, 19, 0.8)', padding: '15px', borderRadius: '10px', border: '2px solid #C10468' }}>
+              <Skeleton variant="avatar" circle style={{ width: '60px', height: '60px', margin: '0 auto 10px' }} />
+              <Skeleton variant="text" height="16px" width="80%" style={{ margin: '0 auto 8px' }} />
+              <Skeleton variant="text" height="12px" count={2} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -254,18 +260,7 @@ export default function BadgeDisplay({ userId, session, compact = false }) {
           })}
         </div>
       ) : (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: '#F8F6F2',
-          fontFamily: "'Protest Riot', sans-serif"
-        }}>
-          <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎯</div>
-          <p>Aucun badge obtenu pour le moment</p>
-          <p style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '5px' }}>
-            Participez à des tournois pour débloquer vos premiers badges !
-          </p>
-        </div>
+        <EmptyBadges />
       )}
     </div>
   );

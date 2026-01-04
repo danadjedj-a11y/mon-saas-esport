@@ -3,6 +3,8 @@
    Design System - Comics/BD Style Spider-Verse
    ============================================ */
 
+@import './styles/animations.css';
+
 /* Variables CSS - Palette de Couleurs */
 :root {
   /* Couleurs Principales */

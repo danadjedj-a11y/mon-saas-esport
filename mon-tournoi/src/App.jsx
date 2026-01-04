@@ -1,9 +1,12 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { supabase } from './supabaseClient'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import { getUserRole } from './utils/userRole';
 import { toast } from './utils/toast';
+import analytics from './utils/analytics';
+import monitoring from './utils/monitoring';
+import './i18n/config'; // Initialiser i18n
 
 // Lazy loading des composants pour améliorer les performances
 const Auth = lazy(() => import('./Auth'));
@@ -88,13 +91,26 @@ function PlayerRoute({ children, session }) {
 function App() {
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
+  const monitoringInitialized = useRef(false);
 
   useEffect(() => {
+    // Initialiser analytics et monitoring (une seule fois)
+    if (!monitoringInitialized.current) {
+      analytics.init();
+      monitoring.init();
+      monitoringInitialized.current = true;
+    }
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
       if (session?.user) {
         const role = await getUserRole(supabase, session.user.id)
         setUserRole(role)
+        monitoring.setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.user_metadata?.username
+        });
       }
     })
 
@@ -105,10 +121,20 @@ function App() {
       if (session?.user) {
         const role = await getUserRole(supabase, session.user.id)
         setUserRole(role)
+        monitoring.setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.user_metadata?.username
+        });
       } else {
         setUserRole(null)
       }
+      // Suivre la connexion/déconnexion
+      analytics.trackEvent(session ? 'user_logged_in' : 'user_logged_out');
     })
+
+    // Suivre la page vue initiale
+    analytics.trackPageView(window.location.pathname);
 
     return () => subscription.unsubscribe()
   }, [])

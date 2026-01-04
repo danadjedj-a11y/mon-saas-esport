@@ -1,10 +1,15 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from './supabaseClient';
 import { toast } from './utils/toast';
 import TournamentCard from './components/TournamentCard';
+import { TournamentCardSkeleton } from './components/Skeleton';
+import { EmptyTournaments } from './components/EmptyState';
+import LanguageSelector from './components/LanguageSelector';
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const [allTournaments, setAllTournaments] = useState([]); // Tous les tournois chargés
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
@@ -179,6 +184,7 @@ export default function HomePage() {
           </div>
           
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <LanguageSelector />
             {session ? (
               <>
                 <button
@@ -208,7 +214,7 @@ export default function HomePage() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  🎮 Espace Joueur
+                  🎮 {t('homepage.playerSpace')}
                 </button>
                 <button
                   type="button"
@@ -247,7 +253,7 @@ export default function HomePage() {
                     e.currentTarget.style.borderColor = '#C10468';
                   }}
                 >
-                  Déconnexion
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
@@ -279,7 +285,7 @@ export default function HomePage() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  Connexion
+                  {t('nav.login')}
                 </button>
               </>
             )}
@@ -298,10 +304,10 @@ export default function HomePage() {
       }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <h2 style={{ fontSize: '3rem', margin: '0 0 20px 0', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontWeight: '400' }}>
-            Organisez et participez à des tournois
+            {t('homepage.title')}
           </h2>
           <p style={{ fontSize: '1.3rem', color: '#F8F6F2', margin: '0 0 30px 0', fontFamily: "'Protest Riot', sans-serif" }}>
-            Plateforme complète de gestion de tournois e-sport
+            {t('homepage.subtitle')}
           </p>
           {!session && (
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
@@ -356,7 +362,7 @@ export default function HomePage() {
             {/* Recherche */}
             <input
               type="text"
-              placeholder="🔍 Rechercher un tournoi..."
+              placeholder={`🔍 ${t('homepage.searchPlaceholder')}`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -403,7 +409,7 @@ export default function HomePage() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              <option value="all">🎮 Tous les jeux</option>
+              <option value="all">🎮 {t('common.all')}</option>
               {availableGames.map(game => (
                 <option key={game} value={game}>{game}</option>
               ))}
@@ -433,11 +439,11 @@ export default function HomePage() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              <option value="all">📊 Tous les formats</option>
-              <option value="elimination">Élimination Directe</option>
-              <option value="double_elimination">Double Elimination</option>
-              <option value="round_robin">Championnat</option>
-              <option value="swiss">Système Suisse</option>
+              <option value="all">📊 {t('common.all')}</option>
+              <option value="elimination">{t('tournament.elimination')}</option>
+              <option value="double_elimination">{t('tournament.doubleElimination')}</option>
+              <option value="round_robin">{t('tournament.roundRobin')}</option>
+              <option value="swiss">{t('tournament.swiss')}</option>
             </select>
 
             {/* Filtre Statut */}
@@ -464,10 +470,10 @@ export default function HomePage() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              <option value="all">📝 Tous les statuts</option>
-              <option value="draft">Inscriptions ouvertes</option>
-              <option value="ongoing">En cours</option>
-              <option value="completed">Terminé</option>
+              <option value="all">📝 {t('common.all')}</option>
+              <option value="draft">{t('tournament.draft')}</option>
+              <option value="ongoing">{t('tournament.ongoing')}</option>
+              <option value="completed">{t('tournament.completed')}</option>
             </select>
 
             {/* Tri */}
@@ -544,13 +550,14 @@ export default function HomePage() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🏆 Tournois Disponibles</h2>
+          <h2 style={{ margin: 0, fontSize: '2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🏆 {t('homepage.availableTournaments')}</h2>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: '#F8F6F2' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
-            <p style={{ fontFamily: "'Protest Riot', sans-serif" }}>Chargement des tournois...</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <TournamentCardSkeleton key={i} />
+            ))}
           </div>
         ) : paginatedTournaments.length > 0 ? (
           <>
@@ -702,13 +709,7 @@ export default function HomePage() {
             )}
           </>
         ) : (
-          <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(3, 9, 19, 0.9)', borderRadius: '12px', border: '2px solid #FF36A3' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🏆</div>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '1.5rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>Aucun tournoi disponible</h3>
-            <p style={{ color: '#F8F6F2', margin: 0, fontFamily: "'Protest Riot', sans-serif" }}>
-              Il n'y a actuellement aucun tournoi ouvert aux inscriptions.
-            </p>
-          </div>
+          <EmptyTournaments />
         )}
       </div>
 
