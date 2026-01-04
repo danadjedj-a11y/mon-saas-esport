@@ -68,7 +68,7 @@ export default function NotificationCenter({ session }) {
       console.error('Erreur chargement notifications:', error);
     } else {
       setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.read).length || 0);
+      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
     }
     setLoading(false);
   };
@@ -76,12 +76,13 @@ export default function NotificationCenter({ session }) {
   const markAsRead = async (notificationId) => {
     const { error } = await supabase
       .from('notifications')
-      .update({ read: true })
-      .eq('id', notificationId);
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .eq('user_id', session.user.id);
 
     if (!error) {
       setNotifications(notifications.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
+        n.id === notificationId ? { ...n, is_read: true } : n
       ));
       setUnreadCount(Math.max(0, unreadCount - 1));
     }
@@ -92,12 +93,12 @@ export default function NotificationCenter({ session }) {
     
     const { error } = await supabase
       .from('notifications')
-      .update({ read: true })
+      .update({ is_read: true })
       .eq('user_id', session.user.id)
-      .eq('read', false);
+      .eq('is_read', false);
 
     if (!error) {
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     }
   };
@@ -113,14 +114,14 @@ export default function NotificationCenter({ session }) {
     if (!error) {
       const deleted = notifications.find(n => n.id === notificationId);
       setNotifications(notifications.filter(n => n.id !== notificationId));
-      if (deleted && !deleted.read) {
+      if (deleted && !deleted.is_read) {
         setUnreadCount(Math.max(0, unreadCount - 1));
       }
     }
   };
 
   const handleNotificationClick = async (notification) => {
-    if (!notification.read) {
+    if (!notification.is_read) {
       await markAsRead(notification.id);
     }
     
@@ -144,6 +145,10 @@ export default function NotificationCenter({ session }) {
         return '👥';
       case 'score_dispute':
         return '⚠️';
+      case 'comment_like':
+        return '👍';
+      case 'comment_reply':
+        return '💬';
       default:
         return '🔔';
     }
@@ -274,17 +279,17 @@ export default function NotificationCenter({ session }) {
                     padding: '15px',
                     borderBottom: '1px solid #2a2a2a',
                     cursor: 'pointer',
-                    background: notification.read ? 'transparent' : '#2a2a2a',
+                    background: notification.is_read ? 'transparent' : '#2a2a2a',
                     position: 'relative',
                     transition: 'background 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    if (notification.read) {
+                    if (notification.is_read) {
                       e.currentTarget.style.background = '#222';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (notification.read) {
+                    if (notification.is_read) {
                       e.currentTarget.style.background = 'transparent';
                     }
                   }}
@@ -296,7 +301,7 @@ export default function NotificationCenter({ session }) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontWeight: notification.read ? 'normal' : 'bold',
+                          fontWeight: notification.is_read ? 'normal' : 'bold',
                           fontSize: '0.95rem',
                           marginBottom: '5px',
                           color: 'white'
@@ -323,7 +328,7 @@ export default function NotificationCenter({ session }) {
                         {formatTime(notification.created_at)}
                       </div>
                     </div>
-                    {!notification.read && (
+                    {!notification.is_read && (
                       <div
                         style={{
                           width: '8px',

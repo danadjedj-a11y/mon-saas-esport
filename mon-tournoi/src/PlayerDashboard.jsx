@@ -7,6 +7,7 @@ export default function PlayerDashboard({ session }) {
   const [myTournaments, setMyTournaments] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [availableTournaments, setAvailableTournaments] = useState([]);
+  const [followedTournaments, setFollowedTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -90,11 +91,31 @@ export default function PlayerDashboard({ session }) {
       }
 
       setUpcomingMatches(matches);
+
+      // Récupérer les tournois suivis
+      const { data: follows } = await supabase
+        .from('tournament_follows')
+        .select('tournament_id')
+        .eq('user_id', session.user.id);
+
+      if (follows && follows.length > 0) {
+        const followedIds = follows.map(f => f.tournament_id);
+        const { data: followed } = await supabase
+          .from('tournaments')
+          .select('*')
+          .in('id', followedIds)
+          .order('created_at', { ascending: false });
+        
+        setFollowedTournaments(followed || []);
+      } else {
+        setFollowedTournaments([]);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
       setMyTournaments([]);
       setAvailableTournaments([]);
       setUpcomingMatches([]);
+      setFollowedTournaments([]);
     } finally {
       setLoading(false);
     }
@@ -291,6 +312,109 @@ export default function PlayerDashboard({ session }) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TOURNOIS SUIVIS - SECTION DÉDIÉE */}
+        {followedTournaments.length > 0 && (
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
+                ⭐ Tournois Suivis
+              </h2>
+              <span style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+                {followedTournaments.length} tournoi{followedTournaments.length > 1 ? 's' : ''} suivi{followedTournaments.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {followedTournaments.map((t) => {
+                const getStatusStyle = (status) => {
+                  switch (status) {
+                    case 'draft': return { bg: '#E7632C', text: 'Inscriptions', icon: '📝' };
+                    case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
+                    default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+                  }
+                };
+                const statusStyle = getStatusStyle(t.status);
+                
+                return (
+                  <div 
+                    key={t.id} 
+                    onClick={() => navigate(`/tournament/${t.id}/public`)}
+                    style={{ 
+                      background: 'rgba(3, 9, 19, 0.9)', 
+                      padding: '20px', 
+                      borderRadius: '12px', 
+                      border: '2px solid #FF36A3', 
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#C10468';
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#FF36A3';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '10px', 
+                      right: '10px',
+                      fontSize: '1.2rem'
+                    }}>
+                      ⭐
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                      <div style={{ flex: 1, paddingRight: '30px' }}>
+                        <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
+                          {t.name}
+                        </h3>
+                        <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
+                          <span>🎮 {t.game}</span>
+                          <span>📊 {t.format}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      marginTop: '15px', 
+                      paddingTop: '15px', 
+                      borderTop: '2px solid #FF36A3',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ 
+                        background: statusStyle.bg, 
+                        padding: '5px 12px', 
+                        borderRadius: '5px', 
+                        fontSize: '0.8rem', 
+                        fontWeight: 'bold',
+                        color: '#F8F6F2',
+                        fontFamily: "'Protest Riot', sans-serif"
+                      }}>
+                        {statusStyle.icon} {statusStyle.text}
+                      </span>
+                      <div style={{
+                        padding: '6px 12px',
+                        background: '#C10468',
+                        borderRadius: '5px',
+                        fontSize: '0.85rem',
+                        color: '#F8F6F2',
+                        fontWeight: 'bold',
+                        fontFamily: "'Protest Riot', sans-serif"
+                      }}>
+                        Voir →
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

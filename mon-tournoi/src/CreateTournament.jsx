@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
+import TemplateSelector from './components/TemplateSelector';
 
 export default function CreateTournament({ session, supabase }) {
   const [name, setName] = useState('');
@@ -25,6 +26,76 @@ export default function CreateTournament({ session, supabase }) {
   // Sanitizer pour les inputs
   const sanitizeInput = (text) => {
     return text.trim().replace(/[<>]/g, '');
+  };
+
+  // Sauvegarder la configuration actuelle comme template
+  const handleSaveAsTemplate = async () => {
+    if (!session?.user) {
+      toast.error('Vous devez être connecté pour sauvegarder un template');
+      return;
+    }
+
+    if (!name.trim()) {
+      toast.error('Veuillez d\'abord donner un nom au tournoi');
+      return;
+    }
+
+    try {
+      // Convertir les dates en ISO si présentes
+      let startDateISO = null;
+      if (date) {
+        const [datePart, timePart] = date.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+        startDateISO = localDate.toISOString();
+      }
+
+      let registrationDeadlineISO = null;
+      if (registrationDeadline) {
+        const [datePart, timePart] = registrationDeadline.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+        registrationDeadlineISO = localDate.toISOString();
+      }
+
+      // Préparer le maps_pool
+      let mapsPoolArray = null;
+      if (mapsPool.trim()) {
+        mapsPoolArray = mapsPool.split(',').map(m => m.trim()).filter(m => m.length > 0);
+      }
+
+      const templateName = prompt('Nom du template:', `${name} - Template`);
+      if (!templateName || !templateName.trim()) {
+        return; // Utilisateur a annulé
+      }
+
+      const { error } = await supabase
+        .from('tournament_templates')
+        .insert([{
+          name: sanitizeInput(templateName),
+          description: `Template basé sur "${name}"`,
+          owner_id: session.user.id,
+          is_public: false, // Par défaut privé
+          game: game,
+          format: format,
+          max_participants: maxParticipants ? parseInt(maxParticipants) : null,
+          best_of: bestOf,
+          check_in_window_minutes: 15, // Valeur par défaut
+          registration_deadline: registrationDeadlineISO,
+          start_date: startDateISO,
+          rules: rules.trim() || null,
+          maps_pool: mapsPoolArray
+        }]);
+
+      if (error) throw error;
+
+      toast.success('Template sauvegardé avec succès !');
+    } catch (err) {
+      console.error('Erreur sauvegarde template:', err);
+      toast.error(`Erreur: ${err.message}`);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -127,36 +198,114 @@ export default function CreateTournament({ session, supabase }) {
   return (
     <div style={{ minHeight: '100vh', background: '#030913', padding: '40px 20px' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '40px', background: 'rgba(3, 9, 19, 0.95)', borderRadius: '15px', color: '#F8F6F2', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
-        <button 
-          type="button"
-          onClick={() => navigate('/organizer/dashboard')} 
-          style={{
-            background:'transparent', 
-            border:'2px solid #C10468', 
-            color:'#F8F6F2', 
-            cursor:'pointer', 
-            marginBottom:'20px',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontFamily: "'Shadows Into Light', cursive",
-            fontSize: '0.9rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#C10468';
-            e.currentTarget.style.borderColor = '#FF36A3';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = '#C10468';
-          }}
-        >
-          ← Annuler
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <button 
+            type="button"
+            onClick={() => navigate('/organizer/dashboard')} 
+            style={{
+              background:'transparent', 
+              border:'2px solid #C10468', 
+              color:'#F8F6F2', 
+              cursor:'pointer',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '0.9rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#C10468';
+              e.currentTarget.style.borderColor = '#FF36A3';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = '#C10468';
+            }}
+          >
+            ← Annuler
+          </button>
+          
+          <button 
+            type="button"
+            onClick={handleSaveAsTemplate}
+            style={{
+              background:'transparent', 
+              border:'2px solid #FF36A3', 
+              color:'#FF36A3', 
+              cursor:'pointer',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '0.9rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#FF36A3';
+              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.color = '#F8F6F2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = '#FF36A3';
+              e.currentTarget.style.color = '#FF36A3';
+            }}
+          >
+            💾 Sauvegarder comme Template
+          </button>
+        </div>
       
         <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>Organiser un nouveau tournoi</h2>
+      
+      {/* Sélecteur de Templates */}
+      <TemplateSelector 
+        session={session}
+        onSelectTemplate={(templateData) => {
+          // Appliquer les valeurs du template aux champs du formulaire
+          if (templateData.name) setName(templateData.name);
+          if (templateData.game) setGame(templateData.game);
+          if (templateData.format) setFormat(templateData.format);
+          if (templateData.max_participants) setMaxParticipants(templateData.max_participants?.toString() || '');
+          if (templateData.best_of) setBestOf(templateData.best_of);
+          if (templateData.rules) setRules(templateData.rules || '');
+          if (templateData.maps_pool && Array.isArray(templateData.maps_pool)) {
+            setMapsPool(templateData.maps_pool.join(', '));
+          }
+          // Dates (convertir ISO en format datetime-local)
+          if (templateData.start_date) {
+            const startDate = new Date(templateData.start_date);
+            const year = startDate.getFullYear();
+            const month = String(startDate.getMonth() + 1).padStart(2, '0');
+            const day = String(startDate.getDate()).padStart(2, '0');
+            const hours = String(startDate.getHours()).padStart(2, '0');
+            const minutes = String(startDate.getMinutes()).padStart(2, '0');
+            setDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+          }
+          if (templateData.registration_deadline) {
+            const regDate = new Date(templateData.registration_deadline);
+            const year = regDate.getFullYear();
+            const month = String(regDate.getMonth() + 1).padStart(2, '0');
+            const day = String(regDate.getDate()).padStart(2, '0');
+            const hours = String(regDate.getHours()).padStart(2, '0');
+            const minutes = String(regDate.getMinutes()).padStart(2, '0');
+            setRegistrationDeadline(`${year}-${month}-${day}T${hours}:${minutes}`);
+          }
+        }}
+        currentValues={{
+          name,
+          game,
+          format,
+          max_participants: maxParticipants ? parseInt(maxParticipants) : null,
+          best_of: bestOf,
+          rules,
+          maps_pool: mapsPool ? mapsPool.split(',').map(m => m.trim()).filter(m => m) : null,
+          registration_deadline: registrationDeadline || null,
+          start_date: date || null
+        }}
+      />
       
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         

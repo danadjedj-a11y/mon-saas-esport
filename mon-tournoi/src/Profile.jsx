@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
+import BadgeDisplay from './components/BadgeDisplay';
 
 export default function Profile({ session }) {
   const [username, setUsername] = useState('');
@@ -343,6 +344,11 @@ export default function Profile({ session }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Section Badges et Achievements */}
+      <div style={{ marginTop: '30px' }}>
+        <BadgeDisplay userId={session?.user?.id} session={session} />
       </div>
     </div>
   );

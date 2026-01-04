@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { toast } from './utils/toast';
@@ -18,56 +18,28 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState('date'); // 'date', 'name', 'participants'
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+  const isFetchingRef = useRef(false);
 
-  useEffect(() => {
-    let mounted = true;
-    
-    // Vérifier la session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) setSession(session);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setSession(session);
-    });
-
-    // Charger les tournois une seule fois
-    if (mounted) {
-      fetchTournaments();
+  const fetchTournaments = useCallback(async () => {
+    // Éviter les appels multiples simultanés avec un ref
+    if (isFetchingRef.current) {
+      console.log('⏸️ Chargement déjà en cours, ignoré');
+      return;
     }
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const fetchTournaments = async () => {
-    // Éviter les appels multiples simultanés
-    if (loading) return;
     
+    isFetchingRef.current = true;
     setLoading(true);
-    let timeoutId;
+    
     try {
       console.log('🔄 Chargement des tournois...');
       
-      // Créer une promesse avec timeout de 10 secondes
-      const queryPromise = supabase
+      // Requête simple sans timeout au premier chargement
+      // Le timeout peut causer des problèmes si Supabase met du temps à s'initialiser
+      const { data, error } = await supabase
         .from('tournaments')
         .select('*')
         .in('status', ['draft', 'ongoing'])
         .order('created_at', { ascending: false });
-
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error('Timeout: La requête a pris plus de 10 secondes'));
-        }, 10000);
-      });
-
-      const result = await Promise.race([queryPromise, timeoutPromise]);
-      if (timeoutId) clearTimeout(timeoutId);
-
-      const { data, error } = result;
 
       if (error) {
         console.error('❌ Erreur chargement tournois:', error);
@@ -78,13 +50,44 @@ export default function HomePage() {
         setAllTournaments(data || []);
       }
     } catch (err) {
-      if (timeoutId) clearTimeout(timeoutId);
       console.error('❌ Erreur lors du chargement des tournois:', err.message || err);
+      toast.error(`Erreur de chargement: ${err.message || 'Erreur inconnue'}`);
       setAllTournaments([]);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId;
+    
+    // Vérifier la session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setSession(session);
+    });
+
+    // Attendre un peu que Supabase soit prêt avant de charger les tournois
+    // Cela évite les problèmes de connexion au démarrage
+    // En mode développement avec StrictMode, React peut appeler useEffect deux fois
+    // Le ref isFetchingRef empêche les appels multiples
+    timeoutId = setTimeout(() => {
+      if (mounted) {
+        fetchTournaments();
+      }
+    }, 300); // Petit délai de 300ms pour laisser Supabase s'initialiser
+
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, []); // Retirer fetchTournaments des dépendances pour éviter les re-renders
 
   // Récupérer les jeux uniques pour le filtre
   const availableGames = useMemo(() => {

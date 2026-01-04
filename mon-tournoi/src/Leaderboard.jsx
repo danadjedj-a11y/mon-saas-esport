@@ -1,19 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import BadgeDisplay from './components/BadgeDisplay';
 
 export default function Leaderboard({ session, supabase }) {
   const [leaderboard, setLeaderboard] = useState([]);
+  const [levelLeaderboard, setLevelLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('winRate'); // 'winRate', 'wins', 'matches'
   const [gameFilter, setGameFilter] = useState('all');
   const [games, setGames] = useState([]);
+  const [activeTab, setActiveTab] = useState('teams'); // 'teams' ou 'levels'
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchLeaderboard();
-    fetchGames();
-  }, [sortBy, gameFilter]);
+    if (activeTab === 'teams') {
+      fetchLeaderboard();
+      fetchGames();
+    } else {
+      fetchLevelLeaderboard();
+    }
+  }, [sortBy, gameFilter, activeTab]);
 
   const fetchGames = async () => {
     const { data } = await supabase
@@ -124,6 +131,46 @@ export default function Leaderboard({ session, supabase }) {
     setLoading(false);
   };
 
+  const fetchLevelLeaderboard = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_levels')
+        .select(`
+          *,
+          profiles:user_id (
+            username,
+            avatar_url
+          )
+        `)
+        .order('total_xp', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      // Enrichir avec les badges
+      const enriched = await Promise.all((data || []).map(async (userLevel) => {
+        const { data: badges } = await supabase
+          .from('user_badges')
+          .select('badges(*)')
+          .eq('user_id', userLevel.user_id)
+          .limit(3);
+
+        return {
+          ...userLevel,
+          badges: badges?.map(ub => ub.badges) || []
+        };
+      }));
+
+      setLevelLeaderboard(enriched);
+    } catch (err) {
+      console.error('Erreur chargement classement niveaux:', err);
+      setLevelLeaderboard([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ padding: '40px', color: '#F8F6F2', textAlign: 'center', background: '#030913', minHeight: '100vh', fontFamily: "'Protest Riot', sans-serif" }}>
@@ -136,6 +183,62 @@ export default function Leaderboard({ session, supabase }) {
     <div style={{ minHeight: '100vh', padding: '20px', color: '#F8F6F2', maxWidth: '1200px', margin: '0 auto', background: '#030913' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1 style={{ margin: 0, color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2.5rem' }}>🏆 Classement Global</h1>
+        
+        {/* Onglets */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('teams')}
+            style={{
+              background: activeTab === 'teams' ? '#C10468' : 'transparent',
+              border: '2px solid #FF36A3',
+              color: '#F8F6F2',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontFamily: "'Protest Riot', sans-serif",
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'teams') {
+                e.currentTarget.style.background = 'rgba(193, 4, 104, 0.3)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'teams') {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            Équipes
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('levels')}
+            style={{
+              background: activeTab === 'levels' ? '#C10468' : 'transparent',
+              border: '2px solid #FF36A3',
+              color: '#F8F6F2',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontFamily: "'Protest Riot', sans-serif",
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'levels') {
+                e.currentTarget.style.background = 'rgba(193, 4, 104, 0.3)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'levels') {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            Niveaux & XP
+          </button>
+        </div>
         <button 
           type="button"
           onClick={() => navigate('/dashboard')} 
@@ -241,7 +344,78 @@ export default function Leaderboard({ session, supabase }) {
 
       {/* Tableau de classement */}
       <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '20px', borderRadius: '15px', border: '2px solid #FF36A3', overflowX: 'auto' }}>
-        {leaderboard.length === 0 ? (
+        {activeTab === 'levels' ? (
+          levelLeaderboard.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+              Aucun classement disponible pour le moment.
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #FF36A3' }}>
+                  <th style={{ padding: '15px', textAlign: 'left', color: '#FF36A3', fontWeight: 'normal', fontFamily: "'Protest Riot', sans-serif" }}>Rang</th>
+                  <th style={{ padding: '15px', textAlign: 'left', color: '#FF36A3', fontWeight: 'normal', fontFamily: "'Protest Riot', sans-serif" }}>Joueur</th>
+                  <th style={{ padding: '15px', textAlign: 'center', color: '#FF36A3', fontWeight: 'normal', fontFamily: "'Protest Riot', sans-serif" }}>Niveau</th>
+                  <th style={{ padding: '15px', textAlign: 'center', color: '#FF36A3', fontWeight: 'normal', fontFamily: "'Protest Riot', sans-serif" }}>XP Total</th>
+                  <th style={{ padding: '15px', textAlign: 'center', color: '#FF36A3', fontWeight: 'normal', fontFamily: "'Protest Riot', sans-serif" }}>Badges</th>
+                </tr>
+              </thead>
+              <tbody>
+                {levelLeaderboard.map((userLevel, index) => {
+                  const rank = index + 1;
+                  const isTop3 = rank <= 3;
+                  const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
+                  const profile = userLevel.profiles || {};
+
+                  return (
+                    <tr
+                      key={userLevel.user_id}
+                      style={{
+                        borderBottom: '1px solid rgba(255, 54, 163, 0.3)',
+                        background: isTop3 ? 'rgba(193, 4, 104, 0.2)' : 'transparent',
+                        transition: 'background 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 54, 163, 0.2)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = isTop3 ? 'rgba(193, 4, 104, 0.2)' : 'transparent'}
+                    >
+                      <td style={{ padding: '15px', fontSize: '1.2rem', fontWeight: 'bold', color: isTop3 ? rankColors[rank] : '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
+                        #{rank}
+                      </td>
+                      <td style={{ padding: '15px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {profile.avatar_url && (
+                            <img 
+                              src={profile.avatar_url} 
+                              alt="" 
+                              style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #FF36A3' }}
+                            />
+                          )}
+                          <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
+                            {profile.username || 'Joueur anonyme'}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center', color: '#FF36A3', fontWeight: 'bold', fontSize: '1.2rem', fontFamily: "'Protest Riot', sans-serif" }}>
+                        {userLevel.level}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center', color: '#E7632C', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>
+                        {userLevel.total_xp}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', fontSize: '1.2rem' }}>
+                          {userLevel.badges.slice(0, 3).map((badge, idx) => (
+                            <span key={idx} title={badge.name}>{badge.icon}</span>
+                          ))}
+                          {userLevel.badges.length === 0 && <span style={{ color: '#F8F6F2', fontSize: '0.9rem', fontFamily: "'Protest Riot', sans-serif" }}>-</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )
+        ) : leaderboard.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
             Aucune statistique disponible pour le moment.
           </div>

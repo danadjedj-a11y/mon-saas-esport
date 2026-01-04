@@ -1,8 +1,23 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import FollowButton from './FollowButton';
+import { supabase } from '../supabaseClient';
 
 const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => {
   const navigate = useNavigate();
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const statusStyle = getStatusStyle(tournament.status);
 
@@ -59,21 +74,30 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
         borderTop: '2px solid #FF36A3',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px'
       }}>
         <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
           Créé le {new Date(tournament.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
-        <div style={{
-          padding: '6px 12px',
-          background: '#C10468',
-          borderRadius: '5px',
-          fontSize: '0.85rem',
-          color: '#F8F6F2',
-          fontWeight: 'bold',
-          fontFamily: "'Protest Riot', sans-serif"
-        }}>
-          Voir le tournoi →
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {session && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <FollowButton session={session} tournamentId={tournament.id} type="tournament" />
+            </div>
+          )}
+          <div style={{
+            padding: '6px 12px',
+            background: '#C10468',
+            borderRadius: '5px',
+            fontSize: '0.85rem',
+            color: '#F8F6F2',
+            fontWeight: 'bold',
+            fontFamily: "'Protest Riot', sans-serif"
+          }}>
+            Voir le tournoi →
+          </div>
         </div>
       </div>
     </div>

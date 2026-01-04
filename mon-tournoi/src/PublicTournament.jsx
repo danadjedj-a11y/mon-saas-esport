@@ -4,6 +4,9 @@ import { supabase } from './supabaseClient';
 import { getSwissScores } from './swissUtils';
 import { calculateMatchWinner } from './bofUtils';
 import TeamJoinButton from './TeamJoinButton';
+import FollowButton from './components/FollowButton';
+import CommentSection from './components/CommentSection';
+import RatingDisplay from './components/RatingDisplay';
 
 export default function PublicTournament() {
   const { id } = useParams();
@@ -15,7 +18,7 @@ export default function PublicTournament() {
   const [matches, setMatches] = useState([]);
   const [matchGames, setMatchGames] = useState([]); // Pour Best-of-X
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'bracket', 'results'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'bracket', 'results', 'comments'
   const [swissScores, setSwissScores] = useState([]);
 
   useEffect(() => {
@@ -483,7 +486,8 @@ export default function PublicTournament() {
     { id: 'participants', label: '👥 Participants', icon: '👥' },
     { id: 'bracket', label: '🏆 Arbre / Classement', icon: '🏆' },
     { id: 'schedule', label: '📅 Planning', icon: '📅' },
-    { id: 'results', label: '📊 Résultats', icon: '📊' }
+    { id: 'results', label: '📊 Résultats', icon: '📊' },
+    { id: 'comments', label: '💬 Commentaires', icon: '💬' }
   ];
 
   const getFormatLabel = (format) => {
@@ -530,7 +534,7 @@ export default function PublicTournament() {
           }}>
             {tournoi.name}
           </h1>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ 
               background: 'rgba(3, 9, 19, 0.9)', 
               padding: '10px 20px', 
@@ -565,6 +569,10 @@ export default function PublicTournament() {
             }}>
               {statusStyle.icon} {statusStyle.text}
             </span>
+            {session && (
+              <FollowButton session={session} tournamentId={id} type="tournament" />
+            )}
+            <RatingDisplay tournamentId={id} />
           </div>
         </div>
 
@@ -1873,6 +1881,12 @@ export default function PublicTournament() {
         )}
 
         {/* ONGLET RÉSULTATS */}
+        {activeTab === 'comments' && (
+          <div>
+            <CommentSection tournamentId={id} session={session} />
+          </div>
+        )}
+
         {activeTab === 'results' && (
           <div style={{ 
             background: 'rgba(3, 9, 19, 0.95)', 
