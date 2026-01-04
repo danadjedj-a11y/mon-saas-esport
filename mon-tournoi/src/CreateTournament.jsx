@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
+import { handleRateLimitError } from './utils/rateLimitHandler';
 import TemplateSelector from './components/TemplateSelector';
 
 export default function CreateTournament({ session, supabase }) {
@@ -94,7 +95,8 @@ export default function CreateTournament({ session, supabase }) {
       toast.success('Template sauvegardé avec succès !');
     } catch (err) {
       console.error('Erreur sauvegarde template:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'templates');
+      toast.error(errorMessage);
     }
   };
 
@@ -189,7 +191,8 @@ export default function CreateTournament({ session, supabase }) {
       navigate(`/tournament/${data.id}`);
 
     } catch (error) {
-      toast.error('Erreur lors de la création : ' + error.message);
+      const errorMessage = handleRateLimitError(error, 'créations de tournois');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

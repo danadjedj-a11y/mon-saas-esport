@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { toast } from '../utils/toast';
+import { handleRateLimitError } from '../utils/rateLimitHandler';
 
 export default function FollowButton({ session, tournamentId, teamId, type = 'tournament' }) {
   const [isFollowing, setIsFollowing] = useState(false);
@@ -106,7 +107,8 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
       }
     } catch (err) {
       console.error('Erreur toggle follow:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'actions de suivi');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

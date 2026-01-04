@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from './utils/toast';
+import { handleRateLimitError } from './utils/rateLimitHandler';
 
 export default function TeamJoinButton({ tournamentId, supabase, session, onJoinSuccess, tournament }) {
   const [myTeams, setMyTeams] = useState([]);
@@ -214,7 +215,8 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
           if (waitlistError.code === '23505') {
             toast.warning('Votre équipe est déjà en liste d\'attente pour ce tournoi.');
           } else {
-            toast.error('Erreur lors de l\'ajout à la liste d\'attente : ' + waitlistError.message);
+            const errorMessage = handleRateLimitError(waitlistError, 'inscriptions');
+            toast.error(errorMessage);
           }
         } else {
           setIsInWaitlist(true);
@@ -233,7 +235,8 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
           }]);
 
         if (error) {
-          toast.error("Erreur : " + error.message);
+          const errorMessage = handleRateLimitError(error, 'inscriptions');
+          toast.error(errorMessage);
         } else {
           setIsJoined(true);
           toast.success('Votre équipe a été inscrite au tournoi !');
@@ -241,7 +244,8 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
         }
       }
     } catch (error) {
-      toast.error('Erreur : ' + error.message);
+      const errorMessage = handleRateLimitError(error, 'inscriptions');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

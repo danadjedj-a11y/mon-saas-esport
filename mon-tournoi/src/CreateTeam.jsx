@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
+import { handleRateLimitError } from './utils/rateLimitHandler';
 
 export default function CreateTeam({ session, supabase }) {
   const [name, setName] = useState('');
@@ -54,14 +55,16 @@ export default function CreateTeam({ session, supabase }) {
         .select();
 
       if (error) {
-        toast.error("Erreur: " + error.message);
+        const errorMessage = handleRateLimitError(error, 'créations d\'équipes');
+        toast.error(errorMessage);
       } else {
         toast.success("Équipe créée avec succès !");
         navigate('/player/dashboard');
       }
     } catch (error) {
       console.error('Erreur lors de la création de l\'équipe:', error);
-      toast.error('Erreur lors de la création de l\'équipe');
+      const errorMessage = handleRateLimitError(error, 'créations d\'équipes');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

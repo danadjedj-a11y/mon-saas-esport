@@ -49,7 +49,8 @@ const JoinButton = ({ tournamentId, supabase, session }) => {
       ]);
 
     if (error) {
-      toast.error("Erreur lors de l'inscription : " + error.message);
+      const errorMessage = handleRateLimitError(error, 'inscriptions');
+      toast.error(errorMessage);
     } else {
       setIsRegistered(true);
       toast.success("Tu es inscrit ! 🎉");

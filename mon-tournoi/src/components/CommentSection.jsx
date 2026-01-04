@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { toast } from '../utils/toast';
+import { handleRateLimitError } from '../utils/rateLimitHandler';
 import { notifyCommentLike, notifyCommentReply } from '../utils/notifications';
 import { CommentSkeleton } from './Skeleton';
 import { EmptyComments } from './EmptyState';
@@ -154,7 +155,8 @@ export default function CommentSection({ tournamentId, session }) {
       fetchComments();
     } catch (err) {
       console.error('Erreur ajout commentaire:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'commentaires');
+      toast.error(errorMessage);
     }
   };
 
@@ -179,7 +181,8 @@ export default function CommentSection({ tournamentId, session }) {
       fetchComments();
     } catch (err) {
       console.error('Erreur modification commentaire:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'commentaires');
+      toast.error(errorMessage);
     }
   };
 
@@ -201,7 +204,8 @@ export default function CommentSection({ tournamentId, session }) {
       fetchComments();
     } catch (err) {
       console.error('Erreur suppression commentaire:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'commentaires');
+      toast.error(errorMessage);
     }
   };
 
@@ -263,7 +267,8 @@ export default function CommentSection({ tournamentId, session }) {
       fetchComments();
     } catch (err) {
       console.error('Erreur vote:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'commentaires');
+      toast.error(errorMessage);
     }
   };
 
@@ -311,7 +316,8 @@ export default function CommentSection({ tournamentId, session }) {
       fetchComments();
     } catch (err) {
       console.error('Erreur ajout réponse:', err);
-      toast.error(`Erreur: ${err.message}`);
+      const errorMessage = handleRateLimitError(err, 'commentaires');
+      toast.error(errorMessage);
     }
   };
 
