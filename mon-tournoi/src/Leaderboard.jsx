@@ -177,21 +177,21 @@ export default function Leaderboard({ session, supabase }) {
     return (
       <DashboardLayout session={session}>
         <div className="w-full max-w-6xl mx-auto">
-          <Skeleton variant="text" height="40px" width="300px" style={{ marginBottom: '30px' }} />
+        <Skeleton variant="text" height="40px" width="300px" style={{ marginBottom: '30px' }} />
           <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
-            <Skeleton variant="text" height="30px" width="100%" style={{ marginBottom: '20px' }} />
-            {Array.from({ length: 10 }).map((_, i) => (
+          <Skeleton variant="text" height="30px" width="100%" style={{ marginBottom: '20px' }} />
+          {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="grid grid-cols-6 gap-4 mb-4 pb-4 border-b border-white/5">
-                <Skeleton variant="text" height="20px" />
-                <Skeleton variant="text" height="20px" />
-                <Skeleton variant="text" height="20px" />
-                <Skeleton variant="text" height="20px" />
-                <Skeleton variant="text" height="20px" />
-                <Skeleton variant="text" height="20px" />
-              </div>
-            ))}
-          </div>
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+              <Skeleton variant="text" height="20px" />
+            </div>
+          ))}
         </div>
+      </div>
       </DashboardLayout>
     );
   }
@@ -202,34 +202,34 @@ export default function Leaderboard({ session, supabase }) {
         <div className="flex justify-between items-center mb-8">
           <h1 className="font-display text-4xl text-fluky-secondary m-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🏆 Classement Global</h1>
         
-          {/* Onglets */}
+        {/* Onglets */}
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('teams')}
+          <button
+            type="button"
+            onClick={() => setActiveTab('teams')}
               className={`px-5 py-2 border-2 border-fluky-secondary rounded-lg cursor-pointer font-body transition-all duration-300 ${
                 activeTab === 'teams'
                   ? 'bg-fluky-primary text-white'
                   : 'bg-transparent text-fluky-text hover:bg-fluky-primary/30'
               }`}
-            >
-              Équipes
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('levels')}
+          >
+            Équipes
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('levels')}
               className={`px-5 py-2 border-2 border-fluky-secondary rounded-lg cursor-pointer font-body transition-all duration-300 ${
                 activeTab === 'levels'
                   ? 'bg-fluky-primary text-white'
                   : 'bg-transparent text-fluky-text hover:bg-fluky-primary/30'
               }`}
-            >
-              Niveaux & XP
-            </button>
-          </div>
+          >
+            Niveaux & XP
+          </button>
         </div>
+      </div>
 
-        {/* Filtres */}
+      {/* Filtres */}
         <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 mb-8 flex gap-5 flex-wrap items-center">
         <div>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Trier par :</label>
@@ -293,82 +293,82 @@ export default function Leaderboard({ session, supabase }) {
         </div>
       </div>
 
-        {/* Tableau de classement */}
+      {/* Tableau de classement */}
         <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 overflow-x-auto">
-          {activeTab === 'levels' ? (
-            levelLeaderboard.length === 0 ? (
+        {activeTab === 'levels' ? (
+          levelLeaderboard.length === 0 ? (
               <div className="text-center py-10 text-fluky-text font-body">
-                Aucun classement disponible pour le moment.
-              </div>
-            ) : (
+              Aucun classement disponible pour le moment.
+            </div>
+          ) : (
               <table className="w-full border-collapse">
-                <thead>
+              <thead>
                   <tr className="border-b-2 border-fluky-secondary">
                     <th className="p-4 text-left text-fluky-secondary font-normal font-body">Rang</th>
                     <th className="p-4 text-left text-fluky-secondary font-normal font-body">Joueur</th>
                     <th className="p-4 text-center text-fluky-secondary font-normal font-body">Niveau</th>
                     <th className="p-4 text-center text-fluky-secondary font-normal font-body">XP Total</th>
                     <th className="p-4 text-center text-fluky-secondary font-normal font-body">Badges</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {levelLeaderboard.map((userLevel, index) => {
-                    const rank = index + 1;
-                    const isTop3 = rank <= 3;
-                    const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
-                    const profile = userLevel.profiles || {};
+                </tr>
+              </thead>
+              <tbody>
+                {levelLeaderboard.map((userLevel, index) => {
+                  const rank = index + 1;
+                  const isTop3 = rank <= 3;
+                  const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
+                  const profile = userLevel.profiles || {};
 
-                    return (
-                      <tr
-                        key={userLevel.user_id}
+                  return (
+                    <tr
+                      key={userLevel.user_id}
                         className={`border-b border-white/5 transition-colors duration-300 ${
                           isTop3 ? 'bg-fluky-primary/20' : 'bg-transparent'
                         } hover:bg-fluky-secondary/20`}
                       >
                         <td className={`p-4 text-xl font-bold font-display ${isTop3 ? '' : 'text-fluky-secondary'}`} style={{ color: isTop3 ? rankColors[rank] : undefined }}>
-                          #{rank}
-                        </td>
+                        #{rank}
+                      </td>
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            {profile.avatar_url && (
-                              <img 
-                                src={profile.avatar_url} 
-                                alt="" 
+                          {profile.avatar_url && (
+                            <img 
+                              src={profile.avatar_url} 
+                              alt="" 
                                 className="w-10 h-10 rounded-full object-cover border-2 border-fluky-secondary"
-                              />
-                            )}
+                            />
+                          )}
                             <div className="font-display text-lg font-bold text-fluky-text">
-                              {profile.username || 'Joueur anonyme'}
-                            </div>
+                            {profile.username || 'Joueur anonyme'}
                           </div>
-                        </td>
+                        </div>
+                      </td>
                         <td className="p-4 text-center text-fluky-secondary font-bold text-xl font-body">
-                          {userLevel.level}
-                        </td>
+                        {userLevel.level}
+                      </td>
                         <td className="p-4 text-center text-fluky-accent-orange font-bold font-body">
-                          {userLevel.total_xp}
-                        </td>
+                        {userLevel.total_xp}
+                      </td>
                         <td className="p-4 text-center">
                           <div className="flex gap-1 justify-center text-xl">
-                            {userLevel.badges.slice(0, 3).map((badge, idx) => (
-                              <span key={idx} title={badge.name}>{badge.icon}</span>
-                            ))}
+                          {userLevel.badges.slice(0, 3).map((badge, idx) => (
+                            <span key={idx} title={badge.name}>{badge.icon}</span>
+                          ))}
                             {userLevel.badges.length === 0 && <span className="text-fluky-text text-sm font-body">-</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )
-          ) : leaderboard.length === 0 ? (
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )
+        ) : leaderboard.length === 0 ? (
             <div className="text-center py-10 text-fluky-text font-body">
-              Aucune statistique disponible pour le moment.
-            </div>
-          ) : (
+            Aucune statistique disponible pour le moment.
+          </div>
+        ) : (
             <table className="w-full border-collapse">
-              <thead>
+            <thead>
                 <tr className="border-b-2 border-fluky-secondary">
                   <th className="p-4 text-left text-fluky-secondary font-normal font-body">Rang</th>
                   <th className="p-4 text-left text-fluky-secondary font-normal font-body">Équipe</th>
@@ -378,74 +378,73 @@ export default function Leaderboard({ session, supabase }) {
                   <th className="p-4 text-center text-fluky-secondary font-normal font-body">Win Rate</th>
                   <th className="p-4 text-center text-fluky-secondary font-normal font-body">Diff. Scores</th>
                   <th className="p-4 text-center text-fluky-secondary font-normal font-body">Tournois</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard.map((stat, index) => {
-                  const rank = index + 1;
-                  const isTop3 = rank <= 3;
-                  const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard.map((stat, index) => {
+                const rank = index + 1;
+                const isTop3 = rank <= 3;
+                const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
 
-                  return (
-                    <tr
-                      key={stat.team.id}
+                return (
+                  <tr
+                    key={stat.team.id}
                       className={`border-b border-white/5 transition-colors duration-300 ${
                         isTop3 ? 'bg-fluky-primary/20' : 'bg-transparent'
                       } hover:bg-fluky-secondary/20`}
                     >
                       <td className={`p-4 text-xl font-bold font-display ${isTop3 ? '' : 'text-fluky-secondary'}`} style={{ color: isTop3 ? rankColors[rank] : undefined }}>
-                        #{rank}
-                      </td>
+                      #{rank}
+                    </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          {stat.team.logo_url && (
-                            <img 
-                              src={stat.team.logo_url} 
-                              alt="" 
+                        {stat.team.logo_url && (
+                          <img 
+                            src={stat.team.logo_url} 
+                            alt="" 
                               className="w-10 h-10 rounded-lg object-cover border-2 border-fluky-secondary"
-                            />
-                          )}
-                          <div>
+                          />
+                        )}
+                        <div>
                             <div className="font-display text-lg font-bold text-fluky-text">{stat.team.name}</div>
                             <div className="text-sm text-fluky-secondary font-body">[{stat.team.tag}]</div>
-                          </div>
                         </div>
-                      </td>
+                      </div>
+                    </td>
                       <td className="p-4 text-center text-fluky-secondary font-bold font-body">
-                        {stat.totalMatches}
-                      </td>
+                      {stat.totalMatches}
+                    </td>
                       <td className="p-4 text-center text-fluky-primary font-bold font-body">
-                        {stat.wins}
-                      </td>
+                      {stat.wins}
+                    </td>
                       <td className="p-4 text-center text-fluky-secondary font-bold font-body">
-                        {stat.losses}
-                      </td>
+                      {stat.losses}
+                    </td>
                       <td className="p-4 text-center text-fluky-accent-orange font-bold text-lg font-body">
-                        {stat.winRate}%
-                      </td>
+                      {stat.winRate}%
+                    </td>
                       <td className={`p-4 text-center font-bold font-body ${
                         stat.scoreDifference >= 0 ? 'text-fluky-primary' : 'text-fluky-secondary'
                       }`}>
-                        {stat.scoreDifference >= 0 ? '+' : ''}{stat.scoreDifference}
-                      </td>
+                      {stat.scoreDifference >= 0 ? '+' : ''}{stat.scoreDifference}
+                    </td>
                       <td className="p-4 text-center text-fluky-secondary font-bold font-body">
-                        {stat.tournamentsCount}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-          {leaderboard.length > 0 && (
-            <div className="mt-5 text-center text-fluky-text text-sm font-body">
-              {leaderboard.length} équipe{leaderboard.length > 1 ? 's' : ''} classée{leaderboard.length > 1 ? 's' : ''}
-            </div>
-          )}
-        </div>
+                      {stat.tournamentsCount}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
+
+      {leaderboard.length > 0 && (
+            <div className="mt-5 text-center text-fluky-text text-sm font-body">
+          {leaderboard.length} équipe{leaderboard.length > 1 ? 's' : ''} classée{leaderboard.length > 1 ? 's' : ''}
+        </div>
+      )}
+    </div>
     </DashboardLayout>
   );
 }

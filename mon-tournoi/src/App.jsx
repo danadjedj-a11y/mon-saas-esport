@@ -46,6 +46,60 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Composant de chargement pour la vérification de session (style neon)
+const AuthLoadingSpinner = () => (
+  <div style={{
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#030913',
+    backgroundImage: 'radial-gradient(circle, rgba(193, 4, 104, 0.15) 1px, transparent 1px)',
+    backgroundSize: '20px 20px',
+    color: '#F8F6F2',
+    fontFamily: "'Protest Riot', sans-serif"
+  }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        fontSize: '4rem',
+        marginBottom: '20px',
+        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        textShadow: '0 0 20px rgba(193, 4, 104, 0.8), 0 0 40px rgba(255, 54, 163, 0.6)'
+      }}>
+        🎮
+      </div>
+      <p style={{
+        fontSize: '1.5rem',
+        color: '#FF36A3',
+        fontFamily: "'Shadows Into Light', cursive",
+        textShadow: '0 0 10px rgba(193, 4, 104, 0.5)'
+      }}>
+        Vérification de la session...
+      </p>
+      <div style={{
+        marginTop: '20px',
+        width: '50px',
+        height: '50px',
+        border: '4px solid rgba(193, 4, 104, 0.3)',
+        borderTop: '4px solid #FF36A3',
+        borderRadius: '50%',
+        margin: '20px auto',
+        animation: 'spin 1s linear infinite'
+      }}></div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
+    </div>
+  </div>
+);
+
 // Composant pour protéger les routes organisateur
 function OrganizerRoute({ children, session }) {
   const [authorized, setAuthorized] = useState(null);
@@ -91,7 +145,28 @@ function PlayerRoute({ children, session }) {
 function App() {
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
+  const [loading, setLoading] = useState(true) // État de chargement pour la vérification initiale
   const monitoringInitialized = useRef(false);
+
+  // Fonction pour mettre à jour le rôle utilisateur
+  const updateUserRole = async (user) => {
+    if (!user) {
+      setUserRole(null);
+      return;
+    }
+    try {
+      const role = await getUserRole(supabase, user.id);
+      setUserRole(role);
+      monitoring.setUser({
+        id: user.id,
+        email: user.email,
+        username: user.user_metadata?.username
+      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération du rôle:', error);
+      setUserRole(null);
+    }
+  };
 
   useEffect(() => {
     // Initialiser analytics et monitoring (une seule fois)
@@ -101,43 +176,127 @@ function App() {
       monitoringInitialized.current = true;
     }
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      if (session?.user) {
-        const role = await getUserRole(supabase, session.user.id)
-        setUserRole(role)
-        monitoring.setUser({
-          id: session.user.id,
-          email: session.user.email,
-          username: session.user.user_metadata?.username
-        });
-      }
-    })
+    // 1. Vérifier la session persistée au premier chargement
+    const checkInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Erreur lors de la vérification de la session:', error);
+          setSession(null);
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
 
+        if (session?.user) {
+          setSession(session);
+          await updateUserRole(session.user);
+        } else {
+          setSession(null);
+          setUserRole(null);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification initiale:', error);
+        setSession(null);
+        setUserRole(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkInitialSession();
+
+    // 2. Écouter les changements d'état d'authentification
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session)
-      if (session?.user) {
-        const role = await getUserRole(supabase, session.user.id)
-        setUserRole(role)
-        monitoring.setUser({
-          id: session.user.id,
-          email: session.user.email,
-          username: session.user.user_metadata?.username
-        });
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth State Change:', event, session?.user?.email || 'No user');
+
+      // Gérer les événements spécifiques
+      if (event === 'SIGNED_IN') {
+        if (session?.user) {
+          setSession(session);
+          // Mettre à jour le rôle et récupérer le rôle pour la redirection
+          const role = await getUserRole(supabase, session.user.id);
+          setUserRole(role);
+          monitoring.setUser({
+            id: session.user.id,
+            email: session.user.email,
+            username: session.user.user_metadata?.username
+          });
+          
+          // Rediriger vers le dashboard approprié si on est sur /auth ou /
+          const currentPath = window.location.pathname;
+          if (currentPath === '/auth' || currentPath === '/') {
+            const targetRoute = role === 'organizer' 
+              ? '/organizer/dashboard' 
+              : '/player/dashboard';
+            // Utiliser window.location pour forcer une navigation complète et éviter les problèmes de state
+            window.location.href = targetRoute;
+          }
+          // Si on est déjà sur une page protégée, l'état est déjà mis à jour
+          
+          analytics.trackEvent('user_logged_in');
+          toast.success('✅ Connexion réussie !');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUserRole(null);
+        monitoring.setUser(null);
+        
+        // Rediriger vers la page d'accueil ou auth
+        if (window.location.pathname.startsWith('/player/') || 
+            window.location.pathname.startsWith('/organizer/') ||
+            window.location.pathname.startsWith('/profile') ||
+            window.location.pathname.startsWith('/create-team') ||
+            window.location.pathname.startsWith('/my-team') ||
+            window.location.pathname.startsWith('/stats') ||
+            window.location.pathname.startsWith('/leaderboard')) {
+          window.location.href = '/';
+        }
+        
+        analytics.trackEvent('user_logged_out');
+        toast.info('👋 Vous avez été déconnecté');
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Rafraîchir la session si le token est renouvelé
+        if (session?.user) {
+          setSession(session);
+          await updateUserRole(session.user);
+        }
+      } else if (event === 'USER_UPDATED') {
+        // Mettre à jour les informations utilisateur
+        if (session?.user) {
+          setSession(session);
+          await updateUserRole(session.user);
+        }
       } else {
-        setUserRole(null)
+        // Pour les autres événements, mettre à jour l'état normalement
+        setSession(session);
+        if (session?.user) {
+          await updateUserRole(session.user);
+        } else {
+          setUserRole(null);
+        }
       }
-      // Suivre la connexion/déconnexion
-      analytics.trackEvent(session ? 'user_logged_in' : 'user_logged_out');
-    })
+    });
 
     // Suivre la page vue initiale
     analytics.trackPageView(window.location.pathname);
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [])
+
+  // Afficher le spinner de chargement pendant la vérification initiale de la session
+  if (loading) {
+    return (
+      <ErrorBoundary>
+        <AuthLoadingSpinner />
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>
