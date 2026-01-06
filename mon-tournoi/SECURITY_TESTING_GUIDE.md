@@ -21,19 +21,113 @@ Ce guide vous aide à tester la sécurité de votre site déployé sur Vercel et
 
 **OWASP ZAP (Zed Attack Proxy)** est un outil gratuit et open-source pour tester la sécurité.
 
-#### Installation
+#### Installation sur Windows
+
+> 📖 **Guide détaillé** : Voir [ZAP_INSTALLATION_GUIDE.md](./ZAP_INSTALLATION_GUIDE.md) pour un guide complet avec dépannage.
+
+**Étape 1 : Installer Java (JRE 17 ou supérieur)**
+
+OWASP ZAP nécessite Java Runtime Environment (JRE) version 17 minimum.
+
+1. **Télécharger Java** :
+   - Aller sur : https://www.oracle.com/java/technologies/downloads/#java17
+   - Ou utiliser OpenJDK : https://adoptium.net/
+   - Choisir **Windows x64 Installer** (64-bit)
+
+2. **Installer Java** :
+   - Exécuter le fichier d'installation téléchargé
+   - Suivre l'assistant d'installation
+   - Cocher "Add to PATH" si proposé
+
+3. **Vérifier l'installation** :
+   ```powershell
+   java -version
+   ```
+   Vous devriez voir quelque chose comme :
+   ```
+   openjdk version "17.0.x" ...
+   ```
+
+**Étape 2 : Installer OWASP ZAP**
+
+1. **Télécharger OWASP ZAP** :
+   - Aller sur : https://www.zaproxy.org/download/
+   - Choisir **Windows Installer** (version avec installateur)
+   - Ou **Windows (Cross Platform)** si vous préférez la version portable
+
+2. **Installer OWASP ZAP** :
+   - Si vous avez téléchargé l'installateur Windows :
+     - Exécuter le fichier `.exe`
+     - Si vous voyez l'erreur "JRE non trouvé", cliquez sur **Localisation** et pointez vers votre installation Java
+     - Suivre l'assistant d'installation
+   - Si vous avez téléchargé la version portable :
+     - Extraire le fichier ZIP
+     - Lancer `zap.bat` dans le dossier extrait
+
+**Alternative : Utiliser Docker (si Docker est installé)**
+
 ```bash
-# Télécharger depuis https://www.zaproxy.org/download/
-# Ou via Docker
+# Scan rapide avec Docker
 docker run -t owasp/zap2docker-stable zap-baseline.py -t https://votre-site.vercel.app
+
+# Scan complet avec rapport
+docker run -t -v $(pwd):/zap/wrk/:rw owasp/zap2docker-stable zap-full-scan.py -t https://votre-site.vercel.app -g gen.conf -r zap-report.html
 ```
 
-#### Utilisation
-1. Lancer OWASP ZAP
-2. Menu : **Quick Start** > **Automated Scan**
-3. Entrer l'URL de votre site : `https://votre-site.vercel.app`
-4. Cliquer sur **Attack**
-5. Analyser les résultats
+#### Utilisation de OWASP ZAP
+
+**Méthode 1 : Interface Graphique (Recommandée pour débutants)**
+
+1. **Lancer OWASP ZAP**
+   - Double-cliquer sur l'icône ZAP sur le bureau
+   - Ou lancer depuis le menu Démarrer
+
+2. **Premier lancement** :
+   - ZAP vous demandera si vous voulez persister la session
+   - Choisir **No, I do not want to persist this session** pour un test rapide
+   - Cliquer sur **Start**
+
+3. **Lancer un scan automatique** :
+   - Dans l'onglet **Quick Start**
+   - Entrer l'URL de votre site : `https://votre-site.vercel.app`
+   - Cliquer sur **Automated Scan**
+   - Cliquer sur **Attack**
+   - Attendre la fin du scan (peut prendre plusieurs minutes)
+
+4. **Analyser les résultats** :
+   - Onglet **Alerts** : Liste des vulnérabilités trouvées
+   - Onglet **Sites** : Arborescence du site scanné
+   - Onglet **History** : Historique des requêtes
+
+**Méthode 2 : Scan Baseline (Rapide, en ligne de commande)**
+
+```powershell
+# Depuis le dossier d'installation de ZAP
+.\zap-cli.bat baseline -t https://votre-site.vercel.app
+```
+
+**Méthode 3 : Scan Complet (Plus approfondi)**
+
+1. Dans ZAP, aller dans **Tools** > **Options** > **Active Scan**
+2. Configurer les règles de scan
+3. Clic droit sur votre site dans l'onglet **Sites**
+4. Choisir **Attack** > **Active Scan**
+5. Attendre la fin du scan
+
+#### Points à vérifier dans les résultats :
+
+- ✅ **Injection SQL** : Chercher les alertes "SQL Injection"
+- ✅ **XSS (Cross-Site Scripting)** : Chercher "Cross Site Scripting"
+- ✅ **CSRF (Cross-Site Request Forgery)** : Chercher "CSRF"
+- ✅ **Headers de sécurité manquants** : Chercher "Missing Security Headers"
+- ✅ **Secrets exposés** : Chercher "Information Disclosure"
+- ✅ **Authentification faible** : Chercher "Weak Authentication"
+
+#### Exporter le rapport
+
+1. **Menu** > **Report** > **Generate HTML Report**
+2. Choisir l'emplacement de sauvegarde
+3. Le rapport contiendra toutes les vulnérabilités trouvées avec des recommandations
 
 #### Points à vérifier :
 - ✅ Injection SQL
