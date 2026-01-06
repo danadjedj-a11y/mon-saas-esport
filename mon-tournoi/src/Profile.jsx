@@ -241,6 +241,7 @@ export default function Profile({ session }) {
       <div className="mt-8">
         <BadgeDisplay userId={session?.user?.id} session={session} />
       </div>
+      </div>
     </DashboardLayout>
   );
 }
