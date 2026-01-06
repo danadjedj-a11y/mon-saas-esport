@@ -14,6 +14,7 @@ import { notifyMatchResult } from './notificationUtils';
 import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores, recalculateBuchholzScores } from './swissUtils';
 import { exportTournamentToPDF } from './utils/pdfExport';
 import { toast } from './utils/toast';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -834,122 +835,67 @@ export default function Tournament({ session }) {
   // 4. RENDU (UI)
   // ==============================================================================
 
-  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif", minHeight: '100vh'}}>Chargement...</div>;
-  if (!tournoi) return <div style={{color:'#F8F6F2', background: '#030913', minHeight: '100vh', padding: '20px', fontFamily: "'Protest Riot', sans-serif"}}>Tournoi introuvable</div>;
+  if (loading) return (
+    <DashboardLayout session={session}>
+      <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
+    </DashboardLayout>
+  );
+  if (!tournoi) return (
+    <DashboardLayout session={session}>
+      <div className="text-fluky-text font-body text-center py-20">Tournoi introuvable</div>
+    </DashboardLayout>
+  );
 
   return (
-    <div style={{ padding: '20px', color: '#F8F6F2', maxWidth: '100%', margin: '0 auto', background: '#030913', minHeight: '100vh' }}>
-      
-      {/* --- HEADER --- */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'3px solid #FF36A3', paddingBottom:'20px', marginBottom:'30px'}}>
-        <div>
-           <button onClick={() => {
-             if (isOrganizerView) {
-               navigate('/organizer/dashboard');
-             } else if (isPlayerView) {
-               navigate('/player/dashboard');
-             } else {
-               // Fallback : déterminer selon le rôle
-               if (isOwner) {
-                 navigate('/organizer/dashboard');
-               } else {
-                 navigate('/player/dashboard');
-               }
-             }
-           }} style={{
-             background:'transparent', 
-             border:'2px solid #C10468', 
-             color:'#F8F6F2', 
-             padding:'8px 16px', 
-             borderRadius:'8px', 
-             cursor:'pointer', 
-             marginBottom:'10px',
-             fontFamily: "'Shadows Into Light', cursive",
-             fontSize: '0.9rem',
-             textTransform: 'uppercase',
-             letterSpacing: '0.5px',
-             transition: 'all 0.3s ease'
-           }}
-           onMouseEnter={(e) => {
-             e.currentTarget.style.background = '#C10468';
-             e.currentTarget.style.borderColor = '#FF36A3';
-           }}
-           onMouseLeave={(e) => {
-             e.currentTarget.style.background = 'transparent';
-             e.currentTarget.style.borderColor = '#C10468';
-           }}
-           >← Retour</button>
-           <h1 style={{ margin: 0, color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>{tournoi.name}</h1>
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-7xl mx-auto">
+        {/* --- HEADER --- */}
+        <div className="flex justify-between items-center border-b-4 border-fluky-secondary pb-5 mb-8">
+          <div>
+            <button 
+              onClick={() => {
+                if (isOrganizerView) {
+                  navigate('/organizer/dashboard');
+                } else if (isPlayerView) {
+                  navigate('/player/dashboard');
+                } else {
+                  if (isOwner) {
+                    navigate('/organizer/dashboard');
+                  } else {
+                    navigate('/player/dashboard');
+                  }
+                }
+              }} 
+              className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary mb-3"
+            >
+              ← Retour
+            </button>
+            <h1 className="font-display text-4xl text-fluky-secondary m-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>{tournoi.name}</h1>
+          </div>
+          <div className="text-right flex flex-col gap-3 items-end">
+            <div className={`font-bold font-body ${tournoi.status === 'draft' ? 'text-fluky-accent-orange' : 'text-fluky-primary'}`}>
+              {winnerName ? '🏆 TERMINÉ' : (tournoi.status === 'draft' ? '🟠 Inscriptions Ouvertes' : '🟢 En cours')}
+            </div>
+            <div className="flex gap-3">
+              <button 
+                type="button"
+                onClick={copyPublicLink} 
+                className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-sm uppercase tracking-wide font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+              >
+                🔗 Lien Public
+              </button>
+              {tournoi.status === 'completed' && (
+                <button 
+                  type="button"
+                  onClick={exportToPDF} 
+                  className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-sm uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+                >
+                  📄 Export PDF
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-        <div style={{textAlign:'right', display:'flex', flexDirection:'column', gap:'10px', alignItems:'flex-end'}}>
-           <div style={{fontWeight:'bold', color: tournoi.status === 'draft' ? '#E7632C' : '#C10468', fontFamily: "'Protest Riot', sans-serif"}}>
-             {winnerName ? '🏆 TERMINÉ' : (tournoi.status === 'draft' ? '🟠 Inscriptions Ouvertes' : '🟢 En cours')}
-           </div>
-           <div style={{display:'flex', gap:'10px'}}>
-             <button 
-               type="button"
-               onClick={copyPublicLink} 
-               style={{
-                 background:'#C10468', 
-                 color:'#F8F6F2', 
-                 border:'2px solid #FF36A3', 
-                 fontFamily: "'Shadows Into Light', cursive",
-                 textTransform: 'uppercase',
-                 letterSpacing: '0.5px',
-                 transition: 'all 0.3s ease',
-                 padding:'8px 16px', 
-                 borderRadius:'8px', 
-                 cursor:'pointer', 
-                 fontSize:'0.9rem',
-                 fontWeight:'bold'
-               }}
-               onMouseEnter={(e) => {
-                 e.currentTarget.style.background = '#FF36A3';
-                 e.currentTarget.style.borderColor = '#C10468';
-                 e.currentTarget.style.transform = 'translateY(-2px)';
-               }}
-               onMouseLeave={(e) => {
-                 e.currentTarget.style.background = '#C10468';
-                 e.currentTarget.style.borderColor = '#FF36A3';
-                 e.currentTarget.style.transform = 'translateY(0)';
-               }}
-             >
-               🔗 Lien Public
-             </button>
-             {tournoi.status === 'completed' && (
-               <button 
-                 type="button"
-                 onClick={exportToPDF} 
-                 style={{
-                   background:'#C10468', 
-                   color:'#F8F6F2', 
-                   border:'2px solid #FF36A3', 
-                   padding:'8px 16px', 
-                   borderRadius:'8px', 
-                   cursor:'pointer', 
-                   fontFamily: "'Shadows Into Light', cursive",
-                   fontSize:'0.9rem',
-                   textTransform: 'uppercase',
-                   letterSpacing: '0.5px',
-                   transition: 'all 0.3s ease'
-                 }}
-                 onMouseEnter={(e) => {
-                   e.currentTarget.style.background = '#FF36A3';
-                   e.currentTarget.style.borderColor = '#C10468';
-                   e.currentTarget.style.transform = 'translateY(-2px)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.currentTarget.style.background = '#C10468';
-                   e.currentTarget.style.borderColor = '#FF36A3';
-                   e.currentTarget.style.transform = 'translateY(0)';
-                 }}
-               >
-                 📄 Export PDF
-               </button>
-             )}
-           </div>
-        </div>
-      </div>
 
       {winnerName && (
           <div style={{background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.3) 0%, rgba(255, 54, 163, 0.2) 100%)', color:'#F8F6F2', padding:'20px', borderRadius:'12px', textAlign:'center', marginBottom:'30px', border: '2px solid #FF36A3'}}>
@@ -1018,172 +964,170 @@ export default function Tournament({ session }) {
         />
       )}
       
-      {shouldShowAdminFeatures && tournoi.status === 'draft' && (
-        <div style={{ background: '#222', padding: '20px', borderRadius: '8px', marginBottom: '30px', borderLeft:'4px solid #8e44ad' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px' }}>
-          <span>{participants.length} équipes inscrites.</span>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setIsSeedingModalOpen(true)} style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #f1c40f, #e67e22)', color: '#000', border: 'none', borderRadius: '4px', cursor:'pointer', fontWeight: 'bold' }}>
-                🎯 God Mode - Seeding
-              </button>
-              <button onClick={startTournament} style={{ padding: '10px 20px', background: '#8e44ad', color: 'white', border: 'none', borderRadius: '4px', cursor:'pointer', fontWeight: 'bold' }}>
-                Générer l'Arbre et Lancer
-              </button>
+        {shouldShowAdminFeatures && tournoi.status === 'draft' && (
+          <div className="bg-[#030913]/60 backdrop-blur-md border-l-4 border-purple-500 p-5 rounded-lg mb-8 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-fluky-text font-body">{participants.length} équipes inscrites.</span>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsSeedingModalOpen(true)} 
+                  className="px-5 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black border-none rounded-lg cursor-pointer font-bold transition-all duration-300 hover:scale-105"
+                >
+                  🎯 God Mode - Seeding
+                </button>
+                <button 
+                  onClick={startTournament} 
+                  className="px-5 py-3 bg-purple-600 text-white border-none rounded-lg cursor-pointer font-bold transition-all duration-300 hover:scale-105 hover:bg-purple-700"
+                >
+                  Générer l'Arbre et Lancer
+                </button>
+              </div>
             </div>
-          </div>
-          {participants.some(p => p.seed_order !== null) && (
-            <div style={{ background: '#2a2a2a', padding: '10px', borderRadius: '5px', fontSize: '0.9rem', color: '#4ade80', borderLeft: '3px solid #4ade80' }}>
-              ✅ Seeding configuré.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* --- ACTIONS JOUEURS (Inscription / Check-in) --- */}
-      {tournoi.status === 'draft' && (
-        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <TeamJoinButton tournamentId={id} supabase={supabase} session={session} onJoinSuccess={fetchData} tournament={tournoi} />
-          <CheckInButton tournamentId={id} supabase={supabase} session={session} tournament={tournoi} />
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', alignItems:'flex-start' }}>
-        
-        {/* --- COLONNE GAUCHE : ÉQUIPES & CHAT --- */}
-        <div style={{ flex: '1', minWidth: '300px', maxWidth: '400px', background: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
-          <div style={{padding:'15px', borderBottom:'1px solid #333'}}>
-            <h3 style={{margin:0, marginBottom:'5px'}}>Équipes ({participants.length})</h3>
-            {shouldShowAdminFeatures && tournoi.status === 'draft' && (
-              <div style={{fontSize:'0.85rem', color:'#aaa', display:'flex', gap:'15px', flexWrap:'wrap'}}>
-                <span style={{color:'#27ae60'}}>✅ Check-in: {participants.filter(p => p.checked_in).length}</span>
-                <span style={{color:'#7f8c8d'}}>⏳ En attente: {participants.filter(p => !p.checked_in && !p.disqualified).length}</span>
-                {participants.filter(p => p.disqualified).length > 0 && (
-                  <span style={{color:'#e74c3c'}}>❌ DQ: {participants.filter(p => p.disqualified).length}</span>
-                )}
+            {participants.some(p => p.seed_order !== null) && (
+              <div className="bg-[#030913]/60 p-3 rounded-lg text-sm text-green-400 border-l-4 border-green-400 font-body">
+                ✅ Seeding configuré.
               </div>
             )}
           </div>
-          <ul style={{listStyle:'none', padding:0, margin:0, maxHeight:'300px', overflowY:'auto'}}>
-            {participants.map(p => (
-                <li key={p.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between', alignItems:'center', background: p.checked_in ? '#1a2e1a' : (p.disqualified ? '#2e1a1a' : 'transparent')}}>
-                    <div style={{display:'flex', gap:'10px', alignItems:'center', flex:1}}>
-                        <div style={{width:'30px', height:'30px', background:'#444', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:'bold'}}>
-                            {p.teams?.tag || '?'}
-                        </div>
-                        <span style={{color: p.disqualified ? '#e74c3c' : (p.checked_in ? '#27ae60' : '#ccc')}}>
-                          {p.teams?.name || 'Inconnu'}
-                        </span>
-                        {/* Indicateur de statut */}
-                        {isOwner && tournoi.status === 'draft' && (
-                          <span style={{
-                            fontSize: '0.75rem',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            background: p.checked_in ? '#27ae60' : (p.disqualified ? '#e74c3c' : '#7f8c8d'),
-                            color: 'white',
-                            fontWeight: 'bold'
-                          }}>
-                            {p.checked_in ? '✅ Check-in' : (p.disqualified ? '❌ DQ' : '⏳ En attente')}
-                          </span>
-                        )}
+        )}
+
+        {/* --- ACTIONS JOUEURS (Inscription / Check-in) --- */}
+        {tournoi.status === 'draft' && (
+          <div className="mb-5 flex gap-3 items-center">
+            <TeamJoinButton tournamentId={id} supabase={supabase} session={session} onJoinSuccess={fetchData} tournament={tournoi} />
+            <CheckInButton tournamentId={id} supabase={supabase} session={session} tournament={tournoi} />
+          </div>
+        )}
+
+        <div className="flex gap-10 flex-wrap items-start">
+          
+          {/* --- COLONNE GAUCHE : ÉQUIPES & CHAT --- */}
+          <div className="flex-1 min-w-[300px] max-w-[400px] bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-lg">
+            <div className="p-4 border-b border-white/5">
+              <h3 className="font-display text-xl text-fluky-text m-0 mb-2">Équipes ({participants.length})</h3>
+              {shouldShowAdminFeatures && tournoi.status === 'draft' && (
+                <div className="text-xs text-fluky-text/70 flex gap-4 flex-wrap font-body">
+                  <span className="text-green-400">✅ Check-in: {participants.filter(p => p.checked_in).length}</span>
+                  <span className="text-gray-400">⏳ En attente: {participants.filter(p => !p.checked_in && !p.disqualified).length}</span>
+                  {participants.filter(p => p.disqualified).length > 0 && (
+                    <span className="text-red-400">❌ DQ: {participants.filter(p => p.disqualified).length}</span>
+                  )}
+                </div>
+              )}
+            </div>
+            <ul className="list-none p-0 m-0 max-h-[300px] overflow-y-auto">
+              {participants.map(p => (
+                <li 
+                  key={p.id} 
+                  className={`p-3 border-b border-white/5 flex justify-between items-center ${
+                    p.checked_in ? 'bg-green-900/20' : (p.disqualified ? 'bg-red-900/20' : 'bg-transparent')
+                  }`}
+                >
+                  <div className="flex gap-3 items-center flex-1">
+                    <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-fluky-text">
+                      {p.teams?.tag || '?'}
                     </div>
-                    {isOwner && (
-                      <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                        {tournoi.status === 'draft' && (
-                          <button
-                            onClick={() => handleAdminCheckIn(p.id, p.checked_in)}
-                            style={{
-                              padding: '5px 12px',
-                              background: p.checked_in ? '#e67e22' : '#27ae60',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem',
-                              fontWeight: 'bold'
-                            }}
-                            title={p.checked_in ? 'Retirer le check-in' : 'Valider le check-in'}
-                          >
-                            {p.checked_in ? '↩️ Retirer' : '✅ Check-in'}
-                          </button>
-                        )}
-                        <button onClick={()=>removeParticipant(p.id)} style={{color:'#e74c3c', background:'none', border:'none', cursor:'pointer', fontSize:'1.2rem'}} title="Exclure cette équipe">✕</button>
-                      </div>
+                    <span className={`font-body ${
+                      p.disqualified ? 'text-red-400' : (p.checked_in ? 'text-green-400' : 'text-fluky-text/70')
+                    }`}>
+                      {p.teams?.name || 'Inconnu'}
+                    </span>
+                    {/* Indicateur de statut */}
+                    {isOwner && tournoi.status === 'draft' && (
+                      <span className={`text-xs px-2 py-1 rounded-full text-white font-bold font-body ${
+                        p.checked_in ? 'bg-green-500' : (p.disqualified ? 'bg-red-500' : 'bg-gray-500')
+                      }`}>
+                        {p.checked_in ? '✅ Check-in' : (p.disqualified ? '❌ DQ' : '⏳ En attente')}
+                      </span>
                     )}
+                  </div>
+                  {isOwner && (
+                    <div className="flex gap-2 items-center">
+                      {tournoi.status === 'draft' && (
+                        <button
+                          onClick={() => handleAdminCheckIn(p.id, p.checked_in)}
+                          className={`px-3 py-1 text-white border-none rounded-lg cursor-pointer text-xs font-bold transition-all duration-300 hover:scale-105 ${
+                            p.checked_in ? 'bg-orange-500' : 'bg-green-500'
+                          }`}
+                          title={p.checked_in ? 'Retirer le check-in' : 'Valider le check-in'}
+                        >
+                          {p.checked_in ? '↩️ Retirer' : '✅ Check-in'}
+                        </button>
+                      )}
+                      <button 
+                        onClick={()=>removeParticipant(p.id)} 
+                        className="text-red-400 bg-none border-none cursor-pointer text-xl hover:text-red-500 transition-colors" 
+                        title="Exclure cette équipe"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </li>
-            ))}
-          </ul>
+              ))}
+            </ul>
           
-          {/* LISTE D'ATTENTE */}
-          {shouldShowAdminFeatures && waitlist.length > 0 && tournoi.status === 'draft' && (
-            <>
-              <div style={{borderTop:'1px solid #333', padding:'15px', borderBottom:'1px solid #333', background:'#2a2a2a'}}>
-                <h3 style={{margin:0, fontSize:'0.95rem', color:'#f39c12'}}>⏳ Liste d'Attente ({waitlist.length})</h3>
+            {/* LISTE D'ATTENTE */}
+            {shouldShowAdminFeatures && waitlist.length > 0 && tournoi.status === 'draft' && (
+              <>
+                <div className="border-t border-white/5 p-4 border-b border-white/5 bg-white/5">
+                  <h3 className="m-0 text-sm text-yellow-400 font-body">⏳ Liste d'Attente ({waitlist.length})</h3>
+                </div>
+                <ul className="list-none p-0 m-0 max-h-[200px] overflow-y-auto">
+                  {waitlist.map((w) => {
+                    const canPromote = !tournoi?.max_participants || participants.length < tournoi.max_participants;
+                    return (
+                      <li key={w.id} className="p-3 border-b border-white/5 flex justify-between items-center bg-black/30 opacity-90">
+                        <div className="flex gap-3 items-center flex-1">
+                          <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-xs font-bold text-black">
+                            {w.position}
+                          </div>
+                          <div className="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-fluky-text">
+                            {w.teams?.tag || '?'}
+                          </div>
+                          <span className="text-sm text-fluky-text/70 font-body">{w.teams?.name || 'Inconnu'}</span>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                          <span className="text-xs text-fluky-text/50 font-body">Position #{w.position}</span>
+                          {canPromote && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Promouvoir "${w.teams?.name || 'cette équipe'}" depuis la liste d'attente ?`)) {
+                                  promoteTeamFromWaitlist(w.id, w.team_id);
+                                }
+                              }}
+                              className="px-3 py-1 bg-green-500 text-white border-none rounded-lg cursor-pointer text-xs font-bold transition-all duration-300 hover:scale-105 hover:bg-green-600"
+                            >
+                              ✅ Promouvoir
+                            </button>
+                          )}
+                          {!canPromote && (
+                            <span className="text-xs text-fluky-text/50 italic font-body">Complet</span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+            
+            <div className="border-t border-white/5 p-4">
+              <h3 className="font-display text-lg text-fluky-text m-0 mb-3">💬 Chat Lobby</h3>
+              <div className="h-[400px] flex flex-col">
+                <Chat tournamentId={id} session={session} supabase={supabase} />
               </div>
-              <ul style={{listStyle:'none', padding:0, margin:0, maxHeight:'200px', overflowY:'auto'}}>
-                {waitlist.map((w) => {
-                  const canPromote = !tournoi?.max_participants || participants.length < tournoi.max_participants;
-                  return (
-                    <li key={w.id} style={{padding:'10px 15px', borderBottom:'1px solid #2a2a2a', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#252525', opacity:0.9}}>
-                      <div style={{display:'flex', gap:'10px', alignItems:'center', flex:1}}>
-                        <div style={{width:'20px', height:'20px', background:'#f39c12', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:'bold', color:'#000'}}>
-                          {w.position}
-                        </div>
-                        <div style={{width:'24px', height:'24px', background:'#444', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', fontWeight:'bold'}}>
-                          {w.teams?.tag || '?'}
-                        </div>
-                        <span style={{fontSize:'0.9rem', color:'#ccc'}}>{w.teams?.name || 'Inconnu'}</span>
-                      </div>
-                      <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                        <span style={{fontSize:'0.75rem', color:'#888'}}>Position #{w.position}</span>
-                        {canPromote && (
-                          <button
-                            onClick={() => {
-                              if (confirm(`Promouvoir "${w.teams?.name || 'cette équipe'}" depuis la liste d'attente ?`)) {
-                                promoteTeamFromWaitlist(w.id, w.team_id);
-                              }
-                            }}
-                            style={{
-                              padding: '5px 12px',
-                              background: '#27ae60',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem',
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            ✅ Promouvoir
-                          </button>
-                        )}
-                        {!canPromote && (
-                          <span style={{fontSize: '0.7rem', color: '#888', fontStyle: 'italic'}}>Complet</span>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
-          
-          <div style={{ borderTop: '1px solid #333', padding: '15px' }}>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>💬 Chat Lobby</h3>
-            <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
-              <Chat tournamentId={id} session={session} supabase={supabase} />
             </div>
           </div>
-        </div>
 
-        {/* --- COLONNE DROITE : CLASSEMENT & ARBRE --- */}
-        <div style={{ flex: '3', minWidth:'300px', overflowX:'auto' }}>
-            
-            {/* Table Swiss System */}
-            {tournoi?.format === 'swiss' && swissScores.length > 0 && (
-              <div style={{ marginBottom: '40px', background: '#1a1a1a', borderRadius: '15px', padding: '20px', border: '1px solid #333' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h2 style={{ margin: 0, borderBottom: '1px solid #444', paddingBottom: '10px' }}>🇨🇭 Classement Suisse</h2>
+          {/* --- COLONNE DROITE : CLASSEMENT & ARBRE --- */}
+          <div className="flex-[3] min-w-[300px] overflow-x-auto">
+              
+              {/* Table Swiss System */}
+              {tournoi?.format === 'swiss' && swissScores.length > 0 && (
+                <div className="mb-10 bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="font-display text-2xl text-fluky-text m-0 border-b border-white/5 pb-3">🇨🇭 Classement Suisse</h2>
                   {isOwner && tournoi.status === 'ongoing' && (
                     <button 
                       onClick={generateNextSwissRound}
@@ -1193,47 +1137,51 @@ export default function Tournament({ session }) {
                     </button>
                   )}
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
-                  <thead>
-                    <tr style={{ background: '#252525', textAlign: 'left' }}>
-                      <th style={{ padding: '10px' }}>Rang</th>
-                      <th style={{ padding: '10px' }}>Équipe</th>
-                      <th style={{ padding: '10px', textAlign:'center' }}>Victoires</th>
-                      <th style={{ padding: '10px', textAlign:'center' }}>Défaites</th>
-                      <th style={{ padding: '10px', textAlign:'center' }}>Nuls</th>
-                      <th style={{ padding: '10px', textAlign:'center' }}>Buchholz</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const standings = swissScores.sort((a, b) => {
-                        if (b.wins !== a.wins) return b.wins - a.wins;
-                        if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
-                        return a.team_id.localeCompare(b.team_id);
-                      });
-                      return standings.map((score, index) => {
-                        const team = participants.find(p => p.team_id === score.team_id);
-                        return (
-                          <tr key={score.id} style={{ borderBottom: '1px solid #333' }}>
-                            <td style={{ padding: '10px', fontWeight: index === 0 ? 'bold' : 'normal', color: index === 0 ? '#f1c40f' : 'white' }}>
-                              #{index + 1}
-                            </td>
-                            <td style={{ padding: '10px', display:'flex', alignItems:'center', gap:'10px' }}>
-                              <img src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} style={{width:'24px', height:'24px', borderRadius:'50%'}} alt=""/>
-                              {team?.teams?.name || 'Inconnu'}
-                            </td>
-                            <td style={{ padding: '10px', textAlign:'center', color: '#2ecc71', fontWeight: 'bold' }}>{score.wins}</td>
-                            <td style={{ padding: '10px', textAlign:'center', color: '#e74c3c' }}>{score.losses}</td>
-                            <td style={{ padding: '10px', textAlign:'center', color: '#f39c12' }}>{score.draws}</td>
-                            <td style={{ padding: '10px', textAlign:'center', color: '#3498db' }}>{parseFloat(score.buchholz_score || 0).toFixed(1)}</td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  <table className="w-full border-collapse text-white">
+                    <thead>
+                      <tr className="bg-black/50 text-left">
+                        <th className="p-3">Rang</th>
+                        <th className="p-3">Équipe</th>
+                        <th className="p-3 text-center">Victoires</th>
+                        <th className="p-3 text-center">Défaites</th>
+                        <th className="p-3 text-center">Nuls</th>
+                        <th className="p-3 text-center">Buchholz</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const standings = swissScores.sort((a, b) => {
+                          if (b.wins !== a.wins) return b.wins - a.wins;
+                          if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
+                          return a.team_id.localeCompare(b.team_id);
+                        });
+                        return standings.map((score, index) => {
+                          const team = participants.find(p => p.team_id === score.team_id);
+                          return (
+                            <tr key={score.id} className="border-b border-white/5">
+                              <td className={`p-3 ${index === 0 ? 'font-bold text-yellow-400' : 'text-white'}`}>
+                                #{index + 1}
+                              </td>
+                              <td className="p-3 flex items-center gap-3">
+                                <img 
+                                  src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} 
+                                  className="w-6 h-6 rounded-full" 
+                                  alt=""
+                                />
+                                <span className="font-body">{team?.teams?.name || 'Inconnu'}</span>
+                              </td>
+                              <td className="p-3 text-center text-green-400 font-bold">{score.wins}</td>
+                              <td className="p-3 text-center text-red-400">{score.losses}</td>
+                              <td className="p-3 text-center text-yellow-400">{score.draws}</td>
+                              <td className="p-3 text-center text-blue-400">{parseFloat(score.buchholz_score || 0).toFixed(1)}</td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
             {/* Table Round Robin */}
             {tournoi?.format === 'round_robin' && (
@@ -1373,19 +1321,20 @@ export default function Tournament({ session }) {
         </div>
       )}
 
-      <SeedingModal isOpen={isSeedingModalOpen} onClose={() => setIsSeedingModalOpen(false)} participants={participants} tournamentId={id} supabase={supabase} onSave={() => fetchData()} />
-      
-      <SchedulingModal 
-        isOpen={isSchedulingModalOpen} 
-        onClose={() => {
-          setIsSchedulingModalOpen(false);
-          setSchedulingMatch(null);
-        }} 
-        match={schedulingMatch}
-        supabase={supabase} 
-        onSave={() => fetchData()} 
-      />
-    </div>
+        <SeedingModal isOpen={isSeedingModalOpen} onClose={() => setIsSeedingModalOpen(false)} participants={participants} tournamentId={id} supabase={supabase} onSave={() => fetchData()} />
+        
+        <SchedulingModal 
+          isOpen={isSchedulingModalOpen} 
+          onClose={() => {
+            setIsSchedulingModalOpen(false);
+            setSchedulingMatch(null);
+          }} 
+          match={schedulingMatch}
+          supabase={supabase} 
+          onSave={() => fetchData()} 
+        />
+      </div>
+    </DashboardLayout>
   );
 }
 

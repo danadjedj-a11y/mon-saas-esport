@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function JoinTeam({ session, supabase }) {
   const { teamId } = useParams();
@@ -37,26 +38,37 @@ export default function JoinTeam({ session, supabase }) {
     }
   };
 
-  if (loading) return <div style={{color:'white', padding:'20px'}}>Chargement de l'invitation...</div>;
-  if (!team) return <div style={{color:'white'}}>Invitation invalide.</div>;
+  if (loading) return (
+    <DashboardLayout session={session}>
+      <div className="text-fluky-text font-body text-center py-20">Chargement de l'invitation...</div>
+    </DashboardLayout>
+  );
+  
+  if (!team) return (
+    <DashboardLayout session={session}>
+      <div className="text-fluky-text font-body text-center py-20">Invitation invalide.</div>
+    </DashboardLayout>
+  );
 
   return (
-    <div style={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#1a1a1a', padding: '50px', borderRadius: '15px', textAlign: 'center', border: '1px solid #333', color: 'white', maxWidth: '400px' }}>
-        <h1 style={{ color: '#00d4ff', fontSize: '3rem', margin: 0 }}>{team.tag}</h1>
-        <h2>Tu as été invité à rejoindre<br/>{team.name}</h2>
-        
-        <div style={{ margin: '30px 0', color: '#aaa' }}>
-          Connecte-toi et clique ci-dessous pour intégrer le roster.
-        </div>
+    <DashboardLayout session={session}>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-12 text-center max-w-md w-full">
+          <h1 className="font-display text-5xl text-fluky-secondary mb-4" style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>{team.tag}</h1>
+          <h2 className="font-display text-2xl text-fluky-text mb-6">Tu as été invité à rejoindre<br/>{team.name}</h2>
+          
+          <div className="mb-8 text-fluky-text/70 font-body">
+            Connecte-toi et clique ci-dessous pour intégrer le roster.
+          </div>
 
-        <button 
-          onClick={handleJoin} 
-          style={{ width: '100%', padding: '15px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}
-        >
-          Accepter l'invitation
-        </button>
+          <button 
+            onClick={handleJoin} 
+            className="w-full px-6 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-lg uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+          >
+            Accepter l'invitation
+          </button>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

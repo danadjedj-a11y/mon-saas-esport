@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient';
 import NotificationCenter from './NotificationCenter';
 import { TournamentCardSkeleton } from './components/Skeleton';
 import { EmptyTournaments } from './components/EmptyState';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function PlayerDashboard({ session }) {
   const [myTournaments, setMyTournaments] = useState([]);
@@ -139,189 +140,41 @@ export default function PlayerDashboard({ session }) {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2', padding: '30px' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <TournamentCardSkeleton key={i} />
-            ))}
-          </div>
+      <DashboardLayout session={session}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <TournamentCardSkeleton key={i} />
+          ))}
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2' }}>
-      {/* HEADER */}
-      <div style={{ background: 'rgba(3, 9, 19, 0.95)', borderBottom: '3px solid #FF36A3', padding: '15px 30px', boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1400px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>⚔️ Fluky Boys - Joueur</h1>
-            <nav style={{ display: 'flex', gap: '20px' }}>
-              <a href="#" style={{ color: '#FF36A3', textDecoration: 'none', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Mes Tournois</a>
-              <a onClick={() => navigate('/stats')} style={{ color: '#F8F6F2', textDecoration: 'none', cursor: 'pointer', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#FF36A3'} onMouseLeave={(e) => e.currentTarget.style.color = '#F8F6F2'}>Statistiques</a>
-              <a onClick={() => navigate('/leaderboard')} style={{ color: '#F8F6F2', textDecoration: 'none', cursor: 'pointer', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#FF36A3'} onMouseLeave={(e) => e.currentTarget.style.color = '#F8F6F2'}>Classement</a>
-            </nav>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <NotificationCenter session={session} supabase={supabase} />
-            <button 
-              type="button"
-              onClick={() => navigate('/create-team')} 
-              style={{ 
-                padding: '8px 16px', 
-                background: '#C10468', 
-                color: '#F8F6F2', 
-                border: '2px solid #FF36A3', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                fontFamily: "'Shadows Into Light', cursive",
-                fontSize: '0.9rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#FF36A3';
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#C10468';
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              🛡️ Créer une Team
-            </button>
-            <button 
-              type="button"
-              onClick={() => navigate('/my-team')} 
-              style={{ 
-                padding: '8px 16px', 
-                background: 'transparent', 
-                color: '#F8F6F2', 
-                border: '2px solid #C10468', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                fontFamily: "'Shadows Into Light', cursive",
-                fontSize: '0.9rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#C10468';
-                e.currentTarget.style.borderColor = '#FF36A3';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = '#C10468';
-              }}
-            >
-              Mon Équipe
-            </button>
-            <button 
-              type="button"
-              onClick={() => navigate('/profile')} 
-              style={{ 
-                padding: '8px 16px', 
-                background: 'transparent', 
-                border: '2px solid #FF36A3', 
-                color: '#F8F6F2', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                fontFamily: "'Shadows Into Light', cursive",
-                fontSize: '0.9rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#FF36A3';
-                e.currentTarget.style.borderColor = '#C10468';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = '#FF36A3';
-              }}
-            >
-              Profil
-            </button>
-            <button 
-              type="button"
-              onClick={handleLogout}
-              style={{ 
-                padding: '8px 16px', 
-                background: 'transparent', 
-                border: '2px solid #C10468', 
-                borderRadius: '8px', 
-                color: '#F8F6F2', 
-                cursor: 'pointer', 
-                fontFamily: "'Shadows Into Light', cursive",
-                fontSize: '0.9rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#C10468';
-                e.currentTarget.style.borderColor = '#FF36A3';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = '#C10468';
-              }}
-            >
-              Déconnexion
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* CONTENU PRINCIPAL */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px' }}>
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-7xl mx-auto">
         {/* MATCHS À VENIR - EN HAUT */}
         {upcomingMatches.length > 0 && (
-          <div style={{ marginBottom: '40px' }}>
-            <h2 style={{ marginBottom: '20px', fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>⚡ Mes Prochains Matchs</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '15px' }}>
+          <div className="mb-10">
+            <h2 className="font-display text-2xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>⚡ Mes Prochains Matchs</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {upcomingMatches.map((match) => (
                 <div
                   key={match.id}
                   onClick={() => navigate(`/match/${match.id}`)}
-                  style={{
-                    background: 'rgba(3, 9, 19, 0.9)',
-                    padding: '20px',
-                    borderRadius: '12px',
-                    border: '2px solid #FF36A3',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#C10468';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
+                  className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 cursor-pointer transition-all duration-300 hover:border-fluky-primary hover:-translate-y-1 hover:shadow-2xl hover:shadow-fluky-primary/40"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3' }}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="font-display text-lg font-bold text-fluky-secondary">
                       {match.tournaments?.name || 'Tournoi'}
                     </div>
                     {match.scheduled_at && (
-                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', background: '#C10468', padding: '5px 10px', borderRadius: '5px', fontFamily: "'Protest Riot', sans-serif" }}>
+                      <div className="text-xs text-white bg-fluky-primary px-3 py-1 rounded-lg font-body">
                         📅 {new Date(match.scheduled_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+                  <div className="text-sm text-fluky-text font-body">
                     Round {match.round_number} • Match #{match.match_number}
                   </div>
                 </div>
@@ -332,16 +185,16 @@ export default function PlayerDashboard({ session }) {
 
         {/* TOURNOIS SUIVIS - SECTION DÉDIÉE */}
         {followedTournaments.length > 0 && (
-          <div style={{ marginBottom: '40px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
+          <div className="mb-10">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-display text-3xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
                 ⭐ Tournois Suivis
               </h2>
-              <span style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+              <span className="text-sm text-fluky-text font-body">
                 {followedTournaments.length} tournoi{followedTournaments.length > 1 ? 's' : ''} suivi{followedTournaments.length > 1 ? 's' : ''}
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {followedTournaments.map((t) => {
                 const getStatusStyle = (status) => {
                   switch (status) {
@@ -433,16 +286,16 @@ export default function PlayerDashboard({ session }) {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* COLONNE GAUCHE : MES TOURNOIS */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🎯 Mes Tournois</h2>
-              <span style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>{myTournaments.length} tournoi(s)</span>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-display text-2xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🎯 Mes Tournois</h2>
+              <span className="text-sm text-fluky-text font-body">{myTournaments.length} tournoi(s)</span>
             </div>
 
             {myTournaments.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className="flex flex-col gap-4">
                 {myTournaments.map((t) => {
                   const getStatusStyle = (status) => {
                     switch (status) {
@@ -457,43 +310,17 @@ export default function PlayerDashboard({ session }) {
                     <div 
                       key={t.id} 
                       onClick={() => navigate(`/player/tournament/${t.id}`)}
-                      style={{ 
-                        background: 'rgba(3, 9, 19, 0.9)', 
-                        padding: '20px', 
-                        borderRadius: '12px', 
-                        border: '2px solid #FF36A3', 
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#C10468';
-                        e.currentTarget.style.transform = 'translateX(5px)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(193, 4, 104, 0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#FF36A3';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
+                      className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 cursor-pointer transition-all duration-300 hover:border-fluky-primary hover:translate-x-1 hover:shadow-2xl hover:shadow-fluky-primary/40"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{t.name}</h3>
-                          <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-display text-lg text-fluky-text mb-1">{t.name}</h3>
+                          <div className="text-sm text-fluky-text flex gap-4 mt-2 font-body">
                             <span>🎮 {t.game}</span>
                             <span>📊 {t.format}</span>
                           </div>
                         </div>
-                        <span style={{ 
-                          background: statusStyle.bg, 
-                          padding: '5px 12px', 
-                          borderRadius: '5px', 
-                          fontSize: '0.8rem', 
-                          fontWeight: 'bold',
-                          whiteSpace: 'nowrap',
-                          color: '#F8F6F2',
-                          fontFamily: "'Protest Riot', sans-serif"
-                        }}>
+                        <span className="px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap text-white font-body" style={{ background: statusStyle.bg }}>
                           {statusStyle.icon} {statusStyle.text}
                         </span>
                       </div>
@@ -502,22 +329,22 @@ export default function PlayerDashboard({ session }) {
                 })}
               </div>
             ) : (
-              <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '40px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎯</div>
-                <p style={{ color: '#F8F6F2', margin: 0, fontFamily: "'Protest Riot', sans-serif" }}>Vous n'êtes inscrit à aucun tournoi</p>
-                <p style={{ color: '#F8F6F2', fontSize: '0.9rem', marginTop: '5px', fontFamily: "'Protest Riot', sans-serif" }}>Rejoignez un tournoi disponible ci-contre</p>
+              <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-10 text-center">
+                <div className="text-5xl mb-4">🎯</div>
+                <p className="text-fluky-text font-body">Vous n'êtes inscrit à aucun tournoi</p>
+                <p className="text-fluky-text text-sm mt-2 font-body">Rejoignez un tournoi disponible ci-contre</p>
               </div>
             )}
           </div>
 
           {/* COLONNE DROITE : TOURNOIS DISPONIBLES */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🌟 Tournois Disponibles</h2>
-              <span style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-display text-2xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🌟 Tournois Disponibles</h2>
+              <span className="text-sm text-fluky-text font-body">{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '600px', overflowY: 'auto' }}>
+            <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
               {availableTournaments
                 .filter(t => !myTournaments.some(mt => mt.id === t.id))
                 .map((t) => {
@@ -533,43 +360,17 @@ export default function PlayerDashboard({ session }) {
                     <div 
                       key={t.id} 
                       onClick={() => navigate(`/tournament/${t.id}/public`)}
-                      style={{ 
-                        background: 'rgba(3, 9, 19, 0.9)', 
-                        padding: '20px', 
-                        borderRadius: '12px', 
-                        border: '2px solid #FF36A3', 
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#C10468';
-                        e.currentTarget.style.transform = 'translateX(5px)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(193, 4, 104, 0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#FF36A3';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
+                      className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 cursor-pointer transition-all duration-300 hover:border-fluky-primary hover:translate-x-1 hover:shadow-2xl hover:shadow-fluky-primary/40"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{t.name}</h3>
-                          <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-display text-lg text-fluky-text mb-1">{t.name}</h3>
+                          <div className="text-sm text-fluky-text flex gap-4 mt-2 font-body">
                             <span>🎮 {t.game}</span>
                             <span>📊 {t.format}</span>
                           </div>
                         </div>
-                        <span style={{ 
-                          background: statusStyle.bg, 
-                          padding: '5px 12px', 
-                          borderRadius: '5px', 
-                          fontSize: '0.8rem', 
-                          fontWeight: 'bold',
-                          whiteSpace: 'nowrap',
-                          color: '#F8F6F2',
-                          fontFamily: "'Protest Riot', sans-serif"
-                        }}>
+                        <span className="px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap text-white font-body" style={{ background: statusStyle.bg }}>
                           {statusStyle.icon} {statusStyle.text}
                         </span>
                       </div>
@@ -585,23 +386,23 @@ export default function PlayerDashboard({ session }) {
         </div>
 
         {/* STATISTIQUES RAPIDES */}
-        <div style={{ marginTop: '40px', background: 'rgba(3, 9, 19, 0.9)', padding: '25px', borderRadius: '12px', border: '2px solid #FF36A3' }}>
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '1.2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>📊 Aperçu Statistiques</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>{myTournaments.length}</div>
-              <div style={{ fontSize: '0.9rem', color: '#F8F6F2', marginTop: '5px', fontFamily: "'Protest Riot', sans-serif" }}>Tournois</div>
+        <div className="mt-10 bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-6">
+          <h3 className="font-display text-xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>📊 Aperçu Statistiques</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="text-center">
+              <div className="font-display text-3xl font-bold text-fluky-secondary">{myTournaments.length}</div>
+              <div className="text-sm text-fluky-text mt-2 font-body">Tournois</div>
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#C10468', fontFamily: "'Shadows Into Light', cursive" }}>{upcomingMatches.length}</div>
-              <div style={{ fontSize: '0.9rem', color: '#F8F6F2', marginTop: '5px', fontFamily: "'Protest Riot', sans-serif" }}>Matchs à venir</div>
+            <div className="text-center">
+              <div className="font-display text-3xl font-bold text-fluky-primary">{upcomingMatches.length}</div>
+              <div className="text-sm text-fluky-text mt-2 font-body">Matchs à venir</div>
             </div>
-            <div style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/stats')}>
-              <div style={{ fontSize: '0.9rem', color: '#FF36A3', textDecoration: 'underline', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Voir toutes les stats →</div>
+            <div className="text-center cursor-pointer" onClick={() => navigate('/stats')}>
+              <div className="text-sm text-fluky-secondary underline font-body hover:text-fluky-primary transition-colors">Voir toutes les stats →</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

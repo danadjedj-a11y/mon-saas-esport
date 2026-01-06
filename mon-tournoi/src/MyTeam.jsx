@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function MyTeam({ session, supabase }) {
   const [allTeams, setAllTeams] = useState([]); // Liste de toutes mes équipes
@@ -126,200 +127,108 @@ export default function MyTeam({ session, supabase }) {
     fetchMembers(currentTeam.id); // Rafraîchir juste la liste des membres
   };
 
-  if (loading) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', fontFamily: "'Protest Riot', sans-serif", minHeight: '100vh'}}>Chargement...</div>;
+  if (loading) return (
+    <DashboardLayout session={session}>
+      <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
+    </DashboardLayout>
+  );
 
   if (allTeams.length === 0) return (
-    <div style={{color:'#F8F6F2', textAlign:'center', marginTop:'50px', background: '#030913', minHeight: '100vh', padding: '40px'}}>
-      <h2 style={{fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '2rem'}}>Tu n'as pas encore d'équipe.</h2>
-      <button 
-        type="button"
-        onClick={() => navigate('/create-team')} 
-        style={{
-          padding:'10px 20px', 
-          background:'#C10468', 
-          color:'#F8F6F2', 
-          border:'2px solid #FF36A3', 
-          borderRadius:'8px', 
-          cursor:'pointer', 
-          marginTop:'20px',
-          fontFamily: "'Shadows Into Light', cursive",
-          fontSize: '1rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          transition: 'all 0.3s ease'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#FF36A3';
-          e.currentTarget.style.borderColor = '#C10468';
-          e.currentTarget.style.transform = 'translateY(-2px)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#C10468';
-          e.currentTarget.style.borderColor = '#FF36A3';
-          e.currentTarget.style.transform = 'translateY(0)';
-        }}
-      >
-        Créer une Team
-      </button>
-    </div>
+    <DashboardLayout session={session}>
+      <div className="text-center py-20">
+        <h2 className="font-display text-4xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
+        <button 
+          type="button"
+          onClick={() => navigate('/create-team')} 
+          className="px-8 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+        >
+          Créer une Team
+        </button>
+      </div>
+    </DashboardLayout>
   );
 
   const isCaptain = currentTeam?.captain_id === session.user.id;
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px', color: '#F8F6F2', maxWidth: '600px', margin: '0 auto', background: '#030913' }}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-        <button 
-          type="button"
-          onClick={() => navigate('/dashboard')} 
-          style={{
-            background:'transparent', 
-            border:'2px solid #C10468', 
-            color:'#F8F6F2', 
-            padding:'8px 16px', 
-            borderRadius:'8px', 
-            cursor:'pointer',
-            fontFamily: "'Shadows Into Light', cursive",
-            fontSize: '0.9rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#C10468';
-            e.currentTarget.style.borderColor = '#FF36A3';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = '#C10468';
-          }}
-        >
-          ← Retour
-        </button>
-        
-        {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
-        {allTeams.length > 1 && (
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-3xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
+          {allTeams.length > 1 && (
             <select 
-                value={currentTeam.id} 
-                onChange={(e) => handleTeamSwitch(e.target.value)}
-                style={{ 
-                  padding:'8px', 
-                  background:'rgba(3, 9, 19, 0.8)', 
-                  color:'#F8F6F2', 
-                  border:'2px solid #C10468', 
-                  borderRadius:'8px',
-                  fontFamily: "'Protest Riot', sans-serif",
-                  transition: 'all 0.3s ease'
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#FF36A3';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#C10468';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+              value={currentTeam.id} 
+              onChange={(e) => handleTeamSwitch(e.target.value)}
+              className="px-4 py-2 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             >
-                {allTeams.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
-                ))}
+              {allTeams.map(t => (
+                <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
+              ))}
             </select>
-        )}
-      </div>
-      
-      <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
+          )}
+        </div>
+        
+        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
         
         {/* EN-TÊTE AVEC LOGO */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ position: 'relative', width: '80px', height: '80px', flexShrink: 0 }}>
-                <img 
-                  src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`} 
-                  alt="Team Logo" 
-                  style={{ width: '100%', height: '100%', borderRadius: '15px', objectFit: 'cover', border: '2px solid #FF36A3' }}
+        <div className="flex items-center gap-5 mb-8">
+          <div className="relative w-20 h-20 flex-shrink-0">
+            <img 
+              src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`} 
+              alt="Team Logo" 
+              className="w-full h-full rounded-xl object-cover border-2 border-fluky-secondary"
+            />
+            
+            {isCaptain && (
+              <>
+                <label 
+                  htmlFor="logo-upload" 
+                  className={`absolute -bottom-1 -right-1 bg-fluky-secondary text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2 border-fluky-bg font-bold text-lg transition-all duration-300 hover:bg-fluky-primary hover:scale-110`}
+                >
+                  {uploading ? '⏳' : '+'}
+                </label>
+                <input 
+                  type="file" 
+                  id="logo-upload" 
+                  accept="image/*" 
+                  onChange={uploadLogo} 
+                  disabled={uploading}
+                  className="hidden" 
                 />
-                
-                {isCaptain && (
-                  <>
-                    <label htmlFor="logo-upload" style={{
-                      position: 'absolute', bottom: '-5px', right: '-5px', 
-                      background: '#FF36A3', color: '#F8F6F2', width: '30px', height: '30px', 
-                      borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                      cursor: 'pointer', border: '2px solid #030913', fontWeight:'bold', fontSize:'1.2rem',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#C10468';
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#FF36A3';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                    >
-                      {uploading ? '⏳' : '+'}
-                    </label>
-                    <input 
-                      type="file" 
-                      id="logo-upload" 
-                      accept="image/*" 
-                      onChange={uploadLogo} 
-                      disabled={uploading}
-                      style={{ display: 'none' }} 
-                    />
-                  </>
-                )}
-            </div>
+              </>
+            )}
+          </div>
 
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-                <h1 style={{ margin: 0, color: '#F8F6F2', fontSize: '2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: "'Shadows Into Light', cursive" }}>{currentTeam.name}</h1>
-                <span style={{ fontSize: '1rem', color: '#FF36A3', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>[{currentTeam.tag}]</span>
-            </div>
+          <div className="flex-1 overflow-hidden">
+            <h1 className="font-display text-3xl text-fluky-text mb-1 truncate">{currentTeam.name}</h1>
+            <span className="text-lg text-fluky-secondary font-bold font-body">[{currentTeam.tag}]</span>
+          </div>
 
-            <button 
-              type="button"
-              onClick={copyInviteLink} 
-              style={{ 
-                background: '#C10468', 
-                color: '#F8F6F2', 
-                border: '2px solid #FF36A3', 
-                padding: '10px 15px', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                fontFamily: "'Shadows Into Light', cursive",
-                fontWeight: 'bold', 
-                whiteSpace: 'nowrap',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#FF36A3';
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#C10468';
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              🔗 Inviter
-            </button>
+          <button 
+            type="button"
+            onClick={copyInviteLink} 
+            className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+          >
+            🔗 Inviter
+          </button>
         </div>
 
         {/* LISTE DES MEMBRES */}
-        <h3 style={{ borderBottom: '2px solid #FF36A3', paddingBottom: '10px', fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '1.5rem' }}>Roster ({members.length})</h3>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
+        <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-2xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>Roster ({members.length})</h3>
+        <ul className="list-none p-0">
           {members.map(m => (
-            <li key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid rgba(255, 54, 163, 0.3)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <li key={m.id} className="flex justify-between items-center py-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
                 <img 
                   src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`} 
-                  style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit:'cover', border: '2px solid #FF36A3' }} alt="" 
+                  className="w-8 h-8 rounded-full object-cover border-2 border-fluky-secondary" 
+                  alt="" 
                 />
-                <span style={{color: m.user_id === session.user.id ? '#FF36A3' : '#F8F6F2', fontFamily: "'Protest Riot', sans-serif"}}>
+                <span className={`font-body ${m.user_id === session.user.id ? 'text-fluky-secondary' : 'text-fluky-text'}`}>
                   {m.profiles?.username || 'Joueur sans pseudo'} 
-                  {m.role === 'captain' && <span style={{ marginLeft: '10px', fontSize: '0.7rem', background: '#E7632C', color: '#F8F6F2', padding: '2px 6px', borderRadius: '4px', fontFamily: "'Protest Riot', sans-serif" }}>CAPTAIN</span>}
+                  {m.role === 'captain' && (
+                    <span className="ml-2 text-xs bg-fluky-accent-orange text-white px-2 py-1 rounded font-body">CAPTAIN</span>
+                  )}
                 </span>
               </div>
               
@@ -327,27 +236,7 @@ export default function MyTeam({ session, supabase }) {
                 <button 
                   type="button"
                   onClick={() => kickMember(m.user_id)} 
-                  style={{ 
-                    background: 'transparent', 
-                    color: '#F8F6F2', 
-                    border: '2px solid #C10468', 
-                    padding: '5px 10px', 
-                    borderRadius: '8px', 
-                    cursor: 'pointer', 
-                    fontSize: '0.8rem',
-                    fontFamily: "'Shadows Into Light', cursive",
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#C10468';
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.borderColor = '#C10468';
-                  }}
+                  className="px-3 py-1 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
                 >
                   Exclure
                 </button>
@@ -356,6 +245,7 @@ export default function MyTeam({ session, supabase }) {
           ))}
         </ul>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

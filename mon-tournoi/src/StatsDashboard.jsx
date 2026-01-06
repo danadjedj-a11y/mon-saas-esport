@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import DashboardLayout from './layouts/DashboardLayout';
 
 const COLORS = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
 
@@ -208,7 +209,11 @@ export default function StatsDashboard({ session, supabase }) {
   };
 
   if (loading && !teamStats) {
-    return <div style={{color:'#F8F6F2', padding:'20px', textAlign:'center', background: '#030913', minHeight: '100vh', fontFamily: "'Protest Riot', sans-serif"}}>Chargement...</div>;
+    return (
+      <DashboardLayout session={session}>
+        <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
+      </DashboardLayout>
+    );
   }
 
   if (myTeams.length === 0) {
@@ -258,277 +263,225 @@ export default function StatsDashboard({ session, supabase }) {
   ].filter(item => item.value > 0) : [];
 
   return (
-    <div style={{ minHeight: '100vh', padding: '20px', color: '#F8F6F2', maxWidth: '1400px', margin: '0 auto', background: '#030913' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ margin: 0, color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2.5rem' }}>📊 Statistiques</h1>
-        <button 
-          type="button"
-          onClick={() => navigate('/dashboard')} 
-          style={{
-            background:'transparent', 
-            border:'2px solid #C10468', 
-            color:'#F8F6F2', 
-            padding:'8px 15px', 
-            borderRadius:'8px', 
-            cursor:'pointer',
-            fontFamily: "'Shadows Into Light', cursive",
-            fontSize: '0.9rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#C10468';
-            e.currentTarget.style.borderColor = '#FF36A3';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = '#C10468';
-          }}
-        >
-          ← Retour
-        </button>
-      </div>
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="font-display text-4xl text-fluky-secondary m-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>📊 Statistiques</h1>
+          <button 
+            type="button"
+            onClick={() => navigate('/dashboard')} 
+            className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+          >
+            ← Retour
+          </button>
+        </div>
 
-      {/* Sélection d'équipe */}
-      <div style={{ marginBottom: '30px', background: 'rgba(3, 9, 19, 0.95)', padding: '20px', borderRadius: '12px', border: '2px solid #FF36A3' }}>
-        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', fontSize: '1.1rem', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2' }}>Équipe :</label>
-        <select
-          value={selectedTeam || ''}
-          onChange={(e) => setSelectedTeam(e.target.value)}
-          style={{
-            padding: '12px',
-            background: 'rgba(3, 9, 19, 0.8)',
-            border: '2px solid #C10468',
-            color: '#F8F6F2',
-            borderRadius: '8px',
-            minWidth: '300px',
-            fontSize: '1rem',
-            cursor: 'pointer',
-            fontFamily: "'Protest Riot', sans-serif",
-            transition: 'all 0.3s ease'
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#FF36A3';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = '#C10468';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-        >
-          {myTeams.map(team => (
-            <option key={team.id} value={team.id}>
-              {team.name} [{team.tag}]
-            </option>
-          ))}
-        </select>
-      </div>
+        {/* Sélection d'équipe */}
+        <div className="mb-8 bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
+          <label className="block mb-3 font-bold text-lg font-body text-fluky-text">Équipe :</label>
+          <select
+            value={selectedTeam || ''}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg min-w-[300px] text-base cursor-pointer font-body transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+          >
+            {myTeams.map(team => (
+              <option key={team.id} value={team.id}>
+                {team.name} [{team.tag}]
+              </option>
+            ))}
+          </select>
+        </div>
 
-      {loading && teamStats && (
-        <div style={{textAlign:'center', padding:'20px', color:'#F8F6F2', fontFamily: "'Protest Riot', sans-serif"}}>Chargement des statistiques...</div>
-      )}
+        {loading && teamStats && (
+          <div className="text-center py-5 text-fluky-text font-body">Chargement des statistiques...</div>
+        )}
 
-      {teamStats && (
-        <>
-          {/* Stats globales */}
-          <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
-            <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>📈 Statistiques Globales</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {teamStats.totalMatches}
-                </div>
-                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Matchs totaux</div>
-              </div>
-              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#C10468', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {teamStats.wins}
-                </div>
-                <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Victoires</div>
-              </div>
-              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {teamStats.losses}
-                </div>
-                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Défaites</div>
-              </div>
-              {teamStats.draws > 0 && (
-                <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#E7632C', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
-                    {teamStats.draws}
+        {teamStats && (
+          <>
+            {/* Stats globales */}
+            <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8 mb-8">
+              <h2 className="font-display text-3xl text-fluky-secondary mb-6 mt-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>📈 Statistiques Globales</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5 mb-8">
+                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
+                  <div className="font-display text-4xl font-bold text-fluky-secondary mb-2">
+                    {teamStats.totalMatches}
                   </div>
-                  <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Matchs nuls</div>
+                  <div className="text-sm text-fluky-text font-body">Matchs totaux</div>
+                </div>
+                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
+                  <div className="font-display text-4xl font-bold text-fluky-primary mb-2">
+                    {teamStats.wins}
+                  </div>
+                  <div className="text-sm text-fluky-text/70 font-body">Victoires</div>
+                </div>
+                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
+                  <div className="font-display text-4xl font-bold text-fluky-secondary mb-2">
+                    {teamStats.losses}
+                  </div>
+                  <div className="text-sm text-fluky-text font-body">Défaites</div>
+                </div>
+                {teamStats.draws > 0 && (
+                  <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
+                    <div className="font-display text-4xl font-bold text-fluky-accent-orange mb-2">
+                      {teamStats.draws}
+                    </div>
+                    <div className="text-sm text-fluky-text font-body">Matchs nuls</div>
+                  </div>
+                )}
+                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
+                  <div className="font-display text-4xl font-bold text-fluky-accent-orange mb-2">
+                    {teamStats.winRate}%
+                  </div>
+                  <div className="text-sm text-fluky-text font-body">Win Rate</div>
+                </div>
+                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
+                  <div className={`font-display text-4xl font-bold mb-2 ${teamStats.scoreDifference >= 0 ? 'text-fluky-primary' : 'text-fluky-secondary'}`}>
+                    {teamStats.scoreDifference >= 0 ? '+' : ''}{teamStats.scoreDifference}
+                  </div>
+                  <div className="text-sm text-fluky-text font-body">Différence de scores</div>
+                </div>
+              </div>
+
+              {/* Graphique en secteurs */}
+              {pieData.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="mb-5 text-xl font-display text-fluky-secondary">Répartition des résultats</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               )}
-              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#E7632C', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {teamStats.winRate}%
-                </div>
-                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Win Rate</div>
-              </div>
-              <div style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '2px solid #FF36A3' }}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: teamStats.scoreDifference >= 0 ? '#C10468' : '#FF36A3', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {teamStats.scoreDifference >= 0 ? '+' : ''}{teamStats.scoreDifference}
-                </div>
-                <div style={{ fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Différence de scores</div>
-              </div>
             </div>
 
-            {/* Graphique en secteurs */}
-            {pieData.length > 0 && (
-              <div style={{ marginTop: '30px' }}>
-                <h3 style={{ marginBottom: '20px', fontSize: '1.2rem', fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3' }}>Répartition des résultats</h3>
+            {/* Performance par mois */}
+            {performanceData.length > 0 && (
+              <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8 mb-8">
+                <h2 className="font-display text-3xl text-fluky-secondary mb-6 mt-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>📊 Performance par Mois</h2>
                 <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
+                  <BarChart data={performanceData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 54, 163, 0.3)" />
+                    <XAxis dataKey="month" stroke="#F8F6F2" />
+                    <YAxis stroke="#F8F6F2" />
+                    <Tooltip 
+                      contentStyle={{ background: 'rgba(3, 9, 19, 0.95)', border: '2px solid #FF36A3', borderRadius: '8px', color: '#F8F6F2' }}
+                      labelStyle={{ color: '#FF36A3', fontFamily: "'Protest Riot', sans-serif" }}
+                    />
                     <Legend />
-                  </PieChart>
+                    <Bar dataKey="wins" fill="#C10468" name="Victoires" />
+                    <Bar dataKey="losses" fill="#FF36A3" name="Défaites" />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
 
-          {/* Performance par mois */}
-          {performanceData.length > 0 && (
-            <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
-              <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>📊 Performance par Mois</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 54, 163, 0.3)" />
-                  <XAxis dataKey="month" stroke="#F8F6F2" />
-                  <YAxis stroke="#F8F6F2" />
-                  <Tooltip 
-                    contentStyle={{ background: 'rgba(3, 9, 19, 0.95)', border: '2px solid #FF36A3', borderRadius: '8px', color: '#F8F6F2' }}
-                    labelStyle={{ color: '#FF36A3', fontFamily: "'Protest Riot', sans-serif" }}
-                  />
-                  <Legend />
-                  <Bar dataKey="wins" fill="#C10468" name="Victoires" />
-                  <Bar dataKey="losses" fill="#FF36A3" name="Défaites" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Stats par jeu */}
-          {gameStats.length > 0 && (
-            <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
-              <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>🎮 Statistiques par Jeu</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                {gameStats.map((game, index) => (
-                  <div key={index} style={{ background: 'rgba(3, 9, 19, 0.6)', padding: '20px', borderRadius: '12px', border: '2px solid #FF36A3' }}>
-                    <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '1.1rem', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2' }}>{game.name}</h3>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Victoires:</span>
-                      <span style={{ color: '#C10468', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>{game.wins}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Défaites:</span>
-                      <span style={{ color: '#FF36A3', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>{game.losses}</span>
-                    </div>
-                    {game.draws > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Nuls:</span>
-                        <span style={{ color: '#E7632C', fontWeight: 'bold', fontFamily: "'Protest Riot', sans-serif" }}>{game.draws}</span>
+            {/* Stats par jeu */}
+            {gameStats.length > 0 && (
+              <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8 mb-8">
+                <h2 className="font-display text-3xl text-fluky-secondary mb-6 mt-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🎮 Statistiques par Jeu</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {gameStats.map((game, index) => (
+                    <div key={index} className="bg-[#030913]/60 p-5 rounded-xl border border-white/5">
+                      <h3 className="font-display text-xl text-fluky-text mb-4 mt-0">{game.name}</h3>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-fluky-text font-body">Victoires:</span>
+                        <span className="text-fluky-primary font-bold font-body">{game.wins}</span>
                       </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '2px solid #FF36A3' }}>
-                      <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Win Rate:</span>
-                      <span style={{ color: '#E7632C', fontWeight: 'bold', fontSize: '1.1rem', fontFamily: "'Protest Riot', sans-serif" }}>{game.winRate}%</span>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-fluky-text font-body">Défaites:</span>
+                        <span className="text-fluky-secondary font-bold font-body">{game.losses}</span>
+                      </div>
+                      {game.draws > 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span className="text-fluky-text font-body">Nuls:</span>
+                          <span className="text-fluky-accent-orange font-bold font-body">{game.draws}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between mt-3 pt-3 border-t border-white/5">
+                        <span className="text-fluky-text font-body">Win Rate:</span>
+                        <span className="text-fluky-accent-orange font-bold text-lg font-body">{game.winRate}%</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
 
-      {/* Stats par tournoi */}
-      <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', border: '2px solid #FF36A3' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '25px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>🏆 Statistiques par Tournoi</h2>
-        {tournamentStats.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
-            Aucune participation à un tournoi pour cette équipe.
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '15px' }}>
-            {tournamentStats.map((stat, index) => (
-              <div
-                key={index}
-                style={{
-                  background: 'rgba(3, 9, 19, 0.6)',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  border: '2px solid #FF36A3',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateX(5px)';
-                  e.currentTarget.style.borderColor = '#C10468';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateX(0)';
-                  e.currentTarget.style.borderColor = '#FF36A3';
-                }}
-                onClick={() => navigate(`/tournament/${stat.tournament?.id}`)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '8px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2' }}>
-                      {stat.tournament?.name || 'Tournoi'}
-                    </div>
-                    <div style={{ fontSize: '0.9rem', color: '#FF36A3', fontFamily: "'Protest Riot', sans-serif" }}>
-                      🎮 {stat.tournament?.game} | 📊 {stat.tournament?.format === 'elimination' ? 'Élimination' : 
-                                                      stat.tournament?.format === 'double_elimination' ? 'Double Élimination' : 
-                                                      stat.tournament?.format === 'round_robin' ? 'Round Robin' : stat.tournament?.format}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '30px', textAlign: 'center', flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>{stat.totalMatches}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Matchs</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#C10468', fontFamily: "'Shadows Into Light', cursive" }}>{stat.wins}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Victoires</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>{stat.losses}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Défaites</div>
-                    </div>
-                    {stat.draws > 0 && (
-                      <div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#E7632C', fontFamily: "'Shadows Into Light', cursive" }}>{stat.draws}</div>
-                        <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Nuls</div>
+        {/* Stats par tournoi */}
+        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
+          <h2 className="font-display text-3xl text-fluky-secondary mb-6 mt-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🏆 Statistiques par Tournoi</h2>
+          {tournamentStats.length === 0 ? (
+            <div className="text-center py-10 text-fluky-text font-body">
+              Aucune participation à un tournoi pour cette équipe.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {tournamentStats.map((stat, index) => (
+                <div
+                  key={index}
+                  className="bg-[#030913]/60 p-5 rounded-xl border border-white/5 transition-all duration-300 cursor-pointer hover:translate-x-1 hover:border-fluky-primary"
+                  onClick={() => navigate(`/tournament/${stat.tournament?.id}`)}
+                >
+                  <div className="flex justify-between items-start flex-wrap gap-5">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="font-display text-xl font-bold mb-2 text-fluky-text">
+                        {stat.tournament?.name || 'Tournoi'}
                       </div>
-                    )}
-                    <div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#E7632C', fontFamily: "'Shadows Into Light', cursive" }}>{stat.winRate}%</div>
-                      <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Win Rate</div>
+                      <div className="text-sm text-fluky-secondary font-body">
+                        🎮 {stat.tournament?.game} | 📊 {stat.tournament?.format === 'elimination' ? 'Élimination' : 
+                                                        stat.tournament?.format === 'double_elimination' ? 'Double Élimination' : 
+                                                        stat.tournament?.format === 'round_robin' ? 'Round Robin' : stat.tournament?.format}
+                      </div>
+                    </div>
+                    <div className="flex gap-8 text-center flex-wrap">
+                      <div>
+                        <div className="font-display text-2xl font-bold text-fluky-secondary">{stat.totalMatches}</div>
+                        <div className="text-xs text-fluky-text font-body">Matchs</div>
+                      </div>
+                      <div>
+                        <div className="font-display text-2xl font-bold text-fluky-primary">{stat.wins}</div>
+                        <div className="text-xs text-fluky-text font-body">Victoires</div>
+                      </div>
+                      <div>
+                        <div className="font-display text-2xl font-bold text-fluky-secondary">{stat.losses}</div>
+                        <div className="text-xs text-fluky-text font-body">Défaites</div>
+                      </div>
+                      {stat.draws > 0 && (
+                        <div>
+                          <div className="font-display text-2xl font-bold text-fluky-accent-orange">{stat.draws}</div>
+                          <div className="text-xs text-fluky-text font-body">Nuls</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-display text-2xl font-bold text-fluky-accent-orange">{stat.winRate}%</div>
+                        <div className="text-xs text-fluky-text font-body">Win Rate</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

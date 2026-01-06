@@ -7,6 +7,7 @@ import TournamentCard from './components/TournamentCard';
 import { TournamentCardSkeleton } from './components/Skeleton';
 import { EmptyTournaments } from './components/EmptyState';
 import LanguageSelector from './components/LanguageSelector';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -173,241 +174,164 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2' }}>
-      {/* HEADER */}
-      <div style={{ background: 'rgba(3, 9, 19, 0.95)', borderBottom: '3px solid #FF36A3', padding: '20px 30px', boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#FF36A3', cursor: 'pointer', fontFamily: "'Shadows Into Light', cursive" }} onClick={() => navigate('/')}>
-              ⚔️ Fluky Boys
-            </h1>
+    <DashboardLayout session={session}>
+      {/* HERO SECTION */}
+      <div className="bg-gradient-to-br from-fluky-primary/20 via-fluky-secondary/10 to-fluky-primary/20 py-20 text-center border-4 border-fluky-secondary mb-12 relative overflow-hidden rounded-2xl shadow-2xl shadow-fluky-primary/30">
+        {/* Effet de fond animé */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-0 left-0 w-72 h-72 bg-fluky-secondary rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-fluky-primary rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        </div>
+        
+        <div className="max-w-4xl mx-auto relative z-10 px-4">
+          <div className="mb-6">
+            <span className="inline-block text-6xl mb-4 animate-bounce">🎮</span>
           </div>
+          <h1 className="font-display text-6xl md:text-7xl mb-6 text-fluky-secondary" style={{ textShadow: '0 0 30px rgba(193, 4, 104, 0.6)' }}>
+            {t('homepage.title')}
+          </h1>
+          <p className="font-body text-xl md:text-2xl text-fluky-text mb-4 max-w-2xl mx-auto leading-relaxed">
+            {t('homepage.subtitle')}
+          </p>
+          <p className="font-body text-lg text-fluky-text/80 mb-10 max-w-xl mx-auto">
+            Rejoignez des tournois compétitifs, créez vos équipes et défiez les meilleurs joueurs !
+          </p>
           
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-            <LanguageSelector />
-            {session ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => navigate('/player/dashboard')}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#C10468',
-                    color: '#F8F6F2',
-                    border: '2px solid #FF36A3',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontFamily: "'Shadows Into Light', cursive",
-                    fontSize: '0.95rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#FF36A3';
-                    e.currentTarget.style.borderColor = '#C10468';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#C10468';
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                  🎮 {t('homepage.playerSpace')}
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const { error } = await supabase.auth.signOut();
-                      if (error) {
-                        console.error('Erreur déconnexion:', error);
-                      } else {
-                        navigate('/');
-                        window.location.reload(); // Force le rafraîchissement pour mettre à jour la session
-                      }
-                    } catch (err) {
-                      console.error('Erreur déconnexion:', err);
-                    }
-                  }}
-                  style={{
-                    padding: '10px 20px',
-                    background: 'transparent',
-                    border: '2px solid #C10468',
-                    color: '#F8F6F2',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontFamily: "'Shadows Into Light', cursive",
-                    fontSize: '0.95rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#C10468';
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.borderColor = '#C10468';
-                  }}
-                >
-                  {t('nav.logout')}
-                </button>
-              </>
-            ) : (
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {!session ? (
               <>
                 <button
                   type="button"
                   onClick={() => navigate('/auth')}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#C10468',
-                    border: '2px solid #FF36A3',
-                    color: '#F8F6F2',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontFamily: "'Shadows Into Light', cursive",
-                    fontSize: '0.95rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#FF36A3';
-                    e.currentTarget.style.borderColor = '#C10468';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#C10468';
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  className="px-12 py-5 bg-gradient-to-r from-fluky-primary via-fluky-secondary to-fluky-primary text-white border-4 border-fluky-secondary rounded-xl font-display text-xl uppercase tracking-wider transition-all duration-300 shadow-2xl shadow-fluky-primary/50 hover:scale-110 hover:shadow-fluky-secondary/60 hover:border-fluky-primary transform"
                 >
-                  {t('nav.login')}
+                  🔐 Se Connecter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/auth')}
+                  className="px-12 py-5 bg-transparent border-4 border-fluky-primary text-fluky-secondary rounded-xl font-display text-xl uppercase tracking-wider transition-all duration-300 hover:bg-fluky-primary/20 hover:border-fluky-secondary hover:scale-105"
+                >
+                  ✨ Créer un Compte
                 </button>
               </>
+            ) : (
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => navigate('/player/dashboard')}
+                  className="px-10 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white border-2 border-fluky-secondary rounded-lg font-display text-lg uppercase tracking-wide transition-all duration-300 shadow-lg shadow-fluky-primary/40 hover:scale-105"
+                >
+                  📊 Mon Tableau de Bord
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/create-team')}
+                  className="px-10 py-4 bg-transparent border-2 border-fluky-primary text-fluky-secondary rounded-lg font-display text-lg uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary/20 hover:scale-105"
+                >
+                  👥 Créer une Équipe
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* HERO SECTION */}
-      <div style={{ 
-        background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.1) 0%, rgba(255, 54, 163, 0.05) 100%)', 
-        padding: '60px 30px',
-        textAlign: 'center',
-        borderBottom: '3px solid #FF36A3',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <h2 style={{ fontSize: '3rem', margin: '0 0 20px 0', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontWeight: '400' }}>
-            {t('homepage.title')}
-          </h2>
-          <p style={{ fontSize: '1.3rem', color: '#F8F6F2', margin: '0 0 30px 0', fontFamily: "'Protest Riot', sans-serif" }}>
-            {t('homepage.subtitle')}
-          </p>
-          {!session && (
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-              <button
-                type="button"
-                onClick={() => navigate('/auth')}
-                style={{
-                  padding: '15px 40px',
-                  background: '#C10468',
-                  color: '#F8F6F2',
-                  border: '2px solid #FF36A3',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontFamily: "'Shadows Into Light', cursive",
-                  fontSize: '1.1rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 4px 12px rgba(193, 4, 104, 0.4)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
-                  e.currentTarget.style.background = '#FF36A3';
-                  e.currentTarget.style.borderColor = '#C10468';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 54, 163, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                  e.currentTarget.style.background = '#C10468';
-                  e.currentTarget.style.borderColor = '#FF36A3';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(193, 4, 104, 0.4)';
-                }}
-              >
-                🔐 Se Connecter
-              </button>
-            </div>
-          )}
+      {/* STATISTIQUES */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-primary rounded-xl p-6 text-center shadow-xl hover:border-fluky-secondary transition-all duration-300 hover:scale-105">
+          <div className="text-4xl mb-3">🏆</div>
+          <div className="font-display text-3xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+            {allTournaments.length}
+          </div>
+          <div className="font-body text-fluky-text">Tournois Actifs</div>
+        </div>
+        <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-primary rounded-xl p-6 text-center shadow-xl hover:border-fluky-secondary transition-all duration-300 hover:scale-105">
+          <div className="text-4xl mb-3">⚔️</div>
+          <div className="font-display text-3xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+            {availableGames.length}
+          </div>
+          <div className="font-body text-fluky-text">Jeux Disponibles</div>
+        </div>
+        <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-primary rounded-xl p-6 text-center shadow-xl hover:border-fluky-secondary transition-all duration-300 hover:scale-105">
+          <div className="text-4xl mb-3">🎯</div>
+          <div className="font-display text-3xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+            Multiple
+          </div>
+          <div className="font-body text-fluky-text">Formats de Tournois</div>
+        </div>
+      </div>
+
+      {/* FONCTIONNALITÉS */}
+      <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-secondary rounded-xl p-8 mb-12 shadow-xl">
+        <h2 className="font-display text-4xl text-fluky-secondary text-center mb-8" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+          ✨ Pourquoi Choisir Fluky Boys ?
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
+            <div className="text-3xl mb-3">🚀</div>
+            <h3 className="font-display text-xl text-fluky-secondary mb-2">Gestion Simple</h3>
+            <p className="font-body text-fluky-text/80 text-sm">
+              Créez et gérez vos tournois en quelques clics avec une interface intuitive et moderne.
+            </p>
+          </div>
+          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
+            <div className="text-3xl mb-3">⚡</div>
+            <h3 className="font-display text-xl text-fluky-secondary mb-2">Temps Réel</h3>
+            <p className="font-body text-fluky-text/80 text-sm">
+              Suivez vos matchs en direct avec des mises à jour en temps réel et des notifications instantanées.
+            </p>
+          </div>
+          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
+            <div className="text-3xl mb-3">🎮</div>
+            <h3 className="font-display text-xl text-fluky-secondary mb-2">Multi-Formats</h3>
+            <p className="font-body text-fluky-text/80 text-sm">
+              Élimination simple, double élimination, round-robin, système suisse... Choisissez votre format !
+            </p>
+          </div>
+          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
+            <div className="text-3xl mb-3">👥</div>
+            <h3 className="font-display text-xl text-fluky-secondary mb-2">Gestion d'Équipes</h3>
+            <p className="font-body text-fluky-text/80 text-sm">
+              Créez vos équipes, invitez vos amis et participez ensemble aux tournois.
+            </p>
+          </div>
+          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
+            <div className="text-3xl mb-3">📊</div>
+            <h3 className="font-display text-xl text-fluky-secondary mb-2">Statistiques</h3>
+            <p className="font-body text-fluky-text/80 text-sm">
+              Analysez vos performances avec des statistiques détaillées et des classements.
+            </p>
+          </div>
+          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
+            <div className="text-3xl mb-3">🏅</div>
+            <h3 className="font-display text-xl text-fluky-secondary mb-2">Compétitif</h3>
+            <p className="font-body text-fluky-text/80 text-sm">
+              Affrontez les meilleurs joueurs et montez dans les classements pour devenir le champion !
+            </p>
+          </div>
         </div>
       </div>
 
       {/* CONTENU PRINCIPAL */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 30px' }}>
+      <div className="w-full max-w-7xl mx-auto">
         {/* BARRE DE RECHERCHE ET FILTRES */}
-        <div style={{ 
-          background: 'rgba(3, 9, 19, 0.95)', 
-          padding: '25px', 
-          borderRadius: '12px', 
-          border: '2px solid #FF36A3',
-          marginBottom: '30px'
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
             {/* Recherche */}
             <input
               type="text"
               placeholder={`🔍 ${t('homepage.searchPlaceholder')}`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                padding: '12px',
-                background: 'rgba(3, 9, 19, 0.8)',
-                border: '2px solid #C10468',
-                color: '#F8F6F2',
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                fontSize: '0.95rem',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="col-span-1 md:col-span-2 lg:col-span-2 px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             />
             
             {/* Filtre Jeu */}
             <select
               value={gameFilter}
               onChange={(e) => setGameFilter(e.target.value)}
-              style={{
-                padding: '12px',
-                background: 'rgba(3, 9, 19, 0.8)',
-                border: '2px solid #C10468',
-                color: '#F8F6F2',
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             >
               <option value="all">🎮 {t('common.all')}</option>
               {availableGames.map(game => (
@@ -419,25 +343,7 @@ export default function HomePage() {
             <select
               value={formatFilter}
               onChange={(e) => setFormatFilter(e.target.value)}
-              style={{
-                padding: '12px',
-                background: 'rgba(3, 9, 19, 0.8)',
-                border: '2px solid #C10468',
-                color: '#F8F6F2',
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             >
               <option value="all">📊 {t('common.all')}</option>
               <option value="elimination">{t('tournament.elimination')}</option>
@@ -450,25 +356,7 @@ export default function HomePage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                padding: '12px',
-                background: 'rgba(3, 9, 19, 0.8)',
-                border: '2px solid #C10468',
-                color: '#F8F6F2',
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             >
               <option value="all">📝 {t('common.all')}</option>
               <option value="draft">{t('tournament.draft')}</option>
@@ -480,25 +368,7 @@ export default function HomePage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              style={{
-                padding: '12px',
-                background: 'rgba(3, 9, 19, 0.8)',
-                border: '2px solid #C10468',
-                color: '#F8F6F2',
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             >
               <option value="date">📅 Par date</option>
               <option value="name">🔤 Par nom</option>
@@ -506,8 +376,8 @@ export default function HomePage() {
           </div>
 
           {/* Compteur de résultats */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '0.95rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-fluky-text font-body">
               {filteredAndSortedTournaments.length} tournoi{filteredAndSortedTournaments.length > 1 ? 's' : ''} trouvé{filteredAndSortedTournaments.length > 1 ? 's' : ''}
               {searchQuery || gameFilter !== 'all' || formatFilter !== 'all' || statusFilter !== 'all' ? ' (filtré)' : ''}
             </div>
@@ -521,27 +391,7 @@ export default function HomePage() {
                   setStatusFilter('all');
                   setSortBy('date');
                 }}
-                style={{
-                  padding: '8px 16px',
-                  background: 'transparent',
-                  border: '2px solid #C10468',
-                  color: '#F8F6F2',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontFamily: "'Shadows Into Light', cursive",
-                  fontSize: '0.85rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#C10468';
-                  e.currentTarget.style.borderColor = '#FF36A3';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = '#C10468';
-                }}
+                className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
               >
                 Réinitialiser
               </button>
@@ -549,19 +399,19 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🏆 {t('homepage.availableTournaments')}</h2>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="font-display text-4xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🏆 {t('homepage.availableTournaments')}</h2>
         </div>
 
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <TournamentCardSkeleton key={i} />
             ))}
           </div>
         ) : paginatedTournaments.length > 0 ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedTournaments.map((t) => (
                 <TournamentCard
                   key={t.id}
@@ -574,55 +424,21 @@ export default function HomePage() {
 
             {/* PAGINATION */}
             {totalPages > 1 && (
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                gap: '10px', 
-                marginTop: '40px',
-                flexWrap: 'wrap'
-              }}>
+              <div className="flex justify-center items-center gap-3 mt-10 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  style={{
-                    padding: '10px 20px',
-                    background: currentPage === 1 ? 'rgba(193, 4, 104, 0.3)' : '#C10468',
-                    border: '2px solid #FF36A3',
-                    color: '#F8F6F2',
-                    borderRadius: '8px',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    fontFamily: "'Shadows Into Light', cursive",
-                    fontSize: '0.9rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    transition: 'all 0.3s ease',
-                    opacity: currentPage === 1 ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentPage !== 1) {
-                      e.currentTarget.style.background = '#FF36A3';
-                      e.currentTarget.style.borderColor = '#C10468';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentPage !== 1) {
-                      e.currentTarget.style.background = '#C10468';
-                      e.currentTarget.style.borderColor = '#FF36A3';
-                    }
-                  }}
+                  className={`px-5 py-2 border-2 border-fluky-secondary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 ${
+                    currentPage === 1 
+                      ? 'bg-fluky-primary/30 opacity-50 cursor-not-allowed' 
+                      : 'bg-fluky-primary hover:bg-fluky-secondary hover:border-fluky-primary'
+                  }`}
                 >
                   ← Précédent
                 </button>
 
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '5px', 
-                  alignItems: 'center',
-                  fontFamily: "'Protest Riot', sans-serif",
-                  color: '#F8F6F2'
-                }}>
+                <div className="flex gap-2 items-center font-body text-fluky-text">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) {
@@ -640,31 +456,11 @@ export default function HomePage() {
                         key={pageNum}
                         type="button"
                         onClick={() => setCurrentPage(pageNum)}
-                        style={{
-                          padding: '10px 15px',
-                          background: currentPage === pageNum ? '#FF36A3' : 'rgba(3, 9, 19, 0.8)',
-                          border: `2px solid ${currentPage === pageNum ? '#C10468' : '#FF36A3'}`,
-                          color: '#F8F6F2',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontFamily: "'Protest Riot', sans-serif",
-                          fontSize: '0.9rem',
-                          fontWeight: currentPage === pageNum ? 'bold' : 'normal',
-                          transition: 'all 0.3s ease',
-                          minWidth: '40px'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (currentPage !== pageNum) {
-                            e.currentTarget.style.background = 'rgba(255, 54, 163, 0.5)';
-                            e.currentTarget.style.borderColor = '#C10468';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (currentPage !== pageNum) {
-                            e.currentTarget.style.background = 'rgba(3, 9, 19, 0.8)';
-                            e.currentTarget.style.borderColor = '#FF36A3';
-                          }
-                        }}
+                        className={`px-4 py-2 border-2 rounded-lg font-body text-sm transition-all duration-300 min-w-[40px] ${
+                          currentPage === pageNum
+                            ? 'bg-fluky-secondary border-fluky-primary text-white font-bold'
+                            : 'bg-[#030913]/80 border-fluky-secondary text-fluky-text hover:bg-fluky-secondary/50 hover:border-fluky-primary'
+                        }`}
                       >
                         {pageNum}
                       </button>
@@ -676,32 +472,11 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  style={{
-                    padding: '10px 20px',
-                    background: currentPage === totalPages ? 'rgba(193, 4, 104, 0.3)' : '#C10468',
-                    border: '2px solid #FF36A3',
-                    color: '#F8F6F2',
-                    borderRadius: '8px',
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                    fontFamily: "'Shadows Into Light', cursive",
-                    fontSize: '0.9rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    transition: 'all 0.3s ease',
-                    opacity: currentPage === totalPages ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentPage !== totalPages) {
-                      e.currentTarget.style.background = '#FF36A3';
-                      e.currentTarget.style.borderColor = '#C10468';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentPage !== totalPages) {
-                      e.currentTarget.style.background = '#C10468';
-                      e.currentTarget.style.borderColor = '#FF36A3';
-                    }
-                  }}
+                  className={`px-5 py-2 border-2 border-fluky-secondary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 ${
+                    currentPage === totalPages 
+                      ? 'bg-fluky-primary/30 opacity-50 cursor-not-allowed' 
+                      : 'bg-fluky-primary hover:bg-fluky-secondary hover:border-fluky-primary'
+                  }`}
                 >
                   Suivant →
                 </button>
@@ -712,25 +487,7 @@ export default function HomePage() {
           <EmptyTournaments />
         )}
       </div>
-
-      {/* FOOTER */}
-      <div style={{ 
-        marginTop: '60px', 
-        padding: '40px 30px', 
-        background: 'rgba(3, 9, 19, 0.95)', 
-        borderTop: '3px solid #FF36A3',
-        textAlign: 'center'
-      }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <p style={{ color: '#F8F6F2', margin: '0 0 10px 0', fontFamily: "'Protest Riot', sans-serif" }}>© 2024 Fluky Boys - Plateforme de gestion de tournois e-sport</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px' }}>
-            <a href="#" style={{ color: '#FF36A3', textDecoration: 'none', fontSize: '0.9rem', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>À propos</a>
-            <a href="#" style={{ color: '#FF36A3', textDecoration: 'none', fontSize: '0.9rem', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Contact</a>
-            <a href="#" style={{ color: '#FF36A3', textDecoration: 'none', fontSize: '0.9rem', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#C10468'} onMouseLeave={(e) => e.currentTarget.style.color = '#FF36A3'}>Support</a>
-          </div>
-        </div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }
 

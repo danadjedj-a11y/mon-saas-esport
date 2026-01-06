@@ -8,6 +8,7 @@ import FollowButton from './components/FollowButton';
 import CommentSection from './components/CommentSection';
 import RatingDisplay from './components/RatingDisplay';
 import Skeleton from './components/Skeleton';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function PublicTournament() {
   const { id } = useParams();
@@ -417,18 +418,18 @@ export default function PublicTournament() {
 
   if (loading || !tournoi) {
     return (
-      <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2', padding: '40px' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <DashboardLayout session={session}>
+        <div className="w-full max-w-7xl mx-auto">
           <Skeleton variant="text" height="50px" width="60%" style={{ marginBottom: '30px' }} />
           <Skeleton variant="text" height="30px" width="40%" style={{ marginBottom: '20px' }} />
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '40px' }}>
+          <div className="flex gap-4 mb-10">
             <Skeleton variant="text" height="40px" width="120px" />
             <Skeleton variant="text" height="40px" width="120px" />
             <Skeleton variant="text" height="40px" width="120px" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} style={{ background: 'rgba(3, 9, 19, 0.8)', padding: '20px', borderRadius: '12px', border: '2px solid #C10468' }}>
+              <div key={i} className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
                 <Skeleton variant="text" height="24px" width="70%" style={{ marginBottom: '15px' }} />
                 <Skeleton variant="text" height="16px" width="50%" style={{ marginBottom: '10px' }} />
                 <Skeleton variant="text" height="14px" count={2} />
@@ -436,55 +437,57 @@ export default function PublicTournament() {
             ))}
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
   
   if (!tournoi) return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#030913',
-      color: '#F8F6F2',
-      fontFamily: "'Protest Riot', sans-serif"
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
-        <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Tournoi introuvable</p>
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          style={{
-            marginTop: '20px',
-            padding: '12px 30px',
-            background: '#C10468',
-            border: '2px solid #FF36A3',
-            color: '#F8F6F2',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontFamily: "'Shadows Into Light', cursive",
-            fontSize: '1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#FF36A3';
-            e.currentTarget.style.borderColor = '#C10468';
-            e.currentTarget.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#C10468';
-            e.currentTarget.style.borderColor = '#FF36A3';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          Retour à l'accueil
-        </button>
+    <DashboardLayout session={session}>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#030913',
+        color: '#F8F6F2',
+        fontFamily: "'Protest Riot', sans-serif"
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
+          <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Tournoi introuvable</p>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            style={{
+              marginTop: '20px',
+              padding: '12px 30px',
+              background: '#C10468',
+              border: '2px solid #FF36A3',
+              color: '#F8F6F2',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontFamily: "'Shadows Into Light', cursive",
+              fontSize: '1rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#FF36A3';
+              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#C10468';
+              e.currentTarget.style.borderColor = '#FF36A3';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            Retour à l'accueil
+          </button>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 
   const winnerMatch = matches.find(m => m.round_number === Math.max(...matches.map(m => m.round_number), 0) && m.status === 'completed');
@@ -520,27 +523,11 @@ export default function PublicTournament() {
   const statusStyle = getStatusStyle(tournoi.status);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030913', color: '#F8F6F2', padding: '20px' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-7xl mx-auto">
         {/* HEADER */}
-        <div style={{ 
-          textAlign: 'center', 
-          marginBottom: '40px', 
-          paddingBottom: '30px', 
-          borderBottom: '3px solid #FF36A3',
-          background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.1) 0%, rgba(255, 54, 163, 0.05) 100%)',
-          padding: '30px',
-          borderRadius: '15px',
-          border: '2px solid #FF36A3',
-          boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
-        }}>
-          <h1 style={{ 
-            margin: '10px 0', 
-            color: '#FF36A3', 
-            fontSize: '3rem',
-            fontFamily: "'Shadows Into Light', cursive",
-            fontWeight: '400'
-          }}>
+        <div className="text-center mb-10 pb-8 border-b-4 border-fluky-secondary bg-gradient-to-br from-fluky-primary/10 to-fluky-secondary/5 p-8 rounded-xl border border-fluky-secondary shadow-lg shadow-fluky-primary/30">
+          <h1 className="font-display text-5xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>
             {tournoi.name}
           </h1>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -585,77 +572,32 @@ export default function PublicTournament() {
           </div>
         </div>
 
-      {/* BANNIÈRE VAINQUEUR */}
-      {winnerName && (
-        <div style={{
-          background: 'linear-gradient(135deg, #FF36A3, #C10468)', 
-          color:'#F8F6F2', 
-          padding:'30px', 
-          borderRadius:'15px', 
-          textAlign:'center', 
-          marginBottom:'30px',
-          boxShadow: '0 8px 32px rgba(255, 54, 163, 0.5)',
-          border: '3px solid #FF36A3'
-        }}>
-          <h2 style={{
-            margin:0, 
-            fontSize: '2rem',
-            fontFamily: "'Shadows Into Light', cursive",
-            textTransform: 'uppercase',
-            letterSpacing: '2px'
-          }}>
-            👑 VAINQUEUR : {winnerName.split(' [')[0]} 👑
-          </h2>
-        </div>
-      )}
+        {/* BANNIÈRE VAINQUEUR */}
+        {winnerName && (
+          <div className="bg-gradient-to-br from-fluky-secondary to-fluky-primary text-fluky-text p-8 rounded-xl text-center mb-8 shadow-lg shadow-fluky-secondary/50 border-4 border-fluky-secondary">
+            <h2 className="font-display text-3xl m-0 uppercase tracking-widest">
+              👑 VAINQUEUR : {winnerName.split(' [')[0]} 👑
+            </h2>
+          </div>
+        )}
 
-      {/* ONGLETS */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '10px', 
-        marginBottom: '30px', 
-        borderBottom: '3px solid #FF36A3', 
-        overflowX: 'auto',
-        paddingBottom: '10px'
-      }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '15px 25px',
-              background: activeTab === tab.id ? '#C10468' : 'transparent',
-              color: activeTab === tab.id ? '#F8F6F2' : '#F8F6F2',
-              border: activeTab === tab.id ? '2px solid #FF36A3' : '2px solid transparent',
-              borderBottom: activeTab === tab.id ? '3px solid #FF36A3' : '3px solid transparent',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontFamily: "'Shadows Into Light', cursive",
-              fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-              transition: 'all 0.3s ease',
-              whiteSpace: 'nowrap',
-              borderRadius: '8px 8px 0 0',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== tab.id) {
-                e.currentTarget.style.background = 'rgba(193, 4, 104, 0.3)';
-                e.currentTarget.style.borderColor = '#FF36A3';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== tab.id) {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = 'transparent';
-              }
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+        {/* ONGLETS */}
+        <div className="flex gap-3 mb-8 border-b-4 border-fluky-secondary overflow-x-auto pb-3">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-6 py-4 cursor-pointer text-base font-display transition-all duration-300 whitespace-nowrap rounded-t-lg uppercase tracking-wide ${
+                activeTab === tab.id
+                  ? 'bg-fluky-primary text-white border-2 border-fluky-secondary border-b-4 border-b-fluky-secondary font-bold'
+                  : 'bg-transparent text-fluky-text border-2 border-transparent hover:bg-fluky-primary/30 hover:border-fluky-secondary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
       {/* CONTENU DES ONGLETS */}
       <div style={{ minHeight: '400px' }}>
@@ -1982,7 +1924,7 @@ export default function PublicTournament() {
         </p>
       </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 

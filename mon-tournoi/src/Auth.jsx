@@ -70,35 +70,22 @@ export default function Auth() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030913', color: '#F8F6F2' }}>
-      <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '40px', borderRadius: '12px', width: '350px', textAlign: 'center', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)', border: '2px solid #FF36A3' }}>
-        <h1 style={{ color: '#FF36A3', margin: '0 0 20px 0', fontFamily: "'Shadows Into Light', cursive", fontSize: '2.5rem' }}>Fluky Boys</h1>
-        <p style={{ color: '#F8F6F2', marginBottom: '30px', fontFamily: "'Protest Riot', sans-serif", fontSize: '1.1rem' }}>{mode === 'login' ? 'Connexion' : 'Créer un compte'}</p>
+    <div className="min-h-screen flex items-center justify-center bg-fluky-bg text-fluky-text">
+      <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-10 w-full max-w-md text-center">
+        <h1 className="font-display text-4xl mb-5 text-fluky-secondary" style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>
+          Fluky Boys
+        </h1>
+        <p className="font-body text-lg mb-8 text-fluky-text">
+          {mode === 'login' ? 'Connexion' : 'Créer un compte'}
+        </p>
         
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <form onSubmit={handleAuth} className="flex flex-col gap-4">
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '6px',
-              fontFamily: "'Protest Riot', sans-serif",
-              fontSize: '0.95rem',
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
+            className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             required
           />
           <input
@@ -106,66 +93,26 @@ export default function Auth() {
             placeholder="Mot de passe"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '6px',
-              fontFamily: "'Protest Riot', sans-serif",
-              fontSize: '0.95rem',
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
+            className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             required
           />
           <button 
+            type="submit"
             disabled={loading} 
-            style={{ 
-              padding: '12px', 
-              background: '#C10468', 
-              border: '2px solid #FF36A3', 
-              borderRadius: '8px', 
-              color: '#F8F6F2', 
-              fontFamily: "'Shadows Into Light', cursive",
-              fontSize: '1rem',
-              fontWeight: '500',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              transition: 'all 0.3s ease',
-              opacity: loading ? 0.6 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.background = '#FF36A3';
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.background = '#C10468';
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }
-            }}
+            className={`px-4 py-3 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 ${
+              loading 
+                ? 'opacity-60 cursor-not-allowed' 
+                : 'hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50'
+            }`}
           >
             {loading ? 'Chargement...' : (mode === 'login' ? 'Se connecter' : "S'inscrire")}
           </button>
         </form>
 
-        <p style={{ marginTop: '20px', fontSize: '0.9rem', color: '#F8F6F2', cursor: 'pointer', fontFamily: "'Protest Riot', sans-serif", transition: 'color 0.3s ease' }} 
-           onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-           onMouseEnter={(e) => e.currentTarget.style.color = '#FF36A3'}
-           onMouseLeave={(e) => e.currentTarget.style.color = '#F8F6F2'}>
+        <p 
+          className="mt-5 text-sm text-fluky-text cursor-pointer font-body transition-colors duration-300 hover:text-fluky-secondary"
+          onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+        >
           {mode === 'login' ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
         </p>
       </div>

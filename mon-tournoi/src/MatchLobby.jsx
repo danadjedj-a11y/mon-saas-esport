@@ -5,6 +5,7 @@ import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
 import { updateSwissScores } from './swissUtils'; // <--- IMPORT AJOUTÉ
 import { calculateMatchWinner, getNextVetoTeam, generateVetoOrder, getAvailableMaps, getMapForGame } from './bofUtils'; // <--- IMPORT BEST-OF-X
 import { toast } from './utils/toast';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function MatchLobby({ session, supabase }) {
   const { id } = useParams();
@@ -836,7 +837,11 @@ export default function MatchLobby({ session, supabase }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentBestOf, match?.id, matchGames.length]);
 
-  if (loading || !match) return <div style={{color:'#F8F6F2', padding:'20px', background: '#030913', minHeight: '100vh', fontFamily: "'Protest Riot', sans-serif"}}>Chargement du Lobby...</div>;
+  if (loading || !match) return (
+    <DashboardLayout session={session}>
+      <div className="text-fluky-text font-body text-center py-20">Chargement du Lobby...</div>
+    </DashboardLayout>
+  );
 
   const isTeam1 = myTeamId === match.player1_id;
   const reportedByMe = isTeam1 ? match.reported_by_team1 : match.reported_by_team2;
@@ -850,38 +855,11 @@ export default function MatchLobby({ session, supabase }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '20px', color: '#F8F6F2', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', background: '#030913' }}>
-      
-      {/* COLONNE GAUCHE : INFO MATCH & SCORE */}
-      <div>
-        <button 
-          type="button"
-          onClick={() => navigate(`/tournament/${match.tournament_id}`)} 
-          style={{
-            background:'transparent', 
-            border:'2px solid #C10468', 
-            color:'#F8F6F2', 
-            cursor:'pointer', 
-            marginBottom:'20px',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontFamily: "'Shadows Into Light', cursive",
-            fontSize: '0.9rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#C10468';
-            e.currentTarget.style.borderColor = '#FF36A3';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = '#C10468';
-          }}
-        >
-          ← Retour Tournoi
-        </button>
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* COLONNE GAUCHE : INFO MATCH & SCORE */}
+          <div className="lg:col-span-2">
         
         <div style={{ background: 'rgba(3, 9, 19, 0.95)', padding: '30px', borderRadius: '15px', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
           <h2 style={{color:'#FF36A3', fontSize:'0.9rem', textTransform:'uppercase', marginTop: 0, fontFamily: "'Protest Riot', sans-serif"}}>Match #{match.match_number} - Round {match.round_number}</h2>
@@ -947,11 +925,11 @@ export default function MatchLobby({ session, supabase }) {
                 </div>
             </div>
 
-          {/* SECTION MANCHES BEST-OF-X */}
-          {tournamentBestOf > 1 && (
-            <div style={{background: '#2a2a2a', padding: '20px', borderRadius: '10px', marginTop: '20px', border: '1px solid #444'}}>
-              <h3 style={{marginTop: 0, marginBottom: '15px'}}>🎮 Manches (Best-of-{tournamentBestOf})</h3>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+            {/* SECTION MANCHES BEST-OF-X */}
+            {tournamentBestOf > 1 && (
+              <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 mt-5">
+                <h3 className="font-display text-xl text-fluky-text mt-0 mb-4">🎮 Manches (Best-of-{tournamentBestOf})</h3>
+                <div className="flex flex-col gap-4">
                 {Array.from({ length: tournamentBestOf }, (_, i) => i + 1).map((gameNum) => {
                   const game = matchGames.find(g => g.game_number === gameNum);
                   const isCompleted = game?.status === 'completed';
@@ -961,20 +939,22 @@ export default function MatchLobby({ session, supabase }) {
                   const mapName = game?.map_name || getMapForGame(matchGames, gameNum, tournamentMapsPool, vetos) || `Manche ${gameNum}`;
                   
                   return (
-                    <div key={gameNum} style={{
-                      background: isConfirmed ? '#1a3a1a' : (hasConflict ? '#3a1a1a' : '#1a1a1a'),
-                      padding: '15px',
-                      borderRadius: '8px',
-                      border: isConfirmed ? '1px solid #27ae60' : (hasConflict ? '1px solid #e74c3c' : '1px solid #555')
-                    }}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-                        <div>
-                          <strong>Manche {gameNum}</strong>
-                          {mapName && <span style={{marginLeft: '10px', fontSize: '0.9rem', color: '#888'}}>🗺️ {mapName}</span>}
-                        </div>
-                        {isConfirmed && <span style={{color: '#4ade80', fontSize: '0.9rem'}}>✅ Terminée</span>}
-                        {hasConflict && <span style={{color: '#e74c3c', fontSize: '0.9rem'}}>⚠️ Conflit</span>}
+                  <div 
+                    key={gameNum} 
+                    className={`p-4 rounded-lg ${
+                      isConfirmed ? 'bg-green-900/20 border border-green-500' : 
+                      (hasConflict ? 'bg-red-900/20 border border-red-500' : 
+                      'bg-[#030913]/60 border border-white/5')
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <strong className="font-body text-fluky-text">Manche {gameNum}</strong>
+                        {mapName && <span className="ml-3 text-sm text-fluky-text/70 font-body">🗺️ {mapName}</span>}
                       </div>
+                      {isConfirmed && <span className="text-green-400 text-sm font-body">✅ Terminée</span>}
+                      {hasConflict && <span className="text-red-400 text-sm font-body">⚠️ Conflit</span>}
+                    </div>
                       
                       {hasConflict && isAdmin && game ? (
                         // Conflit - Zone Admin (priorité pour l'admin)
@@ -1348,15 +1328,17 @@ export default function MatchLobby({ session, supabase }) {
         )}
       </div>
 
-      {/* COLONNE DROITE : CHAT */}
-      <div style={{ height: '600px', background: '#1a1a1a', borderRadius: '15px', border: '1px solid #333', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{padding:'15px', borderBottom:'1px solid #333', background:'#222', flexShrink: 0}}>
-            <h3 style={{margin:0}}>💬 Chat du Match</h3>
-        </div>
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <Chat matchId={id} session={session} supabase={supabase} />
+          {/* COLONNE DROITE : CHAT */}
+          <div className="h-[600px] bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-white/5 bg-white/5 flex-shrink-0">
+              <h3 className="font-display text-xl text-fluky-secondary m-0">💬 Chat du Match</h3>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <Chat matchId={id} session={session} supabase={supabase} />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

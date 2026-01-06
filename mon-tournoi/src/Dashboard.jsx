@@ -45,10 +45,10 @@ export default function Dashboard({ session }) {
 
   // Cette page ne devrait jamais être visible car elle redirige immédiatement
   return (
-    <div style={{color:'#F8F6F2', padding:'20px', textAlign: 'center', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030913'}}>
-      <div>
-        <div style={{fontSize: '3rem', marginBottom: '20px'}}>⏳</div>
-        <p style={{fontFamily: "'Protest Riot', sans-serif", fontSize: '1.2rem', color: '#FF36A3'}}>Redirection en cours...</p>
+    <div className="min-h-screen flex items-center justify-center bg-fluky-bg text-fluky-text">
+      <div className="text-center">
+        <div className="text-5xl mb-5">⏳</div>
+        <p className="font-body text-xl text-fluky-secondary">Redirection en cours...</p>
       </div>
     </div>
   );

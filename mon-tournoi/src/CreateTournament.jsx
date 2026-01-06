@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import { handleRateLimitError } from './utils/rateLimitHandler';
 import TemplateSelector from './components/TemplateSelector';
+import DashboardLayout from './layouts/DashboardLayout';
 
 export default function CreateTournament({ session, supabase }) {
   const [name, setName] = useState('');
@@ -199,69 +200,28 @@ export default function CreateTournament({ session, supabase }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030913', padding: '40px 20px' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '40px', background: 'rgba(3, 9, 19, 0.95)', borderRadius: '15px', color: '#F8F6F2', border: '2px solid #FF36A3', boxShadow: '0 8px 32px rgba(193, 4, 104, 0.3)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <button 
-            type="button"
-            onClick={() => navigate('/organizer/dashboard')} 
-            style={{
-              background:'transparent', 
-              border:'2px solid #C10468', 
-              color:'#F8F6F2', 
-              cursor:'pointer',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              fontFamily: "'Shadows Into Light', cursive",
-              fontSize: '0.9rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#C10468';
-              e.currentTarget.style.borderColor = '#FF36A3';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.borderColor = '#C10468';
-            }}
-          >
-            ← Annuler
-          </button>
-          
-          <button 
-            type="button"
-            onClick={handleSaveAsTemplate}
-            style={{
-              background:'transparent', 
-              border:'2px solid #FF36A3', 
-              color:'#FF36A3', 
-              cursor:'pointer',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              fontFamily: "'Shadows Into Light', cursive",
-              fontSize: '0.9rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#FF36A3';
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.color = '#F8F6F2';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.color = '#FF36A3';
-            }}
-          >
-            💾 Sauvegarder comme Template
-          </button>
-        </div>
+    <DashboardLayout session={session}>
+      <div className="w-full max-w-3xl mx-auto">
+        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
+          <div className="flex justify-between items-center mb-6">
+            <button 
+              type="button"
+              onClick={() => navigate('/organizer/dashboard')} 
+              className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+            >
+              ← Annuler
+            </button>
+            
+            <button 
+              type="button"
+              onClick={handleSaveAsTemplate}
+              className="px-4 py-2 bg-transparent border-2 border-fluky-secondary text-fluky-secondary rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-secondary hover:text-white"
+            >
+              💾 Sauvegarder comme Template
+            </button>
+          </div>
       
-        <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive", fontSize: '2rem' }}>Organiser un nouveau tournoi</h2>
+          <h2 className="text-center mb-8 font-display text-4xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>Organiser un nouveau tournoi</h2>
       
       {/* Sélecteur de Templates */}
       <TemplateSelector 
@@ -310,384 +270,206 @@ export default function CreateTournament({ session, supabase }) {
         }}
       />
       
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        
-        {/* NOM */}
-        <div>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2'}}>Nom de l'événement</label>
-          <input 
-            required 
-            type="text" 
-            placeholder="Ex: Weekly Cup #42"
-            value={name} 
-            onChange={e => {
-              const value = e.target.value;
-              if (value.length <= MAX_NAME_LENGTH) {
-                setName(value);
-              }
-            }}
-            maxLength={MAX_NAME_LENGTH}
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '8px',
-              fontFamily: "'Protest Riot', sans-serif",
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-          <div style={{ fontSize: '0.75rem', color: '#F8F6F2', marginTop: '4px', fontFamily: "'Protest Riot', sans-serif" }}>
-            {name.length}/{MAX_NAME_LENGTH} caractères
-          </div>
-        </div>
-
-        {/* JEU */}
-        <div>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2'}}>Jeu</label>
-          <select 
-            value={game} 
-            onChange={e => setGame(e.target.value)} 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '8px',
-              fontFamily: "'Protest Riot', sans-serif",
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <option value="Valorant">Valorant</option>
-            <option value="League of Legends">League of Legends</option>
-            <option value="CS2">Counter-Strike 2</option>
-            <option value="Rocket League">Rocket League</option>
-            <option value="FC 24">FC 24</option>
-          </select>
-        </div>
-
-        {/* FORMAT (LE CŒUR DU SUJET) */}
-        <div style={{background:'rgba(3, 9, 19, 0.6)', padding:'15px', borderRadius:'12px', border:'2px solid #FF36A3'}}>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>Format de la compétition</label>
-          <select 
-            value={format} 
-            onChange={e => setFormat(e.target.value)} 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '8px',
-              fontFamily: "'Protest Riot', sans-serif",
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <option value="elimination">🏆 Arbre à Élimination Directe</option>
-            <option value="double_elimination">⚔️ Double Elimination</option>
-            <option value="round_robin">🔄 Championnat (Round Robin)</option>
-            <option value="swiss">🇨🇭 Système Suisse</option>
-          </select>
-          <p style={{fontSize:'0.85rem', color:'#F8F6F2', marginTop:'8px', fontStyle:'italic', fontFamily: "'Protest Riot', sans-serif"}}>
-            {format === 'elimination' 
-              ? "Classique. Le perdant rentre chez lui. Idéal pour les tournois rapides." 
-              : format === 'double_elimination'
-              ? "Deux brackets : Winners et Losers. Une deuxième chance après une défaite. Format esport professionnel."
-              : format === 'round_robin'
-              ? "Tout le monde joue contre tout le monde. Classement aux points (Victoire=3, Nul=1, Défaite=0)."
-              : "Plusieurs rounds où les équipes sont appariées selon leur score. Pas d'élimination, classement final par victoires et tie-breaks."}
-          </p>
-        </div>
-
-        {/* BEST-OF-X */}
-        <div style={{background:'rgba(3, 9, 19, 0.6)', padding:'15px', borderRadius:'12px', border:'2px solid #FF36A3'}}>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>Format des Matchs (Best-of-X)</label>
-          <select 
-            value={bestOf} 
-            onChange={e => setBestOf(parseInt(e.target.value))} 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '8px',
-              fontFamily: "'Protest Riot', sans-serif",
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <option value={1}>Single Game (1 manche)</option>
-            <option value={3}>Best-of-3 (3 manches, premier à 2 victoires)</option>
-            <option value={5}>Best-of-5 (5 manches, premier à 3 victoires)</option>
-            <option value={7}>Best-of-7 (7 manches, premier à 4 victoires)</option>
-          </select>
-          <p style={{fontSize:'0.85rem', color:'#F8F6F2', marginTop:'8px', fontStyle:'italic', fontFamily: "'Protest Riot', sans-serif"}}>
-            Détermine le nombre de manches par match. Le gagnant est la première équipe à remporter {Math.ceil(bestOf / 2)} manche{Math.ceil(bestOf / 2) > 1 ? 's' : ''}.
-          </p>
-        </div>
-
-        {/* MAPS POOL */}
-        {bestOf > 1 && (
-          <div style={{background:'rgba(3, 9, 19, 0.6)', padding:'15px', borderRadius:'12px', border:'2px solid #FF36A3'}}>
-            <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>Pool de Cartes (Optionnel)</label>
-            <input 
-              type="text" 
-              placeholder="Ex: Bind, Haven, Split, Ascent, Icebox (séparées par des virgules)"
-              value={mapsPool} 
-              onChange={e => {
-                const value = e.target.value;
-                if (value.length <= MAX_MAPS_POOL_LENGTH) {
-                  setMapsPool(value);
-                }
-              }}
-              maxLength={MAX_MAPS_POOL_LENGTH}
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                border: '2px solid #C10468', 
-                color: '#F8F6F2', 
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            <div style={{ fontSize: '0.75rem', color: '#F8F6F2', marginTop: '4px', fontFamily: "'Protest Riot', sans-serif" }}>
-              {mapsPool.length}/{MAX_MAPS_POOL_LENGTH} caractères
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            {/* NOM */}
+            <div>
+              <label className="font-bold block mb-2 font-body text-fluky-text">Nom de l'événement</label>
+              <input 
+                required 
+                type="text" 
+                placeholder="Ex: Weekly Cup #42"
+                value={name} 
+                onChange={e => {
+                  const value = e.target.value;
+                  if (value.length <= MAX_NAME_LENGTH) {
+                    setName(value);
+                  }
+                }}
+                maxLength={MAX_NAME_LENGTH}
+                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              />
+              <div className="text-xs text-fluky-text mt-1 font-body">
+                {name.length}/{MAX_NAME_LENGTH} caractères
+              </div>
             </div>
-            <p style={{fontSize:'0.85rem', color:'#F8F6F2', marginTop:'8px', fontStyle:'italic', fontFamily: "'Protest Riot', sans-serif"}}>
-              Liste les cartes disponibles pour le tournoi. Les équipes pourront bannir/picker des cartes avant chaque match.
-              {game === 'Valorant' && ' Exemples: Bind, Haven, Split, Ascent, Icebox, Breeze, Fracture'}
-              {game === 'CS2' && ' Exemples: Dust2, Mirage, Inferno, Nuke, Overpass, Vertigo, Ancient'}
-              {game === 'League of Legends' && ' (Non applicable - carte unique)'}
-            </p>
-          </div>
-        )}
 
-        {/* DATE */}
-        <div>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2'}}>Date de début</label>
-          <input 
-            required 
-            type="datetime-local" 
-            value={date} 
-            onChange={e => setDate(e.target.value)} 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '8px',
-              fontFamily: "'Protest Riot', sans-serif",
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
+            {/* JEU */}
+            <div>
+              <label className="font-bold block mb-2 font-body text-fluky-text">Jeu</label>
+              <select 
+                value={game} 
+                onChange={e => setGame(e.target.value)} 
+                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              >
+                <option value="Valorant">Valorant</option>
+                <option value="League of Legends">League of Legends</option>
+                <option value="CS2">Counter-Strike 2</option>
+                <option value="Rocket League">Rocket League</option>
+                <option value="FC 24">FC 24</option>
+              </select>
+            </div>
+
+            {/* FORMAT (LE CŒUR DU SUJET) */}
+            <div className="bg-[#030913]/60 p-4 rounded-xl border border-fluky-secondary">
+              <label className="font-bold block mb-2 text-fluky-secondary font-body">Format de la compétition</label>
+              <select 
+                value={format} 
+                onChange={e => setFormat(e.target.value)} 
+                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              >
+                <option value="elimination">🏆 Arbre à Élimination Directe</option>
+                <option value="double_elimination">⚔️ Double Elimination</option>
+                <option value="round_robin">🔄 Championnat (Round Robin)</option>
+                <option value="swiss">🇨🇭 Système Suisse</option>
+              </select>
+              <p className="text-sm text-fluky-text mt-2 italic font-body">
+                {format === 'elimination' 
+                  ? "Classique. Le perdant rentre chez lui. Idéal pour les tournois rapides." 
+                  : format === 'double_elimination'
+                  ? "Deux brackets : Winners et Losers. Une deuxième chance après une défaite. Format esport professionnel."
+                  : format === 'round_robin'
+                  ? "Tout le monde joue contre tout le monde. Classement aux points (Victoire=3, Nul=1, Défaite=0)."
+                  : "Plusieurs rounds où les équipes sont appariées selon leur score. Pas d'élimination, classement final par victoires et tie-breaks."}
+              </p>
+            </div>
+
+            {/* BEST-OF-X */}
+            <div className="bg-[#030913]/60 p-4 rounded-xl border border-fluky-secondary">
+              <label className="font-bold block mb-2 text-fluky-secondary font-body">Format des Matchs (Best-of-X)</label>
+              <select 
+                value={bestOf} 
+                onChange={e => setBestOf(parseInt(e.target.value))} 
+                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              >
+                <option value={1}>Single Game (1 manche)</option>
+                <option value={3}>Best-of-3 (3 manches, premier à 2 victoires)</option>
+                <option value={5}>Best-of-5 (5 manches, premier à 3 victoires)</option>
+                <option value={7}>Best-of-7 (7 manches, premier à 4 victoires)</option>
+              </select>
+              <p className="text-sm text-fluky-text mt-2 italic font-body">
+                Détermine le nombre de manches par match. Le gagnant est la première équipe à remporter {Math.ceil(bestOf / 2)} manche{Math.ceil(bestOf / 2) > 1 ? 's' : ''}.
+              </p>
+            </div>
+
+            {/* MAPS POOL */}
+            {bestOf > 1 && (
+              <div className="bg-[#030913]/60 p-4 rounded-xl border border-fluky-secondary">
+                <label className="font-bold block mb-2 text-fluky-secondary font-body">Pool de Cartes (Optionnel)</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Bind, Haven, Split, Ascent, Icebox (séparées par des virgules)"
+                  value={mapsPool} 
+                  onChange={e => {
+                    const value = e.target.value;
+                    if (value.length <= MAX_MAPS_POOL_LENGTH) {
+                      setMapsPool(value);
+                    }
+                  }}
+                  maxLength={MAX_MAPS_POOL_LENGTH}
+                  className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+                />
+                <div className="text-xs text-fluky-text mt-1 font-body">
+                  {mapsPool.length}/{MAX_MAPS_POOL_LENGTH} caractères
+                </div>
+                <p className="text-sm text-fluky-text mt-2 italic font-body">
+                  Liste les cartes disponibles pour le tournoi. Les équipes pourront bannir/picker des cartes avant chaque match.
+                  {game === 'Valorant' && ' Exemples: Bind, Haven, Split, Ascent, Icebox, Breeze, Fracture'}
+                  {game === 'CS2' && ' Exemples: Dust2, Mirage, Inferno, Nuke, Overpass, Vertigo, Ancient'}
+                  {game === 'League of Legends' && ' (Non applicable - carte unique)'}
+                </p>
+              </div>
+            )}
+
+            {/* DATE */}
+            <div>
+              <label className="font-bold block mb-2 font-body text-fluky-text">Date de début</label>
+              <input 
+                required 
+                type="datetime-local" 
+                value={date} 
+                onChange={e => setDate(e.target.value)} 
+                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              />
+            </div>
+
+            {/* RÈGLEMENT */}
+            <div className="bg-[#030913]/60 p-4 rounded-xl border border-fluky-secondary">
+              <label className="font-bold block mb-2 text-fluky-secondary font-body">📋 Règlement du Tournoi (Optionnel)</label>
+              <textarea
+                value={rules}
+                onChange={e => {
+                  const value = e.target.value;
+                  if (value.length <= MAX_RULES_LENGTH) {
+                    setRules(value);
+                  }
+                }}
+                maxLength={MAX_RULES_LENGTH}
+                placeholder="Exemple:&#10;&#10;## Règles Générales&#10;- Les matchs sont en Best-of-3&#10;- Les screenshots de fin de partie sont obligatoires&#10;&#10;## Récompenses&#10;- 1er : 500€&#10;- 2e : 250€&#10;&#10;## Sanctions&#10;- Abandon = Disqualification&#10;- Retard de plus de 10 min = Forfait"
+                rows={8}
+                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              />
+              <div className="text-xs text-fluky-text mt-1 font-body">
+                {rules.length}/{MAX_RULES_LENGTH} caractères
+              </div>
+              <p className="text-sm text-fluky-text mt-2 italic font-body">
+                Rédigez le règlement en Markdown. Il sera visible sur la page publique du tournoi. Les équipes pourront le consulter avant de s'inscrire.
+              </p>
+            </div>
+
+            {/* LIMITATIONS D'INSCRIPTION */}
+            <div className="bg-[#030913]/60 p-4 rounded-xl border border-fluky-secondary">
+              <label className="font-bold block mb-3 text-fluky-secondary font-body">🚪 Limitations d'Inscription</label>
+              
+              <div className="mb-4">
+                <label className="font-bold block mb-2 text-sm font-body text-fluky-text">Nombre maximum d'équipes (Laisser vide = illimité)</label>
+                <input 
+                  type="number" 
+                  min={MIN_PARTICIPANTS}
+                  max={MAX_PARTICIPANTS}
+                  placeholder="Ex: 16, 32, 64..."
+                  value={maxParticipants}
+                  onChange={e => {
+                    const value = e.target.value;
+                    if (value === '' || (parseInt(value) >= MIN_PARTICIPANTS && parseInt(value) <= MAX_PARTICIPANTS)) {
+                      setMaxParticipants(value);
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+                />
+                <p className="text-xs text-fluky-text mt-1 font-body">
+                  Si le nombre maximum est atteint, les équipes pourront s'inscrire sur une liste d'attente.
+                </p>
+              </div>
+
+              <div>
+                <label className="font-bold block mb-2 text-sm font-body text-fluky-text">Date limite d'inscription (Optionnel)</label>
+                <input 
+                  type="datetime-local" 
+                  value={registrationDeadline} 
+                  onChange={e => setRegistrationDeadline(e.target.value)} 
+                  className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+                />
+                <p className="text-xs text-fluky-text mt-1 font-body">
+                  Après cette date, les inscriptions seront automatiquement fermées.
+                </p>
+              </div>
+            </div>
+
+            <button 
+              disabled={loading} 
+              type="submit" 
+              className={`mt-5 px-6 py-4 border-2 border-fluky-secondary rounded-lg text-white font-display text-lg uppercase tracking-wide transition-all duration-300 ${
+                loading 
+                  ? 'bg-fluky-primary/50 opacity-60 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-fluky-primary to-fluky-secondary hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50'
+              }`}
+            >
+              {loading ? 'Création en cours...' : '🚀 Lancer l\'événement'}
+            </button>
+
+          </form>
         </div>
-
-        {/* RÈGLEMENT */}
-        <div style={{background:'rgba(3, 9, 19, 0.6)', padding:'15px', borderRadius:'12px', border:'2px solid #FF36A3'}}>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>📋 Règlement du Tournoi (Optionnel)</label>
-          <textarea
-            value={rules}
-            onChange={e => {
-              const value = e.target.value;
-              if (value.length <= MAX_RULES_LENGTH) {
-                setRules(value);
-              }
-            }}
-            maxLength={MAX_RULES_LENGTH}
-            placeholder="Exemple:&#10;&#10;## Règles Générales&#10;- Les matchs sont en Best-of-3&#10;- Les screenshots de fin de partie sont obligatoires&#10;&#10;## Récompenses&#10;- 1er : 500€&#10;- 2e : 250€&#10;&#10;## Sanctions&#10;- Abandon = Disqualification&#10;- Retard de plus de 10 min = Forfait"
-            rows={8}
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              background: 'rgba(3, 9, 19, 0.8)', 
-              border: '2px solid #C10468', 
-              color: '#F8F6F2', 
-              borderRadius: '8px', 
-              fontFamily: "'Protest Riot', sans-serif", 
-              fontSize: '0.9rem',
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-          <div style={{ fontSize: '0.75rem', color: '#F8F6F2', marginTop: '4px', fontFamily: "'Protest Riot', sans-serif" }}>
-            {rules.length}/{MAX_RULES_LENGTH} caractères
-          </div>
-          <p style={{fontSize:'0.85rem', color:'#F8F6F2', marginTop:'8px', fontStyle:'italic', fontFamily: "'Protest Riot', sans-serif"}}>
-            Rédigez le règlement en Markdown. Il sera visible sur la page publique du tournoi. Les équipes pourront le consulter avant de s'inscrire.
-          </p>
-        </div>
-
-        {/* LIMITATIONS D'INSCRIPTION */}
-        <div style={{background:'rgba(3, 9, 19, 0.6)', padding:'15px', borderRadius:'12px', border:'2px solid #FF36A3'}}>
-          <label style={{fontWeight:'bold', display:'block', marginBottom:'10px', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>🚪 Limitations d'Inscription</label>
-          
-          <div style={{marginBottom:'15px'}}>
-            <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontSize:'0.9rem', fontFamily: "'Protest Riot', sans-serif", color: '#F8F6F2'}}>Nombre maximum d'équipes (Laisser vide = illimité)</label>
-            <input 
-              type="number" 
-              min={MIN_PARTICIPANTS}
-              max={MAX_PARTICIPANTS}
-              placeholder="Ex: 16, 32, 64..."
-              value={maxParticipants}
-              onChange={e => {
-                const value = e.target.value;
-                if (value === '' || (parseInt(value) >= MIN_PARTICIPANTS && parseInt(value) <= MAX_PARTICIPANTS)) {
-                  setMaxParticipants(value);
-                }
-              }}
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                border: '2px solid #C10468', 
-                color: '#F8F6F2', 
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            <p style={{fontSize:'0.8rem', color:'#F8F6F2', marginTop:'5px', fontFamily: "'Protest Riot', sans-serif"}}>
-              Si le nombre maximum est atteint, les équipes pourront s'inscrire sur une liste d'attente.
-            </p>
-          </div>
-
-          <div>
-            <label style={{fontWeight:'bold', display:'block', marginBottom:'5px', fontSize:'0.9rem'}}>Date limite d'inscription (Optionnel)</label>
-            <input 
-              type="datetime-local" 
-              value={registrationDeadline} 
-              onChange={e => setRegistrationDeadline(e.target.value)} 
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                border: '2px solid #C10468', 
-                color: '#F8F6F2', 
-                borderRadius: '8px',
-                fontFamily: "'Protest Riot', sans-serif",
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FF36A3';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#C10468';
-                e.currentTarget.style.boxShadow = 'none';
-              }} 
-            />
-            <p style={{fontSize:'0.8rem', color:'#F8F6F2', marginTop:'5px', fontFamily: "'Protest Riot', sans-serif"}}>
-              Après cette date, les inscriptions seront automatiquement fermées.
-            </p>
-          </div>
-        </div>
-
-        <button 
-          disabled={loading} 
-          type="submit" 
-          style={{ 
-            marginTop: '20px', 
-            padding: '15px', 
-            background: '#C10468', 
-            color: '#F8F6F2', 
-            border: '2px solid #FF36A3', 
-            borderRadius: '8px', 
-            fontFamily: "'Shadows Into Light', cursive",
-            cursor: loading ? 'not-allowed' : 'pointer', 
-            fontSize:'1.1rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s ease',
-            opacity: loading ? 0.6 : 1
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) {
-              e.currentTarget.style.background = '#FF36A3';
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!loading) {
-              e.currentTarget.style.background = '#C10468';
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }
-          }}
-        >
-          {loading ? 'Création en cours...' : '🚀 Lancer l\'événement'}
-        </button>
-
-      </form>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
