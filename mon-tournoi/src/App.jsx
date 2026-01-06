@@ -147,6 +147,9 @@ function App() {
   const [userRole, setUserRole] = useState(null)
   const [loading, setLoading] = useState(true) // État de chargement pour la vérification initiale
   const monitoringInitialized = useRef(false);
+  const authStateChangeHandled = useRef(false); // Protection contre les boucles
+  const redirecting = useRef(false); // Protection contre les redirections multiples
+  const lastAuthEvent = useRef(null); // Protection contre les événements en double
 
   // Fonction pour mettre à jour le rôle utilisateur
   const updateUserRole = async (user) => {
@@ -155,16 +158,29 @@ function App() {
       return;
     }
     try {
-      const role = await getUserRole(supabase, user.id);
+      // Timeout de sécurité pour éviter les blocages
+      const rolePromise = getUserRole(supabase, user.id);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 3000)
+      );
+      
+      const role = await Promise.race([rolePromise, timeoutPromise]);
       setUserRole(role);
-      monitoring.setUser({
-        id: user.id,
-        email: user.email,
-        username: user.user_metadata?.username
-      });
+      
+      // Monitoring de manière non-bloquante
+      try {
+        monitoring.setUser({
+          id: user.id,
+          email: user.email,
+          username: user.user_metadata?.username
+        });
+      } catch (monitoringError) {
+        console.warn('Erreur monitoring (non-bloquant):', monitoringError);
+      }
     } catch (error) {
       console.error('Erreur lors de la récupération du rôle:', error);
-      setUserRole(null);
+      // En cas d'erreur, on met 'player' par défaut pour ne pas bloquer
+      setUserRole('player');
     }
   };
 
@@ -178,30 +194,50 @@ function App() {
 
     // 1. Vérifier la session persistée au premier chargement
     const checkInitialSession = async () => {
+      console.log('🔍 [App] Début de la vérification de la session...');
+      
+      // Timeout de sécurité : si ça prend plus de 5 secondes, on arrête le loading
+      const timeoutId = setTimeout(() => {
+        console.warn('⚠️ [App] Timeout lors de la vérification de la session - arrêt du loading');
+        setLoading(false);
+      }, 5000);
+
       try {
+        console.log('🔍 [App] Appel à supabase.auth.getSession()...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('🔍 [App] Session récupérée:', session ? `User: ${session.user?.email}` : 'Aucune session');
         
         if (error) {
-          console.error('Erreur lors de la vérification de la session:', error);
+          console.error('❌ [App] Erreur lors de la vérification de la session:', error);
           setSession(null);
           setUserRole(null);
+          clearTimeout(timeoutId);
           setLoading(false);
+          console.log('✅ [App] Loading mis à false (erreur)');
           return;
         }
 
         if (session?.user) {
+          console.log('✅ [App] Session trouvée, mise à jour du rôle...');
           setSession(session);
-          await updateUserRole(session.user);
+          // Mettre à jour le rôle de manière non-bloquante
+          updateUserRole(session.user).catch(err => {
+            console.error('❌ [App] Erreur lors de la mise à jour du rôle (non-bloquant):', err);
+            // On continue même si ça échoue
+          });
         } else {
+          console.log('ℹ️ [App] Aucune session trouvée');
           setSession(null);
           setUserRole(null);
         }
       } catch (error) {
-        console.error('Erreur lors de la vérification initiale:', error);
+        console.error('❌ [App] Erreur lors de la vérification initiale:', error);
         setSession(null);
         setUserRole(null);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
+        console.log('✅ [App] Loading mis à false (finally)');
       }
     };
 
@@ -211,49 +247,82 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth State Change:', event, session?.user?.email || 'No user');
+      console.log('🔐 [App] Auth State Change:', event, session?.user?.email || 'No user');
+
+      // Protection contre les événements en double (même événement avec même session)
+      const eventKey = `${event}_${session?.user?.id || 'null'}`;
+      if (lastAuthEvent.current === eventKey) {
+        console.log('⏭️ [App] Événement en double ignoré:', eventKey);
+        return;
+      }
+      lastAuthEvent.current = eventKey;
+
+      // Ignorer les événements si on est encore en train de charger la session initiale
+      if (loading && event === 'SIGNED_IN' && !authStateChangeHandled.current) {
+        console.log('⏭️ [App] Ignoré: événement SIGNED_IN pendant le chargement initial');
+        authStateChangeHandled.current = true;
+        return;
+      }
 
       // Gérer les événements spécifiques
       if (event === 'SIGNED_IN') {
         if (session?.user) {
+          console.log('✅ [App] SIGNED_IN détecté, mise à jour de la session...');
           setSession(session);
-          // Mettre à jour le rôle et récupérer le rôle pour la redirection
-          const role = await getUserRole(supabase, session.user.id);
-          setUserRole(role);
-          monitoring.setUser({
-            id: session.user.id,
-            email: session.user.email,
-            username: session.user.user_metadata?.username
+          
+          // Mettre à jour le rôle de manière non-bloquante
+          updateUserRole(session.user).catch(err => {
+            console.error('❌ [App] Erreur updateUserRole (non-bloquant):', err);
           });
           
           // Rediriger vers le dashboard approprié si on est sur /auth ou /
           const currentPath = window.location.pathname;
-          if (currentPath === '/auth' || currentPath === '/') {
-            const targetRoute = role === 'organizer' 
-              ? '/organizer/dashboard' 
-              : '/player/dashboard';
-            // Utiliser window.location pour forcer une navigation complète et éviter les problèmes de state
-            window.location.href = targetRoute;
+          if ((currentPath === '/auth' || currentPath === '/') && !redirecting.current) {
+            redirecting.current = true;
+            // Attendre un peu pour que le rôle soit mis à jour
+            setTimeout(async () => {
+              try {
+                const role = await getUserRole(supabase, session.user.id);
+                const targetRoute = role === 'organizer' 
+                  ? '/organizer/dashboard' 
+                  : '/player/dashboard';
+                console.log(`🔄 [App] Redirection vers ${targetRoute}`);
+                // Utiliser window.location pour forcer une navigation complète
+                window.location.href = targetRoute;
+              } catch (err) {
+                console.error('❌ [App] Erreur lors de la redirection:', err);
+                redirecting.current = false; // Réinitialiser en cas d'erreur
+                // En cas d'erreur, rediriger vers player par défaut
+                window.location.href = '/player/dashboard';
+              }
+            }, 100);
           }
-          // Si on est déjà sur une page protégée, l'état est déjà mis à jour
           
           analytics.trackEvent('user_logged_in');
           toast.success('✅ Connexion réussie !');
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log('🔴 [App] SIGNED_OUT détecté');
         setSession(null);
         setUserRole(null);
         monitoring.setUser(null);
         
-        // Rediriger vers la page d'accueil ou auth
-        if (window.location.pathname.startsWith('/player/') || 
-            window.location.pathname.startsWith('/organizer/') ||
-            window.location.pathname.startsWith('/profile') ||
-            window.location.pathname.startsWith('/create-team') ||
-            window.location.pathname.startsWith('/my-team') ||
-            window.location.pathname.startsWith('/stats') ||
-            window.location.pathname.startsWith('/leaderboard')) {
-          window.location.href = '/';
+        // Rediriger vers la page d'accueil ou auth (une seule fois)
+        const currentPath = window.location.pathname;
+        if ((currentPath.startsWith('/player/') || 
+            currentPath.startsWith('/organizer/') ||
+            currentPath.startsWith('/profile') ||
+            currentPath.startsWith('/create-team') ||
+            currentPath.startsWith('/my-team') ||
+            currentPath.startsWith('/stats') ||
+            currentPath.startsWith('/leaderboard')) && 
+            !redirecting.current) {
+          redirecting.current = true;
+          console.log('🔄 [App] Redirection vers / après SIGNED_OUT');
+          // Utiliser setTimeout pour éviter les conflits avec React
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 100);
         }
         
         analytics.trackEvent('user_logged_out');
@@ -272,11 +341,15 @@ function App() {
         }
       } else {
         // Pour les autres événements, mettre à jour l'état normalement
+        console.log(`ℹ️ [App] Autre événement: ${event}`);
         setSession(session);
         if (session?.user) {
-          await updateUserRole(session.user);
+          updateUserRole(session.user).catch(err => {
+            console.error('❌ [App] Erreur updateUserRole (non-bloquant):', err);
+          });
         } else {
           setUserRole(null);
+          monitoring.setUser(null);
         }
       }
     });

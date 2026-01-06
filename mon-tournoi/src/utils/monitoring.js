@@ -273,6 +273,25 @@ class Monitoring {
    * Ajouter du contexte utilisateur
    */
   setUser(user) {
+    // Si user est null ou undefined, on déconnecte l'utilisateur de Sentry
+    if (!user) {
+      if (this.sentryDsn && this.sentryAvailable && window.Sentry) {
+        window.Sentry.setUser(null);
+      }
+      if (import.meta.env.DEV) {
+        console.log('[Monitoring] User context cleared');
+      }
+      return;
+    }
+
+    // Vérifier que user a au moins un id
+    if (!user.id) {
+      if (import.meta.env.DEV) {
+        console.warn('[Monitoring] setUser appelé avec un user sans id:', user);
+      }
+      return;
+    }
+
     if (this.sentryDsn && this.sentryAvailable && window.Sentry) {
       window.Sentry.setUser({
         id: user.id,
