@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import confetti from 'canvas-confetti';
@@ -43,6 +43,10 @@ export default function Tournament({ session }) {
   const [isSchedulingModalOpen, setIsSchedulingModalOpen] = useState(false);
   const [schedulingMatch, setSchedulingMatch] = useState(null);
 
+  // Refs pour gérer les race conditions et le montage
+  const isMountedRef = useRef(true);
+  const fetchDataVersionRef = useRef(0); // Pour ignorer les anciennes requêtes
+
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
   
   // En mode organizer, forcer isOwner à true pour les propriétaires
@@ -53,62 +57,57 @@ export default function Tournament({ session }) {
   // 1. CHARGEMENT DES DONNÉES ET REALTIME
   // ==============================================================================
 
+  // Cleanup au démontage
   useEffect(() => {
-    fetchData();
-
-    // Abonnement aux changements Supabase (Matchs, Participants, Tournoi)
-  // Abonnement aux changements Supabase
-  const channel = supabase.channel('tournament-updates')
-    // A. Écouter les matchs
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
-    // B. Écouter les participants
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, () => fetchData())
-    // C. Écouter le tournoi global
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, () => fetchData())
-    // 👇 D. AJOUT CRUCIAL : Écouter les scores suisses 👇
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, (payload) => {
-        console.log('Changement Swiss Score détecté !', payload);
-        fetchData();
-    })
-    // 👇 E. Écouter les changements dans la waitlist 👇
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist', filter: `tournament_id=eq.${id}` }, () => {
-        fetchData();
-    })
-    .subscribe();
-
-    // Écouteur pour forcer la mise à jour depuis le MatchLobby (Custom Event)
-    const handleMatchUpdate = (event) => {
-      if (event.detail.tournamentId === id) {
-        setTimeout(() => fetchData(), 300); // Petit délai de sécurité
-      }
-    };
-    
-    window.addEventListener('tournament-match-updated', handleMatchUpdate);
-
+    isMountedRef.current = true;
     return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener('tournament-match-updated', handleMatchUpdate);
+      isMountedRef.current = false;
+      // Incrémenter la version pour ignorer les anciennes requêtes
+      fetchDataVersionRef.current += 1;
     };
-  }, [id]);
+  }, []);
 
-  const fetchData = async () => {
+  // Mémoriser fetchData avec useCallback pour éviter les race conditions
+  const fetchData = useCallback(async () => {
+    if (!id || !isMountedRef.current) return;
+
+    // Incrémenter la version pour cette requête
+    const currentVersion = ++fetchDataVersionRef.current;
+    
     try {
       // 1. Tournoi
-      const { data: tData } = await supabase.from('tournaments').select('*').eq('id', id).single();
-      setTournoi(tData);
+      const { data: tData, error: tError } = await supabase.from('tournaments').select('*').eq('id', id).single();
+      if (currentVersion !== fetchDataVersionRef.current || !isMountedRef.current) return;
+      if (tError) {
+        console.error('Erreur chargement tournoi:', tError);
+        if (isMountedRef.current) setLoading(false);
+        return;
+      }
+      if (isMountedRef.current) setTournoi(tData);
 
       // 2. Participants (avec Teams)
-      const { data: pData } = await supabase
+      const { data: pData, error: pError } = await supabase
         .from('participants')
         .select('*, teams(*)')
         .eq('tournament_id', id)
         .order('seed_order', { ascending: true, nullsLast: true });
-      setParticipants(pData || []);
+      
+      if (currentVersion !== fetchDataVersionRef.current || !isMountedRef.current) return;
+      if (pError) {
+        console.error('Erreur chargement participants:', pError);
+        if (isMountedRef.current) setParticipants([]);
+      } else {
+        if (isMountedRef.current) setParticipants(pData || []);
+      }
 
       // 3. Matchs
-      const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
+      const { data: mData, error: mError } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
+      if (currentVersion !== fetchDataVersionRef.current || !isMountedRef.current) return;
 
-      if (mData && mData.length > 0 && pData) {
+      if (mError) {
+        console.error('Erreur chargement matchs:', mError);
+        if (isMountedRef.current) setMatches([]);
+      } else if (mData && mData.length > 0 && pData) {
         // Enrichissement des matchs avec les noms et logos
         const participantsMap = new Map(pData.map(p => [p.team_id, p]));
         
@@ -144,41 +143,125 @@ export default function Tournament({ session }) {
           };
         });
         
-        setMatches(enrichedMatches);
+        if (isMountedRef.current) setMatches(enrichedMatches);
         
         // Charger les scores suisses si format suisse
-        if (tData?.format === 'swiss') {
-          const scores = await getSwissScores(supabase, id);
-          setSwissScores(scores);
+        if (tData?.format === 'swiss' && isMountedRef.current) {
+          try {
+            const scores = await getSwissScores(supabase, id);
+            if (currentVersion !== fetchDataVersionRef.current || !isMountedRef.current) return;
+            if (isMountedRef.current) setSwissScores(scores);
+          } catch (error) {
+            console.error('Erreur chargement scores suisses:', error);
+            if (isMountedRef.current) setSwissScores([]);
+          }
         } else {
-          setSwissScores([]);
+          if (isMountedRef.current) setSwissScores([]);
         }
         
         // Détection vainqueur final
-        const lastMatch = enrichedMatches.find(m => !m.bracket_type && !m.is_reset && m.status === 'completed' && enrichedMatches.every(om => om.round_number <= m.round_number));
-        // Note: La détection du vainqueur est gérée plus finement par le confetti trigger, mais ceci sert à l'affichage header
-        if (tData.status === 'completed' && lastMatch) {
+        if (currentVersion === fetchDataVersionRef.current && isMountedRef.current && tData.status === 'completed') {
+          const lastMatch = enrichedMatches.find(m => !m.bracket_type && !m.is_reset && m.status === 'completed' && enrichedMatches.every(om => om.round_number <= m.round_number));
+          if (lastMatch && isMountedRef.current) {
             const winner = lastMatch.score_p1 > lastMatch.score_p2 ? lastMatch.p1_name : lastMatch.p2_name;
             setWinnerName(winner);
+          }
         }
       } else {
-        // Si pas de matchs, initialiser quand même les matches vides
-        setMatches([]);
+        if (isMountedRef.current) setMatches([]);
       }
       
-      // Charger la liste d'attente (toujours, même sans matchs)
-      const { data: waitlistData } = await supabase
-        .from('waitlist')
-        .select('*, teams(*)')
-        .eq('tournament_id', id)
-        .order('position', { ascending: true });
-      setWaitlist(waitlistData || []);
+      // Charger la liste d'attente
+      if (currentVersion === fetchDataVersionRef.current && isMountedRef.current) {
+        try {
+          const { data: waitlistData, error: wError } = await supabase
+            .from('waitlist')
+            .select('*, teams(*)')
+            .eq('tournament_id', id)
+            .order('created_at', { ascending: true });
+          
+          if (currentVersion !== fetchDataVersionRef.current || !isMountedRef.current) return;
+          
+          if (wError) {
+            console.error('Erreur chargement waitlist:', wError);
+            if (isMountedRef.current) setWaitlist([]);
+          } else {
+            if (isMountedRef.current) setWaitlist(waitlistData || []);
+          }
+        } catch (error) {
+          console.error('Exception lors du chargement de la waitlist:', error);
+          if (isMountedRef.current) setWaitlist([]);
+        }
+      }
+      
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     } catch (error) {
-      console.error("Erreur fetchData:", error);
-    } finally {
-      setLoading(false);
+      if (currentVersion === fetchDataVersionRef.current && isMountedRef.current) {
+        console.error('Erreur lors du chargement des données:', error);
+        setLoading(false);
+      }
     }
-  };
+  }, [id, supabase]);
+
+  useEffect(() => {
+    if (!id) return;
+    
+    isMountedRef.current = true;
+    fetchData();
+
+    // Abonnement aux changements Supabase
+    const channel = supabase.channel(`tournament-updates-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, (payload) => {
+        if (isMountedRef.current) {
+          console.log('Changement Swiss Score détecté !', payload);
+          fetchData();
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist', filter: `tournament_id=eq.${id}` }, () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
+      .subscribe();
+
+    // Écouteur pour forcer la mise à jour depuis le MatchLobby (Custom Event)
+    const handleMatchUpdate = (event) => {
+      if (event.detail.tournamentId === id && isMountedRef.current) {
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            fetchData();
+          }
+        }, 300);
+      }
+    };
+    
+    window.addEventListener('tournament-match-updated', handleMatchUpdate);
+
+    return () => {
+      isMountedRef.current = false;
+      supabase.removeChannel(channel);
+      window.removeEventListener('tournament-match-updated', handleMatchUpdate);
+      // Incrémenter la version pour ignorer les requêtes en cours
+      fetchDataVersionRef.current += 1;
+    };
+  }, [id, fetchData, supabase]);
 
   // ==============================================================================
   // 2. LOGIQUE DE GÉNÉRATION (ARBRE & MATCHS)

@@ -146,10 +146,12 @@ function App() {
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [loading, setLoading] = useState(true) // État de chargement pour la vérification initiale
+  const [redirectTo, setRedirectTo] = useState(null); // État pour déclencher une redirection
   const monitoringInitialized = useRef(false);
   const authStateChangeHandled = useRef(false); // Protection contre les boucles
   const redirecting = useRef(false); // Protection contre les redirections multiples
   const lastAuthEvent = useRef(null); // Protection contre les événements en double
+  const timeoutIdsRef = useRef([]); // Pour nettoyer les timeouts
 
   // Fonction pour mettre à jour le rôle utilisateur
   const updateUserRole = async (user) => {
@@ -196,21 +198,30 @@ function App() {
     const checkInitialSession = async () => {
       console.log('🔍 [App] Début de la vérification de la session...');
       
+      let timeoutId;
+      const isCancelledRef = { current: false };
+      
       // Timeout de sécurité : si ça prend plus de 5 secondes, on arrête le loading
-      const timeoutId = setTimeout(() => {
-        console.warn('⚠️ [App] Timeout lors de la vérification de la session - arrêt du loading');
-        setLoading(false);
+      timeoutId = setTimeout(() => {
+        if (!isCancelledRef.current) {
+          console.warn('⚠️ [App] Timeout lors de la vérification de la session - arrêt du loading');
+          setLoading(false);
+        }
       }, 5000);
+      timeoutIdsRef.current.push(timeoutId);
 
       try {
         console.log('🔍 [App] Appel à supabase.auth.getSession()...');
         const { data: { session }, error } = await supabase.auth.getSession();
         console.log('🔍 [App] Session récupérée:', session ? `User: ${session.user?.email}` : 'Aucune session');
         
+        if (isCancelledRef.current) return;
+        
         if (error) {
           console.error('❌ [App] Erreur lors de la vérification de la session:', error);
           setSession(null);
           setUserRole(null);
+          isCancelledRef.current = true;
           clearTimeout(timeoutId);
           setLoading(false);
           console.log('✅ [App] Loading mis à false (erreur)');
@@ -231,13 +242,18 @@ function App() {
           setUserRole(null);
         }
       } catch (error) {
-        console.error('❌ [App] Erreur lors de la vérification initiale:', error);
-        setSession(null);
-        setUserRole(null);
+        if (!isCancelledRef.current) {
+          console.error('❌ [App] Erreur lors de la vérification initiale:', error);
+          setSession(null);
+          setUserRole(null);
+        }
       } finally {
-        clearTimeout(timeoutId);
-        setLoading(false);
-        console.log('✅ [App] Loading mis à false (finally)');
+        if (!isCancelledRef.current) {
+          isCancelledRef.current = true;
+          clearTimeout(timeoutId);
+          setLoading(false);
+          console.log('✅ [App] Loading mis à false (finally)');
+        }
       }
     };
 
@@ -270,32 +286,37 @@ function App() {
           console.log('✅ [App] SIGNED_IN détecté, mise à jour de la session...');
           setSession(session);
           
-          // Mettre à jour le rôle de manière non-bloquante
-          updateUserRole(session.user).catch(err => {
-            console.error('❌ [App] Erreur updateUserRole (non-bloquant):', err);
-          });
-          
           // Rediriger vers le dashboard approprié si on est sur /auth ou /
           const currentPath = window.location.pathname;
           if ((currentPath === '/auth' || currentPath === '/') && !redirecting.current) {
             redirecting.current = true;
-            // Attendre un peu pour que le rôle soit mis à jour
-            setTimeout(async () => {
-              try {
-                const role = await getUserRole(supabase, session.user.id);
+            
+            // Mettre à jour le rôle et rediriger en même temps
+            updateUserRole(session.user)
+              .then(() => {
+                // Récupérer le rôle après mise à jour
+                return getUserRole(supabase, session.user.id);
+              })
+              .then((role) => {
                 const targetRoute = role === 'organizer' 
                   ? '/organizer/dashboard' 
                   : '/player/dashboard';
                 console.log(`🔄 [App] Redirection vers ${targetRoute}`);
-                // Utiliser window.location pour forcer une navigation complète
-                window.location.href = targetRoute;
-              } catch (err) {
-                console.error('❌ [App] Erreur lors de la redirection:', err);
-                redirecting.current = false; // Réinitialiser en cas d'erreur
-                // En cas d'erreur, rediriger vers player par défaut
-                window.location.href = '/player/dashboard';
-              }
-            }, 100);
+                // Utiliser un state pour déclencher la redirection via navigate()
+                setRedirectTo(targetRoute);
+              })
+              .catch((err) => {
+                console.error('❌ [App] Erreur lors de la récupération du rôle:', err);
+                // En cas d'erreur, rediriger vers player par défaut après un court délai
+                setTimeout(() => {
+                  setRedirectTo('/player/dashboard');
+                }, 200);
+              });
+          } else {
+            // Si on n'est pas sur /auth ou /, juste mettre à jour le rôle sans rediriger
+            updateUserRole(session.user).catch(err => {
+              console.error('❌ [App] Erreur updateUserRole (non-bloquant):', err);
+            });
           }
           
           analytics.trackEvent('user_logged_in');
@@ -319,10 +340,12 @@ function App() {
             !redirecting.current) {
           redirecting.current = true;
           console.log('🔄 [App] Redirection vers / après SIGNED_OUT');
-          // Utiliser setTimeout pour éviter les conflits avec React
-          setTimeout(() => {
+          // Pour SIGNED_OUT, on utilise window.location.href car on veut forcer un rechargement complet
+          // Cela nettoie tous les états et évite les fuites mémoire
+          const timeoutId = setTimeout(() => {
             window.location.href = '/';
           }, 100);
+          timeoutIdsRef.current.push(timeoutId);
         }
         
         analytics.trackEvent('user_logged_out');
@@ -359,6 +382,9 @@ function App() {
 
     return () => {
       subscription.unsubscribe();
+      // Nettoyer tous les timeouts en attente
+      timeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+      timeoutIdsRef.current = [];
     };
   }, [])
 
@@ -371,11 +397,46 @@ function App() {
     );
   }
 
-  return (
-    <ErrorBoundary>
-      <Router>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
+  // Composant interne pour gérer la redirection avec navigate()
+  const AppRoutes = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const hasNavigatedRef = useRef(false);
+
+    // Gérer la redirection déclenchée par l'état redirectTo
+    useEffect(() => {
+      if (redirectTo && !hasNavigatedRef.current) {
+        const targetPath = redirectTo;
+        
+        // Éviter les redirections inutiles si on est déjà sur la route cible
+        if (location.pathname !== targetPath) {
+          console.log(`🔄 [AppRoutes] Navigation vers ${targetPath}`);
+          hasNavigatedRef.current = true;
+          setRedirectTo(null);
+          
+          // Utiliser un petit délai pour éviter les conflits avec React et permettre au state de se mettre à jour
+          const timeoutId = setTimeout(() => {
+            navigate(targetPath, { replace: true });
+            // Réinitialiser après un court délai pour éviter les re-navigations
+            setTimeout(() => {
+              redirecting.current = false;
+              hasNavigatedRef.current = false;
+            }, 300);
+          }, 150);
+          
+          return () => clearTimeout(timeoutId);
+        } else {
+          // Si on est déjà sur la route, juste nettoyer
+          setRedirectTo(null);
+          redirecting.current = false;
+          hasNavigatedRef.current = false;
+        }
+      }
+    }, [redirectTo, navigate, location.pathname]);
+
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
         
@@ -503,8 +564,15 @@ function App() {
             <Navigate to="/" replace />
           )
         } />
-          </Routes>
-        </Suspense>
+        </Routes>
+      </Suspense>
+    );
+  };
+
+  return (
+    <ErrorBoundary>
+      <Router>
+        <AppRoutes />
       </Router>
     </ErrorBoundary>
   )

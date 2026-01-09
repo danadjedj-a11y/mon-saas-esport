@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { getSwissScores } from './swissUtils';
@@ -13,6 +13,9 @@ import DashboardLayout from './layouts/DashboardLayout';
 export default function PublicTournament() {
   const { id } = useParams();
   const navigate = useNavigate();
+  // Note: session n'est plus nécessaire ici car c'est une vue publique
+  // Si on a besoin de la session pour certaines fonctionnalités (comme rejoindre), 
+  // on devrait la passer en prop depuis App.jsx ou utiliser un Context
   const [session, setSession] = useState(null);
   
   const [tournoi, setTournoi] = useState(null);
@@ -22,105 +25,197 @@ export default function PublicTournament() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'bracket', 'results', 'comments'
   const [swissScores, setSwissScores] = useState([]);
+  const isMountedRef = useRef(true);
+  const fetchDataRef = useRef(null); // Pour éviter les race conditions
+
+  // Mémoriser fetchData avec useCallback pour éviter les race conditions
+  const fetchData = useCallback(async () => {
+    if (!id || !isMountedRef.current) return;
+
+    // Annuler la requête précédente si elle est en cours
+    if (fetchDataRef.current) {
+      fetchDataRef.current.abort();
+    }
+
+    const abortController = new AbortController();
+    fetchDataRef.current = abortController;
+
+    try {
+      // 1. Charger le tournoi
+      const { data: tData, error: tError } = await supabase.from('tournaments').select('*').eq('id', id).single();
+      if (abortController.signal.aborted || !isMountedRef.current) return;
+      if (tError) {
+        console.error('Erreur chargement tournoi:', tError);
+        if (isMountedRef.current) setLoading(false);
+        return;
+      }
+      if (isMountedRef.current) setTournoi(tData);
+
+      // 2. Charger les participants
+      const { data: pData, error: pError } = await supabase
+        .from('participants')
+        .select('*, teams(*)')
+        .eq('tournament_id', id)
+        .order('seed_order', { ascending: true, nullsLast: true });
+      
+      if (abortController.signal.aborted || !isMountedRef.current) return;
+      if (pError) {
+        console.error('Erreur chargement participants:', pError);
+        if (isMountedRef.current) setParticipants([]);
+      } else {
+        if (isMountedRef.current) setParticipants(pData || []);
+      }
+
+      // 3. Charger les matchs
+      const { data: mData, error: mError } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
+      
+      if (abortController.signal.aborted || !isMountedRef.current) return;
+
+      if (mError) {
+        console.error('Erreur chargement matchs:', mError);
+        if (isMountedRef.current) setMatches([]);
+      } else if (mData && mData.length > 0 && pData) {
+        const enrichedMatches = mData.map(match => {
+          const p1 = pData.find(p => p.team_id === match.player1_id);
+          const p2 = pData.find(p => p.team_id === match.player2_id);
+          
+          const getTeamName = (p) => p ? `${p.teams.name} [${p.teams.tag}]` : 'En attente';
+          const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
+
+          return {
+            ...match,
+            p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
+            p1_avatar: getTeamLogo(p1),
+            p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
+            p2_avatar: getTeamLogo(p2),
+          };
+        });
+        if (isMountedRef.current) setMatches(enrichedMatches);
+
+        // 4. Charger les manches pour les matchs Best-of-X
+        if (tData?.best_of > 1) {
+          try {
+            const matchIds = enrichedMatches.map(m => m.id);
+            const { data: gamesData, error: gamesError } = await supabase
+              .from('match_games')
+              .select('*')
+              .in('match_id', matchIds)
+              .order('match_id', { ascending: true })
+              .order('game_number', { ascending: true });
+            
+            if (abortController.signal.aborted || !isMountedRef.current) return;
+            
+            if (gamesError) {
+              console.warn('Erreur récupération manches:', gamesError);
+              if (isMountedRef.current) setMatchGames([]);
+            } else {
+              if (isMountedRef.current) setMatchGames(gamesData || []);
+            }
+          } catch (error) {
+            if (!abortController.signal.aborted && isMountedRef.current) {
+              console.warn('Erreur récupération manches:', error);
+              setMatchGames([]);
+            }
+          }
+        } else {
+          if (isMountedRef.current) setMatchGames([]);
+        }
+      } else {
+        if (isMountedRef.current) setMatches([]);
+      }
+      
+      // Charger les scores suisses si format suisse
+      if (tData?.format === 'swiss') {
+        try {
+          const scores = await getSwissScores(supabase, id);
+          if (abortController.signal.aborted || !isMountedRef.current) return;
+          if (isMountedRef.current) setSwissScores(scores);
+        } catch (error) {
+          if (!abortController.signal.aborted && isMountedRef.current) {
+            console.error('Erreur chargement scores suisses:', error);
+            setSwissScores([]);
+          }
+        }
+      } else {
+        if (isMountedRef.current) setSwissScores([]);
+      }
+      
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    } catch (error) {
+      if (!abortController.signal.aborted && isMountedRef.current) {
+        console.error('Erreur lors du chargement des données:', error);
+        setLoading(false);
+      }
+    } finally {
+      if (fetchDataRef.current === abortController) {
+        fetchDataRef.current = null;
+      }
+    }
+  }, [id, supabase]);
 
   useEffect(() => {
-    // Vérifier la session utilisateur
+    isMountedRef.current = true;
+
+    // Optionnel : récupérer la session uniquement si nécessaire pour certaines fonctionnalités
+    // On laisse cela mais sans créer de double listener
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+      if (isMountedRef.current) {
+        setSession(session);
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    // Note: On ne crée PLUS de listener onAuthStateChange ici
+    // App.jsx gère déjà tout. Si on a besoin de la session, elle devrait venir via props/Context
 
     fetchData();
 
     // Abonnement temps réel pour les mises à jour publiques
-    const channel = supabase.channel('public-tournament-updates')
+    const channel = supabase.channel(`public-tournament-updates-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, 
-      () => fetchData())
+      () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, 
-      () => fetchData())
+      () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, 
-      () => fetchData())
+      () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, 
-      () => fetchData())
+      () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games' }, 
-      () => fetchData())
+      () => {
+        if (isMountedRef.current) {
+          fetchData();
+        }
+      })
       .subscribe();
 
     return () => {
+      isMountedRef.current = false;
       supabase.removeChannel(channel);
-      subscription.unsubscribe();
-    };
-  }, [id]);
-
-  const fetchData = async () => {
-    // 1. Charger le tournoi
-    const { data: tData } = await supabase.from('tournaments').select('*').eq('id', id).single();
-    setTournoi(tData);
-
-    // 2. Charger les participants
-    const { data: pData } = await supabase
-      .from('participants')
-      .select('*, teams(*)')
-      .eq('tournament_id', id)
-      .order('seed_order', { ascending: true, nullsLast: true });
-    
-    setParticipants(pData || []);
-
-    // 3. Charger les matchs
-    const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
-
-    if (mData && mData.length > 0 && pData) {
-      const enrichedMatches = mData.map(match => {
-        const p1 = pData.find(p => p.team_id === match.player1_id);
-        const p2 = pData.find(p => p.team_id === match.player2_id);
-        
-        const getTeamName = (p) => p ? `${p.teams.name} [${p.teams.tag}]` : 'En attente';
-        const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
-
-        return {
-          ...match,
-          p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
-          p1_avatar: getTeamLogo(p1),
-          p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
-          p2_avatar: getTeamLogo(p2),
-        };
-      });
-      setMatches(enrichedMatches);
-
-      // 4. Charger les manches pour les matchs Best-of-X
-      if (tData?.best_of > 1) {
-        try {
-          const matchIds = enrichedMatches.map(m => m.id);
-          const { data: gamesData } = await supabase
-            .from('match_games')
-            .select('*')
-            .in('match_id', matchIds)
-            .order('match_id', { ascending: true })
-            .order('game_number', { ascending: true });
-          
-          setMatchGames(gamesData || []);
-        } catch (error) {
-          console.warn('Erreur récupération manches:', error);
-          setMatchGames([]);
-        }
-      } else {
-        setMatchGames([]);
+      // Annuler toute requête en cours
+      if (fetchDataRef.current) {
+        fetchDataRef.current.abort();
+        fetchDataRef.current = null;
       }
-    }
-    
-    // Charger les scores suisses si format suisse
-    if (tData?.format === 'swiss') {
-      const scores = await getSwissScores(supabase, id);
-      setSwissScores(scores);
-    } else {
-      setSwissScores([]);
-    }
-    
-    setLoading(false);
-  };
+    };
+  }, [id, fetchData, supabase]);
+
 
   // Fonction helper pour obtenir le score Best-of-X d'un match en temps réel
   const getMatchBestOfScore = (match) => {

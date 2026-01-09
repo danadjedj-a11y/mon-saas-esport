@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from './utils/toast';
 
 export default function Chat({ tournamentId, matchId, session, supabase }) {
@@ -9,18 +9,72 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
   const lastMessageTimeRef = useRef(0);
   const messageCountRef = useRef(0);
   const rateLimitResetRef = useRef(Date.now());
+  const isMountedRef = useRef(true);
 
-  const MAX_MESSAGE_LENGTH = 500; // Limite de 500 caractères
-  const RATE_LIMIT_MESSAGES = 5; // 5 messages maximum
-  const RATE_LIMIT_WINDOW = 10000; // Par fenêtre de 10 secondes
-  const MIN_TIME_BETWEEN_MESSAGES = 1000; // 1 seconde minimum entre chaque message
+  const MAX_MESSAGE_LENGTH = 500;
+  const RATE_LIMIT_MESSAGES = 5;
+  const RATE_LIMIT_WINDOW = 10000;
+  const MIN_TIME_BETWEEN_MESSAGES = 1000;
 
   const isMatchChat = !!matchId;
   const channelContext = isMatchChat ? `match-${matchId}` : `tournament-${tournamentId}`;
 
+  // Cleanup au démontage
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Mémoriser scrollToBottom
+  const scrollToBottom = useCallback(() => {
+    const container = messagesEndRef.current?.parentElement;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
+
+  // Mémoriser fetchMessages avec toutes les dépendances
+  const fetchMessages = useCallback(async () => {
+    if (!tournamentId && !matchId) return;
+
+    try {
+      let query = supabase
+        .from('messages')
+        .select('*, profiles(username, avatar_url)')
+        .order('created_at', { ascending: true });
+
+      if (isMatchChat) {
+        query = query.eq('match_id', matchId);
+      } else {
+        query = query.eq('tournament_id', tournamentId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Erreur chargement chat:", error);
+        toast.error("Erreur lors du chargement des messages");
+        // Garder les messages précédents en cas d'erreur
+        return;
+      }
+
+      if (isMountedRef.current) {
+        setMessages(data || []);
+      }
+    } catch (err) {
+      console.error("Exception lors du chargement des messages:", err);
+      if (isMountedRef.current) {
+        toast.error("Erreur lors du chargement des messages");
+      }
+    }
+  }, [tournamentId, matchId, isMatchChat, supabase]);
+
+  // Effect pour charger les messages et s'abonner aux changements
   useEffect(() => {
     if (!tournamentId && !matchId) return;
 
+    isMountedRef.current = true;
     fetchMessages();
 
     const channel = supabase.channel(`chat-${channelContext}`)
@@ -30,55 +84,33 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
         table: 'messages',
         filter: isMatchChat ? `match_id=eq.${matchId}` : `tournament_id=eq.${tournamentId}`
       }, 
-      (payload) => {
-        fetchMessages(); 
+      () => {
+        if (isMountedRef.current) {
+          fetchMessages(); 
+        }
       })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
-  }, [tournamentId, matchId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tournamentId, matchId, channelContext, isMatchChat, supabase, fetchMessages]);
 
+  // Effect pour le scroll automatique
   useEffect(() => {
-    // Scroll uniquement si on est déjà proche du bas (pour ne pas déranger l'utilisateur s'il scroll en haut)
     const container = messagesEndRef.current?.parentElement;
-    if (container) {
+    if (container && isMountedRef.current) {
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
       if (isNearBottom) {
-        // Petit délai pour laisser le DOM se mettre à jour
-        setTimeout(() => {
-          scrollToBottom();
+        const timeoutId = setTimeout(() => {
+          if (isMountedRef.current) {
+            scrollToBottom();
+          }
         }, 50);
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    const container = messagesEndRef.current?.parentElement;
-    if (container) {
-      // Utiliser scrollTop directement au lieu de scrollIntoView pour éviter les scrolls continus
-      container.scrollTop = container.scrollHeight;
-    }
-  };
-
-  const fetchMessages = async () => {
-    let query = supabase
-      .from('messages')
-      .select('*, profiles(username, avatar_url)')
-      .order('created_at', { ascending: true });
-
-    if (isMatchChat) {
-      query = query.eq('match_id', matchId);
-    } else {
-      query = query.eq('tournament_id', tournamentId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Erreur chargement chat:", error);
-    }
-    else setMessages(data || []);
-  };
+  }, [messages, scrollToBottom]);
 
   const sendMessage = async (e) => {
     e.preventDefault();
