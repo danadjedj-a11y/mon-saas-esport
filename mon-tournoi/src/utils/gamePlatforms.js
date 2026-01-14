@@ -119,7 +119,11 @@ export function platformRequiresTag(platform) {
 export function formatGamertag(username, tag, platform) {
   if (!username) return '';
   
-  if (platformRequiresTag(platform) && tag) {
+  if (platformRequiresTag(platform)) {
+    if (!tag) {
+      // Platform requires tag but none provided - show warning
+      return `${username} (⚠️ Tag requis)`;
+    }
     return `${username}#${tag}`;
   }
   

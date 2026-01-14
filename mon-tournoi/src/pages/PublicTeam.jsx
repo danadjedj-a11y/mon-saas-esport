@@ -97,7 +97,7 @@ export default function PublicTeam({ session }) {
   };
 
   const loadStats = async (tId) => {
-    // Get all completed matches
+    // Get all completed matches - use or() with proper filters
     const { data: matches } = await supabase
       .from('matches')
       .select('*')

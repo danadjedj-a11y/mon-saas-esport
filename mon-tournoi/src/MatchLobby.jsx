@@ -998,32 +998,31 @@ export default function MatchLobby({ session }) {
                   />
                     <h3 style={{marginTop:'10px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2'}}>{match.team1?.name}</h3>
                   {/* Display gaming account */}
-                  {match.team1?.captain_id && team1GamingAccounts[match.team1.captain_id] && tournamentGame && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      marginTop: '8px',
-                      fontSize: '0.85rem',
-                      color: '#666',
-                      fontStyle: 'italic',
-                      fontFamily: "'Protest Riot', sans-serif"
-                    }}>
-                      <img 
-                        src={PLATFORM_LOGOS[team1GamingAccounts[match.team1.captain_id].platform]} 
-                        alt=""
-                        style={{ width: '16px', height: '16px' }}
-                      />
-                      <span>
-                        {formatGamertag(
-                          team1GamingAccounts[match.team1.captain_id].game_username,
-                          team1GamingAccounts[match.team1.captain_id].game_tag,
-                          team1GamingAccounts[match.team1.captain_id].platform
-                        )}
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const team1Account = match.team1?.captain_id ? team1GamingAccounts[match.team1.captain_id] : null;
+                    return team1Account && tournamentGame ? (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        marginTop: '8px',
+                        fontSize: '0.85rem',
+                        color: '#666',
+                        fontStyle: 'italic',
+                        fontFamily: "'Protest Riot', sans-serif"
+                      }}>
+                        <img 
+                          src={PLATFORM_LOGOS[team1Account.platform]} 
+                          alt=""
+                          style={{ width: '16px', height: '16px' }}
+                        />
+                        <span>
+                          {formatGamertag(team1Account.game_username, team1Account.game_tag, team1Account.platform)}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                   {isTeam1 && <span style={{fontSize:'0.8rem', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>👤 Mon équipe</span>}
                   {reportedByMe && isTeam1 && (
                     <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#C10468', fontFamily: "'Protest Riot', sans-serif"}}>✅ Score déclaré</div>
@@ -1056,32 +1055,31 @@ export default function MatchLobby({ session }) {
                   />
                     <h3 style={{marginTop:'10px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2'}}>{match.team2?.name}</h3>
                   {/* Display gaming account */}
-                  {match.team2?.captain_id && team2GamingAccounts[match.team2.captain_id] && tournamentGame && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      marginTop: '8px',
-                      fontSize: '0.85rem',
-                      color: '#666',
-                      fontStyle: 'italic',
-                      fontFamily: "'Protest Riot', sans-serif"
-                    }}>
-                      <img 
-                        src={PLATFORM_LOGOS[team2GamingAccounts[match.team2.captain_id].platform]} 
-                        alt=""
-                        style={{ width: '16px', height: '16px' }}
-                      />
-                      <span>
-                        {formatGamertag(
-                          team2GamingAccounts[match.team2.captain_id].game_username,
-                          team2GamingAccounts[match.team2.captain_id].game_tag,
-                          team2GamingAccounts[match.team2.captain_id].platform
-                        )}
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const team2Account = match.team2?.captain_id ? team2GamingAccounts[match.team2.captain_id] : null;
+                    return team2Account && tournamentGame ? (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        marginTop: '8px',
+                        fontSize: '0.85rem',
+                        color: '#666',
+                        fontStyle: 'italic',
+                        fontFamily: "'Protest Riot', sans-serif"
+                      }}>
+                        <img 
+                          src={PLATFORM_LOGOS[team2Account.platform]} 
+                          alt=""
+                          style={{ width: '16px', height: '16px' }}
+                        />
+                        <span>
+                          {formatGamertag(team2Account.game_username, team2Account.game_tag, team2Account.platform)}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                   {!isTeam1 && myTeamId && <span style={{fontSize:'0.8rem', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>👤 Mon équipe</span>}
                   {reportedByMe && !isTeam1 && (
                     <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#C10468', fontFamily: "'Protest Riot', sans-serif"}}>✅ Score déclaré</div>

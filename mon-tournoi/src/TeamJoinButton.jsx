@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import { handleRateLimitError } from './utils/rateLimitHandler';
 import { getPlatformForGame, getRequiredPlatformName } from './utils/gamePlatforms';
 import { checkUserHasPlatformAccount } from './shared/services/api/gamingAccounts';
 
 export default function TeamJoinButton({ tournamentId, supabase, session, onJoinSuccess, tournament }) {
+  const navigate = useNavigate();
   const [myTeams, setMyTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -194,7 +196,7 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
               description: `Pour rejoindre ce tournoi ${game}, vous devez lier votre compte ${platformName}. Allez dans votre profil > Comptes Gaming pour l'ajouter.`,
               action: {
                 label: '👤 Aller au profil',
-                onClick: () => window.location.href = '/profile',
+                onClick: () => navigate('/profile'),
               },
             }
           );

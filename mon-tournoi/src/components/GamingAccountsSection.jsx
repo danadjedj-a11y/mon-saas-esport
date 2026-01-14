@@ -99,6 +99,8 @@ export default function GamingAccountsSection({ session }) {
       // Check for unique constraint violation
       if (error.code === '23505') {
         toast.error('Un compte existe déjà pour cette plateforme');
+      } else if (error.message) {
+        toast.error(`Erreur: ${error.message}`);
       } else {
         toast.error('Erreur lors de la sauvegarde');
       }

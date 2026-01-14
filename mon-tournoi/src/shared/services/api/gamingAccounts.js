@@ -41,7 +41,7 @@ export async function addGamingAccount(userId, platform, username, tag = null) {
       .insert([
         {
           user_id: userId,
-          platform: platform,
+          platform,
           game_username: username.trim(),
           game_tag: tag ? tag.trim() : null,
           verified: false,
