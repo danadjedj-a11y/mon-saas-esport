@@ -8,6 +8,8 @@ import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { useMatch } from './shared/hooks';
 import { supabase } from './supabaseClient';
+import { getPlatformForGame, formatGamertag, PLATFORM_LOGOS } from './utils/gamePlatforms';
+import { getUserGamingAccounts } from './shared/services/api/gamingAccounts';
 
 export default function MatchLobby({ session }) {
   const { id } = useParams();
@@ -53,6 +55,11 @@ export default function MatchLobby({ session }) {
   
   // États pour la déclaration de score par manche
   const [gameScores, setGameScores] = useState({}); // { gameNumber: { team1Score, team2Score } }
+  
+  // États pour les comptes gaming
+  const [team1GamingAccounts, setTeam1GamingAccounts] = useState({});
+  const [team2GamingAccounts, setTeam2GamingAccounts] = useState({});
+  const [tournamentGame, setTournamentGame] = useState(null);
 
   // Utiliser le match du hook, formaté pour compatibilité avec le code existant
   const match = useMemo(() => {
@@ -180,6 +187,49 @@ export default function MatchLobby({ session }) {
 
     // Charger la preuve
     if (match?.proof_url) setProofUrl(match.proof_url);
+    
+    // Charger les comptes gaming
+    const loadGamingAccounts = async () => {
+      if (!tournament?.game) return;
+      
+      setTournamentGame(tournament.game);
+      const requiredPlatform = getPlatformForGame(tournament.game);
+      if (!requiredPlatform) return;
+      
+      // Load team 1 captain gaming account
+      if (match.team1?.captain_id) {
+        try {
+          const accounts = await getUserGamingAccounts(match.team1.captain_id);
+          const account = accounts.find(acc => acc.platform === requiredPlatform);
+          if (account) {
+            setTeam1GamingAccounts(prev => ({
+              ...prev,
+              [match.team1.captain_id]: account
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading team1 captain gaming account:', error);
+        }
+      }
+      
+      // Load team 2 captain gaming account
+      if (match.team2?.captain_id) {
+        try {
+          const accounts = await getUserGamingAccounts(match.team2.captain_id);
+          const account = accounts.find(acc => acc.platform === requiredPlatform);
+          if (account) {
+            setTeam2GamingAccounts(prev => ({
+              ...prev,
+              [match.team2.captain_id]: account
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading team2 captain gaming account:', error);
+        }
+      }
+    };
+    
+    loadGamingAccounts();
   }, [rawMatch, match, session, myTeamId, loadMatchGamesAndVetos]);
 
   // Charger les rapports de score (défini avant son utilisation)
@@ -947,6 +997,33 @@ export default function MatchLobby({ session }) {
                     alt=""
                   />
                     <h3 style={{marginTop:'10px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2'}}>{match.team1?.name}</h3>
+                  {/* Display gaming account */}
+                  {match.team1?.captain_id && team1GamingAccounts[match.team1.captain_id] && tournamentGame && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      marginTop: '8px',
+                      fontSize: '0.85rem',
+                      color: '#666',
+                      fontStyle: 'italic',
+                      fontFamily: "'Protest Riot', sans-serif"
+                    }}>
+                      <img 
+                        src={PLATFORM_LOGOS[team1GamingAccounts[match.team1.captain_id].platform]} 
+                        alt=""
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      <span>
+                        {formatGamertag(
+                          team1GamingAccounts[match.team1.captain_id].game_username,
+                          team1GamingAccounts[match.team1.captain_id].game_tag,
+                          team1GamingAccounts[match.team1.captain_id].platform
+                        )}
+                      </span>
+                    </div>
+                  )}
                   {isTeam1 && <span style={{fontSize:'0.8rem', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>👤 Mon équipe</span>}
                   {reportedByMe && isTeam1 && (
                     <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#C10468', fontFamily: "'Protest Riot', sans-serif"}}>✅ Score déclaré</div>
@@ -978,6 +1055,33 @@ export default function MatchLobby({ session }) {
                     alt=""
                   />
                     <h3 style={{marginTop:'10px', fontFamily: "'Shadows Into Light', cursive", color: '#F8F6F2'}}>{match.team2?.name}</h3>
+                  {/* Display gaming account */}
+                  {match.team2?.captain_id && team2GamingAccounts[match.team2.captain_id] && tournamentGame && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      marginTop: '8px',
+                      fontSize: '0.85rem',
+                      color: '#666',
+                      fontStyle: 'italic',
+                      fontFamily: "'Protest Riot', sans-serif"
+                    }}>
+                      <img 
+                        src={PLATFORM_LOGOS[team2GamingAccounts[match.team2.captain_id].platform]} 
+                        alt=""
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      <span>
+                        {formatGamertag(
+                          team2GamingAccounts[match.team2.captain_id].game_username,
+                          team2GamingAccounts[match.team2.captain_id].game_tag,
+                          team2GamingAccounts[match.team2.captain_id].platform
+                        )}
+                      </span>
+                    </div>
+                  )}
                   {!isTeam1 && myTeamId && <span style={{fontSize:'0.8rem', color:'#FF36A3', fontFamily: "'Protest Riot', sans-serif"}}>👤 Mon équipe</span>}
                   {reportedByMe && !isTeam1 && (
                     <div style={{marginTop:'5px', fontSize:'0.75rem', color:'#C10468', fontFamily: "'Protest Riot', sans-serif"}}>✅ Score déclaré</div>
