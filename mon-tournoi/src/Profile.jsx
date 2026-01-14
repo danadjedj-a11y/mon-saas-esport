@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge, Tabs, Avatar, Input } from './shared/components/ui';
 import { toast } from './utils/toast';
 import BadgeDisplay from './components/BadgeDisplay';
+import GamingAccountsSection from './components/GamingAccountsSection';
 import DashboardLayout from './layouts/DashboardLayout';
 
 export default function Profile({ session }) {
@@ -534,6 +535,12 @@ export default function Profile({ session }) {
           </div>
         </Card>
       ),
+    },
+    {
+      id: 'gaming-accounts',
+      label: 'Comptes Gaming',
+      icon: '🎮',
+      content: <GamingAccountsSection session={session} />,
     },
     {
       id: 'settings',
