@@ -14,3 +14,4 @@ export { default as Tabs } from './Tabs';
 export { default as Avatar } from './Avatar';
 export { default as Dropdown, DropdownItem, DropdownDivider, DropdownHeader } from './Dropdown';
 export { default as Pagination } from './Pagination';
+export { default as ImageUploader } from './ImageUploader';

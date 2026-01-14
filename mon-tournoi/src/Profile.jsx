@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Badge, Tabs, Avatar, Input } from './shared/components/ui';
+import { Button, Card, Badge, Tabs, Avatar, Input, ImageUploader } from './shared/components/ui';
 import { toast } from './utils/toast';
 import BadgeDisplay from './components/BadgeDisplay';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -207,16 +207,20 @@ export default function Profile({ session }) {
     }
   }
 
-  async function uploadAvatar(event) {
+  async function uploadAvatar(file) {
     try {
       setUploading(true);
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Sélectionnez une image');
-      }
-
-      const file = event.target.files[0];
+      
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+
+      // Supprimer l'ancien avatar si il existe
+      if (avatarUrl && avatarUrl.includes('supabase')) {
+        const oldFileName = avatarUrl.split('/').pop();
+        await supabase.storage
+          .from('avatars')
+          .remove([oldFileName]);
+      }
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -326,31 +330,11 @@ export default function Profile({ session }) {
             <h3 className="font-display text-2xl text-fluky-secondary mb-4">
               Avatar
             </h3>
-            <div className="flex items-center gap-6">
-              <Avatar
-                src={avatarUrl}
-                name={username || session.user.email}
-                size="2xl"
-              />
-              <div className="flex-1">
-                <p className="text-sm text-fluky-text/70 font-body mb-3">
-                  Téléchargez une image pour personnaliser votre profil
-                </p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={uploadAvatar}
-                  disabled={uploading}
-                  id="avatar-upload"
-                  className="hidden"
-                />
-                <label htmlFor="avatar-upload">
-                  <Button variant="outline" size="sm" disabled={uploading} as="span">
-                    {uploading ? 'Upload...' : '📷 Changer Avatar'}
-                  </Button>
-                </label>
-              </div>
-            </div>
+            <ImageUploader
+              onUpload={uploadAvatar}
+              currentImage={avatarUrl}
+              loading={uploading}
+            />
           </Card>
         </div>
       ),
