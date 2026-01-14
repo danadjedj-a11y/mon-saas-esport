@@ -233,3 +233,21 @@ export async function notifyTournamentUpdate(tournamentId, tournamentName, messa
   );
 }
 
+/**
+ * Notification : Invitation à rejoindre une équipe
+ * @param {string} invitedUserId - ID de l'utilisateur invité
+ * @param {string} teamId - ID de l'équipe
+ * @param {string} teamName - Nom de l'équipe
+ * @param {string} invitedByUsername - Pseudo de l'utilisateur qui invite
+ */
+export async function notifyTeamInvitation(invitedUserId, teamId, teamName, invitedByUsername) {
+  await createNotification(
+    invitedUserId,
+    'team_invitation',
+    '👥 Nouvelle invitation d\'équipe',
+    `${invitedByUsername} vous invite à rejoindre l'équipe ${teamName}`,
+    '/player/dashboard',
+    { team_id: teamId }
+  );
+}
+

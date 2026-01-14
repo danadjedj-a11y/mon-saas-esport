@@ -5,6 +5,7 @@ import NotificationCenter from './NotificationCenter';
 import { TournamentCardSkeleton } from './components/Skeleton';
 import { EmptyTournaments } from './components/EmptyState';
 import DashboardLayout from './layouts/DashboardLayout';
+import TeamInvitations from './components/TeamInvitations';
 
 export default function PlayerDashboard({ session }) {
   const [myTournaments, setMyTournaments] = useState([]);
@@ -153,6 +154,14 @@ export default function PlayerDashboard({ session }) {
   return (
     <DashboardLayout session={session}>
       <div className="w-full max-w-7xl mx-auto">
+        {/* INVITATIONS D'ÉQUIPE */}
+        <div className="mb-10">
+          <h2 className="font-display text-2xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+            📬 Invitations d'équipe
+          </h2>
+          <TeamInvitations userId={session?.user?.id} onUpdate={fetchPlayerData} />
+        </div>
+
         {/* MATCHS À VENIR - EN HAUT */}
         {upcomingMatches.length > 0 && (
           <div className="mb-10">

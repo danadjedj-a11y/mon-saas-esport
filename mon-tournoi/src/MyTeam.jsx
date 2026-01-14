@@ -5,6 +5,10 @@ import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './shared/hooks';
 import { useTeam } from './shared/hooks';
 import { supabase } from './supabaseClient';
+import InvitePlayerModal from './components/InvitePlayerModal';
+import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
+import { notifyTeamInvitation } from './notificationUtils';
+import { Card, Badge, Button } from './shared/components/ui';
 
 export default function MyTeam() {
   const navigate = useNavigate();
@@ -15,6 +19,9 @@ export default function MyTeam() {
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
 
   // Utiliser useTeam pour l'équipe sélectionnée
   const {
@@ -86,6 +93,57 @@ export default function MyTeam() {
       setSelectedTeamId(allTeams[0].id);
     }
   }, [allTeams.length, selectedTeamId]);
+
+  // Charger les invitations en attente quand l'équipe change
+  useEffect(() => {
+    if (selectedTeamId) {
+      loadPendingInvitations();
+    }
+  }, [selectedTeamId]);
+
+  const loadPendingInvitations = async () => {
+    try {
+      const invitations = await getPendingInvitations(selectedTeamId);
+      setPendingInvitations(invitations);
+    } catch (error) {
+      console.error('Erreur chargement invitations:', error);
+    }
+  };
+
+  const handleInvitePlayer = async (userId, message) => {
+    try {
+      setInviting(true);
+      
+      // Envoyer l'invitation
+      await sendTeamInvitation(selectedTeamId, userId, message);
+      
+      // Récupérer les infos de l'équipe et de l'utilisateur invitant
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', session.user.id)
+        .single();
+      
+      // Envoyer la notification
+      await notifyTeamInvitation(
+        userId,
+        selectedTeamId,
+        currentTeam.name,
+        profileData?.username || session.user.email
+      );
+      
+      toast.success('✅ Invitation envoyée avec succès !');
+      setShowInviteModal(false);
+      
+      // Recharger les invitations
+      await loadPendingInvitations();
+    } catch (error) {
+      console.error('Erreur envoi invitation:', error);
+      toast.error('Erreur lors de l\'envoi de l\'invitation');
+    } finally {
+      setInviting(false);
+    }
+  };
 
   const handleTeamSwitch = (teamId) => {
     setSelectedTeamId(teamId);
@@ -229,14 +287,51 @@ export default function MyTeam() {
             <span className="text-lg text-fluky-secondary font-bold font-body">[{currentTeam.tag}]</span>
           </div>
 
-          <button 
-            type="button"
-            onClick={copyInviteLink} 
-            className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
-          >
-            🔗 Inviter
-          </button>
+          <div className="flex gap-2">
+            <button 
+              type="button"
+              onClick={copyInviteLink} 
+              className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+            >
+              🔗 Lien
+            </button>
+            {isCaptain && (
+              <button 
+                type="button"
+                onClick={() => setShowInviteModal(true)} 
+                className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+              >
+                👥 Inviter Joueur
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* INVITATIONS EN ATTENTE */}
+        {isCaptain && pendingInvitations.length > 0 && (
+          <div className="mb-6">
+            <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-xl text-fluky-secondary mb-4" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+              Invitations envoyées ({pendingInvitations.length})
+            </h3>
+            <div className="space-y-2">
+              {pendingInvitations.map((inv) => (
+                <div key={inv.id} className="bg-black/30 border border-fluky-primary/30 rounded-lg p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={inv.invited_user?.avatar_url || `https://ui-avatars.com/api/?name=${inv.invited_user?.username || 'User'}`} 
+                      className="w-6 h-6 rounded-full object-cover border border-fluky-secondary" 
+                      alt="" 
+                    />
+                    <span className="text-sm font-body text-fluky-text">
+                      {inv.invited_user?.username || 'Joueur'}
+                    </span>
+                  </div>
+                  <Badge variant="warning" size="sm">En attente</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LISTE DES MEMBRES */}
         <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-2xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>Roster ({members.length})</h3>
@@ -271,6 +366,15 @@ export default function MyTeam() {
         </ul>
       </div>
       </div>
+      
+      {/* MODAL D'INVITATION */}
+      <InvitePlayerModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onInvite={handleInvitePlayer}
+        excludedUserIds={members.map(m => m.user_id)}
+        loading={inviting}
+      />
     </DashboardLayout>
   );
 }
