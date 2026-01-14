@@ -188,6 +188,41 @@ export const useTeam = (teamId, options = {}) => {
     }
   }, [teamId]);
 
+  // Fonction pour mettre à jour le rôle d'un membre
+  const updateMemberRole = useCallback(async (userId, newRole) => {
+    if (!teamId) return { error: 'No team ID' };
+
+    // Vérifier que l'utilisateur actuel est le capitaine
+    if (!isCaptain) {
+      return { error: 'Seul le capitaine peut changer les rôles' };
+    }
+
+    // Vérifier que le rôle est valide
+    const validRoles = ['player', 'coach', 'manager'];
+    if (!validRoles.includes(newRole)) {
+      return { error: 'Rôle invalide' };
+    }
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('team_members')
+        .update({ role: newRole })
+        .eq('team_id', teamId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      await fetchTeam(); // Recharger les membres
+
+      return { data, error: null };
+    } catch (err) {
+      console.error('Erreur mise à jour rôle membre:', err);
+      return { data: null, error: err };
+    }
+  }, [teamId, isCaptain, fetchTeam]);
+
   // Fonction pour forcer un refresh
   const refetch = useCallback(() => {
     fetchTeam();
@@ -197,6 +232,11 @@ export const useTeam = (teamId, options = {}) => {
   const isCaptain = team?.captain_id === options.currentUserId;
   const isMember = members.some(m => m.user_id === options.currentUserId);
   const canEdit = isCaptain || options.isAdmin;
+  
+  // Helper pour vérifier si un membre a les permissions pour inviter/exclure
+  const canManageMembers = useCallback((memberRole) => {
+    return ['captain', 'manager', 'coach'].includes(memberRole);
+  }, []);
 
   return {
     team,
@@ -207,10 +247,12 @@ export const useTeam = (teamId, options = {}) => {
     addMember,
     removeMember,
     updateTeam,
+    updateMemberRole,
     // Helpers
     isCaptain,
     isMember,
     canEdit,
+    canManageMembers,
   };
 };
 
