@@ -94,6 +94,13 @@ const ImageUploader = ({
     fileInputRef.current?.click();
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleButtonClick();
+    }
+  };
+
   return (
     <div className={clsx('w-full', className)}>
       <input
@@ -120,6 +127,10 @@ const ImageUploader = ({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         onClick={!loading ? handleButtonClick : undefined}
+        onKeyDown={!loading ? handleKeyDown : undefined}
+        role="button"
+        tabIndex={loading ? -1 : 0}
+        aria-label="Zone d'upload d'image. Cliquez ou appuyez sur Entrée pour sélectionner un fichier"
       >
         <div className="p-8">
           {preview ? (

@@ -121,7 +121,7 @@ export default function MyTeam() {
       setInviting(true);
       
       // Envoyer l'invitation
-      await sendTeamInvitation(selectedTeamId, userId, message);
+      await sendTeamInvitation(selectedTeamId, userId, session.user.id, message);
       
       // Récupérer les infos de l'équipe et de l'utilisateur invitant
       const { data: profileData } = await supabase

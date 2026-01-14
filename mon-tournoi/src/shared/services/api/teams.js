@@ -170,13 +170,13 @@ export const removeTeamMember = async (teamId, userId) => {
 /**
  * Envoyer une invitation à rejoindre une équipe
  */
-export const sendTeamInvitation = async (teamId, userId, message = '') => {
+export const sendTeamInvitation = async (teamId, userId, invitedBy, message = '') => {
   const { data, error } = await supabase
     .from('team_invitations')
     .insert([{
       team_id: teamId,
       invited_user_id: userId,
-      invited_by: (await supabase.auth.getUser()).data.user.id,
+      invited_by: invitedBy,
       message,
       status: 'pending',
     }])

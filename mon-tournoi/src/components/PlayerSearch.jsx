@@ -67,7 +67,7 @@ const PlayerSearch = ({
       }
     };
 
-    const debounceTimer = setTimeout(searchPlayers, 300);
+    const debounceTimer = setTimeout(searchPlayers, 500);
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, excludedUserIds]);
 

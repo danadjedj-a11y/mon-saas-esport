@@ -52,6 +52,12 @@ export const signupSchema = z.object({
     .min(1, 'La date de naissance est requise')
     .refine((date) => {
       const birthDate = new Date(date);
+      
+      // Vérifier que la date est valide
+      if (isNaN(birthDate.getTime())) {
+        return false;
+      }
+      
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
