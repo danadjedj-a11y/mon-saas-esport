@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { getUserRole } from './utils/userRole'
 import { toast } from './utils/toast'
+import { loginSchema, signupSchema } from './shared/utils/schemas/auth'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState('login') // 'login' ou 'signup'
+  const [errors, setErrors] = useState({})
   const navigate = useNavigate()
 
   // Rediriger si déjà connecté
@@ -26,47 +28,63 @@ export default function Auth() {
       }
     }
     checkSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Rediriger après connexion
-        const role = await getUserRole(supabase, session.user.id)
-        if (role === 'organizer') {
-          navigate('/organizer/dashboard', { replace: true })
-        } else {
-          navigate('/player/dashboard', { replace: true })
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    
+    // NE PAS créer de listener ici - App.jsx gère déjà onAuthStateChange
+    // Cela évite les doubles redirections qui causent le clignotement
   }, [navigate])
 
   const handleAuth = async (e) => {
     e.preventDefault()
+    setErrors({})
     setLoading(true)
     
-    let result
+    // Validation avec Zod
+    const schema = mode === 'signup' ? signupSchema : loginSchema
+    const result = schema.safeParse({ email, password })
+    
+    if (!result.success) {
+      // Mapper les erreurs Zod
+      const zodErrors = {}
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0]
+        zodErrors[field] = issue.message
+      })
+      setErrors(zodErrors)
+      setLoading(false)
+      return
+    }
+    
+    // Données validées
+    const validatedData = result.data
+    
+    let authResult
     if (mode === 'signup') {
       // Inscription
-      result = await supabase.auth.signUp({ 
-        email, 
-        password,
+      authResult = await supabase.auth.signUp({ 
+        email: validatedData.email, 
+        password: validatedData.password,
         options: {
-          data: { username: email.split('@')[0] } // On crée un pseudo par défaut
+          data: { username: validatedData.email.split('@')[0] } // On crée un pseudo par défaut
         }
       })
     } else {
       // Connexion
-      result = await supabase.auth.signInWithPassword({ email, password })
+      authResult = await supabase.auth.signInWithPassword({ 
+        email: validatedData.email, 
+        password: validatedData.password 
+      })
     }
 
-    const { error } = result
+    const { error } = authResult
     if (error) {
       toast.error(error.message)
       setLoading(false)
+    } else {
+      // Si succès, la redirection sera gérée par onAuthStateChange dans App.jsx
+      // On garde le loading pour montrer que ça charge
+      // Le loading sera remis à false lors de la redirection
+      console.log('✅ [Auth] Connexion réussie, attente de redirection...')
     }
-    // Si succès, la redirection sera gérée par onAuthStateChange
   }
 
   return (
@@ -80,22 +98,47 @@ export default function Auth() {
         </p>
         
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-            required
-          />
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (errors.email) setErrors(prev => ({ ...prev, email: undefined }))
+              }}
+              className={`px-4 py-3 bg-black/50 border-2 ${
+                errors.email ? 'border-red-500' : 'border-fluky-primary'
+              } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+              required
+            />
+            {errors.email && (
+              <p className="text-red-400 text-sm mt-1 font-body">{errors.email}</p>
+            )}
+          </div>
+          <div>
+            <input
+              type="password"
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
+              }}
+              className={`px-4 py-3 bg-black/50 border-2 ${
+                errors.password ? 'border-red-500' : 'border-fluky-primary'
+              } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+              required
+            />
+            {errors.password && (
+              <p className="text-red-400 text-sm mt-1 font-body">{errors.password}</p>
+            )}
+            {mode === 'signup' && !errors.password && (
+              <p className="text-fluky-text/60 text-xs mt-1 font-body">
+                Minimum 6 caractères
+              </p>
+            )}
+          </div>
           <button 
             type="submit"
             disabled={loading} 

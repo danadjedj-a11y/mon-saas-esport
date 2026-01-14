@@ -1,71 +1,114 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import { handleRateLimitError } from './utils/rateLimitHandler';
 import DashboardLayout from './layouts/DashboardLayout';
+import { useAuth, useDebounce } from './shared/hooks';
+import { createTeam } from './shared/services/api/teams';
+import { teamSchema } from './shared/utils/schemas/team';
+import { Button, Input, Card } from './shared/components/ui';
 
-export default function CreateTeam({ session, supabase }) {
-  const [name, setName] = useState('');
-  const [tag, setTag] = useState(''); // Ex: "SKT"
-  const [loading, setLoading] = useState(false);
+export default function CreateTeam() {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    tag: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const MAX_NAME_LENGTH = 50;
   const MAX_TAG_LENGTH = 5;
   const MIN_TAG_LENGTH = 2;
 
-  // Sanitizer pour les noms
-  const sanitizeInput = (text) => {
-    return text.trim().replace(/[<>]/g, '');
-  };
+  // Débouncer les données du formulaire pour validation en temps réel
+  const debouncedFormData = useDebounce(formData, 500);
+
+  // Validation en temps réel
+  useEffect(() => {
+    // Valider seulement si les champs ont du contenu
+    if (!debouncedFormData.name && !debouncedFormData.tag) {
+      setErrors({});
+      return;
+    }
+
+    const result = teamSchema.safeParse(debouncedFormData);
+    
+    if (!result.success) {
+      const zodErrors = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0];
+        // Ne montrer l'erreur que si le champ a une valeur
+        if ((field === 'name' && debouncedFormData.name) || 
+            (field === 'tag' && debouncedFormData.tag)) {
+          zodErrors[field] = issue.message;
+        }
+      });
+      setErrors(prev => ({ ...prev, ...zodErrors }));
+    } else {
+      // Effacer les erreurs si la validation passe
+      setErrors({});
+    }
+  }, [debouncedFormData]);
+
+  // Mettre à jour un champ du formulaire
+  const updateField = useCallback((field, value) => {
+    if (field === 'name' && value.length > MAX_NAME_LENGTH) {
+      return; // Ne pas permettre de dépasser la longueur max
+    }
+    if (field === 'tag') {
+      // Nettoyer le tag (majuscules, alphanumériques uniquement)
+      value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (value.length > MAX_TAG_LENGTH) {
+        return; // Ne pas permettre de dépasser la longueur max
+      }
+    }
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const sanitizedName = sanitizeInput(name);
-    const sanitizedTag = sanitizeInput(tag);
-
-    if (!sanitizedName || !sanitizedTag) {
-      toast.error("Nom et Tag obligatoires");
-      return;
-    }
-
-    if (sanitizedName.length > MAX_NAME_LENGTH) {
-      toast.error(`Le nom de l'équipe ne peut pas dépasser ${MAX_NAME_LENGTH} caractères`);
-      return;
-    }
-
-    if (sanitizedTag.length < MIN_TAG_LENGTH || sanitizedTag.length > MAX_TAG_LENGTH) {
-      toast.error(`Le tag doit contenir entre ${MIN_TAG_LENGTH} et ${MAX_TAG_LENGTH} caractères`);
+    if (!session?.user) {
+      toast.error('Vous devez être connecté pour créer une équipe');
       return;
     }
     
     setLoading(true);
+    setErrors({});
 
     try {
-      // Création de l'équipe (L'utilisateur connecté devient automatiquement captain_id grâce à Supabase)
-      const { data, error } = await supabase
-        .from('teams')
-        .insert([
-          { 
-            name: sanitizedName, 
-            tag: sanitizedTag.toUpperCase().replace(/[^A-Z0-9]/g, ''), // On force le tag en majuscules et on enlève les caractères non alphanumériques
-            captain_id: session.user.id 
-          }
-        ])
-        .select();
+      // Validation avec Zod
+      const validatedData = teamSchema.parse(formData);
 
-      if (error) {
-        const errorMessage = handleRateLimitError(error, 'créations d\'équipes');
-        toast.error(errorMessage);
-      } else {
-        toast.success("Équipe créée avec succès !");
-        navigate('/player/dashboard');
-      }
+      // Créer l'équipe via le service API
+      const team = await createTeam({
+        name: validatedData.name,
+        tag: validatedData.tag,
+        captain_id: session.user.id,
+      });
+
+      toast.success("Équipe créée avec succès !");
+      navigate('/player/dashboard');
     } catch (error) {
       console.error('Erreur lors de la création de l\'équipe:', error);
-      const errorMessage = handleRateLimitError(error, 'créations d\'équipes');
-      toast.error(errorMessage);
+      
+      if (error.issues && Array.isArray(error.issues)) {
+        // Erreurs Zod
+        const zodErrors = {};
+        error.issues.forEach((issue) => {
+          zodErrors[issue.path[0]] = issue.message;
+        });
+        setErrors(zodErrors);
+        const firstError = Object.values(zodErrors)[0];
+        toast.error('Erreur de validation : ' + firstError);
+      } else {
+        // Erreurs API
+        const errorMessage = handleRateLimitError(error, 'créations d\'équipes');
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -74,61 +117,61 @@ export default function CreateTeam({ session, supabase }) {
   return (
     <DashboardLayout session={session}>
       <div className="w-full max-w-2xl mx-auto">
-        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
-          <h2 className="font-display text-4xl text-fluky-secondary mb-4" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>Créer mon Équipe</h2>
-          <p className="text-fluky-text text-sm mb-8 font-body">
+        <Card variant="glass" padding="xl" className="shadow-xl">
+          <h2 className="font-display text-4xl text-fluky-secondary mb-4 text-center" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+            Créer mon Équipe
+          </h2>
+          <p className="text-fluky-text text-sm mb-8 font-body text-center">
             Tu deviendras le <b>Capitaine</b> de cette équipe. C'est toi qui géreras les inscriptions aux tournois.
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div>
-              <label className="block mb-2 font-body text-fluky-text">Nom de l'équipe</label>
-              <input 
-                type="text" 
-                placeholder="Ex: T1, Cloud9..." 
-                value={name} 
-                onChange={e => {
-                  const value = e.target.value;
-                  if (value.length <= MAX_NAME_LENGTH) {
-                    setName(value);
-                  }
-                }}
-                maxLength={MAX_NAME_LENGTH}
-                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-              />
-              <div className="text-xs text-fluky-text mt-1 font-body">
-                {name.length}/{MAX_NAME_LENGTH} caractères
+            <Input
+              label="Nom de l'équipe"
+              type="text"
+              placeholder="Ex: T1, Cloud9..."
+              value={formData.name}
+              onChange={e => updateField('name', e.target.value)}
+              required
+              error={!!errors.name}
+              errorMessage={errors.name}
+              maxLength={MAX_NAME_LENGTH}
+            />
+            {formData.name && (
+              <div className="text-xs text-fluky-text mt-1 font-body -mt-4">
+                {formData.name.length}/{MAX_NAME_LENGTH} caractères
               </div>
+            )}
+
+            <Input
+              label={`Tag (${MIN_TAG_LENGTH}-${MAX_TAG_LENGTH} caractères)`}
+              type="text"
+              placeholder="Ex: FNC"
+              value={formData.tag}
+              onChange={e => updateField('tag', e.target.value)}
+              required
+              error={!!errors.tag}
+              errorMessage={errors.tag}
+              maxLength={MAX_TAG_LENGTH}
+              className="uppercase"
+            />
+            <div className="text-xs text-fluky-text mt-1 font-body -mt-4">
+              {formData.tag.length}/{MAX_TAG_LENGTH} caractères (lettres et chiffres uniquement, automatiquement en majuscules)
             </div>
 
-            <div>
-              <label className="block mb-2 font-body text-fluky-text">Tag ({MIN_TAG_LENGTH}-{MAX_TAG_LENGTH} caractères)</label>
-              <input 
-                type="text" 
-                placeholder="Ex: FNC" 
-                maxLength={MAX_TAG_LENGTH}
-                value={tag} 
-                onChange={e => setTag(e.target.value.replace(/[^A-Za-z0-9]/g, ''))} 
-                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg uppercase font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-              />
-              <div className="text-xs text-fluky-text mt-1 font-body">
-                {tag.length}/{MAX_TAG_LENGTH} caractères (lettres et chiffres uniquement)
-              </div>
-            </div>
-
-            <button 
-              type="submit" 
+            <Button 
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={loading}
               disabled={loading}
-              className={`mt-2 px-6 py-4 border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 ${
-                loading 
-                  ? 'bg-fluky-primary/50 opacity-60 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-fluky-primary to-fluky-secondary hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50'
-              }`}
+              fullWidth
+              className="mt-5 uppercase tracking-wide"
             >
               {loading ? 'Création...' : 'Valider et créer l\'équipe'}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
       </div>
     </DashboardLayout>
   );

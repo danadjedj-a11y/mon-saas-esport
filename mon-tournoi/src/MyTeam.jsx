@@ -1,43 +1,59 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
+import { useAuth } from './shared/hooks';
+import { useTeam } from './shared/hooks';
+import { supabase } from './supabaseClient';
 
-export default function MyTeam({ session, supabase }) {
-  const [allTeams, setAllTeams] = useState([]); // Liste de toutes mes équipes
-  const [currentTeam, setCurrentTeam] = useState(null); // L'équipe affichée actuellement
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+export default function MyTeam() {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  
+  // États pour toutes les équipes
+  const [allTeams, setAllTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [teamsLoading, setTeamsLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    if (session) fetchAllMyTeams();
-  }, [session]);
+  // Utiliser useTeam pour l'équipe sélectionnée
+  const {
+    team: currentTeam,
+    members,
+    loading: teamLoading,
+    refetch: refetchTeam,
+    removeMember,
+    updateTeam,
+    isCaptain,
+  } = useTeam(selectedTeamId, {
+    enabled: !!selectedTeamId,
+    subscribe: true,
+    currentUserId: session?.user?.id,
+  });
 
-  // Si on change d'équipe via le menu déroulant, on charge ses membres
-  useEffect(() => {
-    if (currentTeam) {
-      fetchMembers(currentTeam.id);
+  // Charger toutes les équipes de l'utilisateur
+  const fetchAllMyTeams = useCallback(async () => {
+    if (!session?.user?.id) {
+      setTeamsLoading(false);
+      return;
     }
-  }, [currentTeam]);
 
-  const fetchAllMyTeams = async () => {
-    // 1. Récupérer les équipes où je suis CAPITAINE
-    const { data: captainTeams } = await supabase
-      .from('teams')
-      .select('*')
-      .eq('captain_id', session.user.id)
-      .order('created_at', { ascending: true }); // On fixe l'ordre pour éviter que ça bouge
+    try {
+      // 1. Récupérer les équipes où je suis CAPITAINE
+      const { data: captainTeams } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('captain_id', session.user.id)
+        .order('created_at', { ascending: true });
 
-    // 2. Récupérer les équipes où je suis MEMBRE
-    const { data: memberData } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', session.user.id);
+      // 2. Récupérer les équipes où je suis MEMBRE
+      const { data: memberData } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', session.user.id);
 
-    let memberTeams = [];
-    if (memberData && memberData.length > 0) {
+      let memberTeams = [];
+      if (memberData && memberData.length > 0) {
         const ids = memberData.map(m => m.team_id);
         const { data: teams } = await supabase
           .from('teams')
@@ -45,45 +61,46 @@ export default function MyTeam({ session, supabase }) {
           .in('id', ids)
           .order('created_at', { ascending: true });
         memberTeams = teams || [];
+      }
+
+      // 3. Fusionner les deux listes (en évitant les doublons)
+      const mergedTeams = [...(captainTeams || []), ...memberTeams];
+      const uniqueTeams = Array.from(new Map(mergedTeams.map(item => [item.id, item])).values());
+
+      setAllTeams(uniqueTeams);
+    } catch (error) {
+      console.error('Erreur chargement équipes:', error);
+    } finally {
+      setTeamsLoading(false);
     }
+  }, [session]);
 
-    // 3. Fusionner les deux listes (en évitant les doublons si je suis capitaine et membre)
-    // On utilise un Map pour filtrer par ID unique
-    const mergedTeams = [...(captainTeams || []), ...memberTeams];
-    const uniqueTeams = Array.from(new Map(mergedTeams.map(item => [item.id, item])).values());
+  // Charger les équipes au montage
+  useEffect(() => {
+    fetchAllMyTeams();
+  }, [fetchAllMyTeams]);
 
-    setAllTeams(uniqueTeams);
-
-    // 4. Sélectionner la première équipe par défaut
-    if (uniqueTeams.length > 0) {
-      setCurrentTeam(uniqueTeams[0]);
-    } else {
-      setLoading(false); // Pas d'équipe
+  // Sélectionner la première équipe par défaut quand les équipes sont chargées
+  useEffect(() => {
+    if (allTeams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(allTeams[0].id);
     }
-  };
-
-  const fetchMembers = async (teamId) => {
-    const { data } = await supabase
-        .from('team_members')
-        .select('*, profiles(username, avatar_url)')
-        .eq('team_id', teamId);
-    setMembers(data || []);
-    setLoading(false);
-  };
+  }, [allTeams.length, selectedTeamId]);
 
   const handleTeamSwitch = (teamId) => {
-    const selected = allTeams.find(t => t.id === teamId);
-    setCurrentTeam(selected);
+    setSelectedTeamId(teamId);
   };
 
   const uploadLogo = async (event) => {
+    if (!currentTeam || !isCaptain) return;
+    
     try {
       setUploading(true);
       if (!event.target.files || event.target.files.length === 0) throw new Error('Sélectionne une image !');
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${currentTeam.id}-${Date.now()}.${fileExt}`; // Nom unique avec timestamp
+      const fileName = `${currentTeam.id}-${Date.now()}.${fileExt}`;
 
       // Upload
       const { error: uploadError } = await supabase.storage.from('team-logos').upload(fileName, file);
@@ -92,22 +109,14 @@ export default function MyTeam({ session, supabase }) {
       // URL Publique
       const { data: { publicUrl } } = supabase.storage.from('team-logos').getPublicUrl(fileName);
 
-      // Update DB
-      const { error: updateError } = await supabase
-        .from('teams')
-        .update({ logo_url: publicUrl })
-        .eq('id', currentTeam.id);
-
+      // Update DB via useTeam hook
+      const { error: updateError } = await updateTeam({ logo_url: publicUrl });
       if (updateError) throw updateError;
 
-      // Update Local State
-      setCurrentTeam({ ...currentTeam, logo_url: publicUrl });
-      
-      // Mettre à jour aussi la liste globale pour que le logo change dans le sélecteur si besoin
+      // Mettre à jour aussi la liste globale
       setAllTeams(prev => prev.map(t => t.id === currentTeam.id ? { ...t, logo_url: publicUrl } : t));
       
       toast.success("Logo mis à jour !");
-
     } catch (error) {
       toast.error('Erreur : ' + error.message);
     } finally {
@@ -116,23 +125,32 @@ export default function MyTeam({ session, supabase }) {
   };
 
   const copyInviteLink = () => {
+    if (!currentTeam) return;
     const link = `${window.location.origin}/join-team/${currentTeam.id}`;
     navigator.clipboard.writeText(link);
     toast.success("Lien d'invitation copié !");
   };
 
-  const kickMember = async (userId) => {
+  const handleKickMember = async (userId) => {
     if (!confirm("Virer ce joueur ?")) return;
-    await supabase.from('team_members').delete().match({ team_id: currentTeam.id, user_id: userId });
-    fetchMembers(currentTeam.id); // Rafraîchir juste la liste des membres
+    const { error } = await removeMember(userId);
+    if (error) {
+      toast.error('Erreur : ' + error.message);
+    } else {
+      toast.success('Joueur exclu avec succès');
+    }
   };
 
+  const loading = teamsLoading || teamLoading;
+
+  // Si on charge les équipes ou si on charge l'équipe sélectionnée
   if (loading) return (
     <DashboardLayout session={session}>
       <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
     </DashboardLayout>
   );
 
+  // Si pas d'équipes du tout
   if (allTeams.length === 0) return (
     <DashboardLayout session={session}>
       <div className="text-center py-20">
@@ -148,7 +166,14 @@ export default function MyTeam({ session, supabase }) {
     </DashboardLayout>
   );
 
-  const isCaptain = currentTeam?.captain_id === session.user.id;
+  // Si on a des équipes mais pas d'équipe sélectionnée OU si l'équipe est en cours de chargement
+  if (allTeams.length > 0 && (!selectedTeamId || !currentTeam)) {
+    return (
+      <DashboardLayout session={session}>
+        <div className="text-fluky-text font-body text-center py-20">Chargement de l'équipe...</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout session={session}>
@@ -157,7 +182,7 @@ export default function MyTeam({ session, supabase }) {
           {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
           {allTeams.length > 1 && (
             <select 
-              value={currentTeam.id} 
+              value={selectedTeamId || ''} 
               onChange={(e) => handleTeamSwitch(e.target.value)}
               className="px-4 py-2 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
             >
@@ -232,10 +257,10 @@ export default function MyTeam({ session, supabase }) {
                 </span>
               </div>
               
-              {isCaptain && m.user_id !== session.user.id && (
+              {isCaptain && m.user_id !== session?.user?.id && (
                 <button 
                   type="button"
-                  onClick={() => kickMember(m.user_id)} 
+                  onClick={() => handleKickMember(m.user_id)} 
                   className="px-3 py-1 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
                 >
                   Exclure

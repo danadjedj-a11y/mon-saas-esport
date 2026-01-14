@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { Button, Card, Badge, Tabs, Avatar, Input } from './shared/components/ui';
 import { toast } from './utils/toast';
 import BadgeDisplay from './components/BadgeDisplay';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -8,28 +9,53 @@ import DashboardLayout from './layouts/DashboardLayout';
 export default function Profile({ session }) {
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [bio, setBio] = useState('');
   const [playerStats, setPlayerStats] = useState(null);
+  const [recentMatches, setRecentMatches] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
+  const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (session) {
-      getProfile();
-      fetchPlayerStats();
+      loadProfileData();
     }
   }, [session]);
 
+  const loadProfileData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        getProfile(),
+        fetchPlayerStats(),
+        fetchRecentMatches(),
+        fetchMyTeams(),
+      ]);
+    } catch (error) {
+      console.error('Erreur chargement profil:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   async function getProfile() {
-    const { data } = await supabase.from('profiles').select('username, avatar_url').eq('id', session.user.id).single();
+    const { data } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, bio')
+      .eq('id', session.user.id)
+      .single();
+    
     if (data) {
       setUsername(data.username || '');
       setAvatarUrl(data.avatar_url || '');
+      setBio(data.bio || '');
     }
   }
 
   async function fetchPlayerStats() {
-    if (!session?.user) return;
-
     // Récupérer toutes les équipes du joueur
     const { data: captainTeams } = await supabase
       .from('teams')
@@ -55,13 +81,12 @@ export default function Profile({ session }) {
         draws: 0,
         winRate: 0,
         tournamentsCount: 0,
-        teamsCount: uniqueTeamIds.length
+        teamsCount: 0
       });
-      setLoading(false);
       return;
     }
 
-    // Récupérer tous les matchs de toutes les équipes du joueur
+    // Récupérer tous les matchs
     const { data: allMatches } = await supabase
       .from('matches')
       .select('*')
@@ -80,13 +105,9 @@ export default function Profile({ session }) {
       const myScore = isTeam1 ? match.score_p1 : match.score_p2;
       const opponentScore = isTeam1 ? match.score_p2 : match.score_p1;
 
-      if (myScore > opponentScore) {
-        wins++;
-      } else if (myScore < opponentScore) {
-        losses++;
-      } else {
-        draws++;
-      }
+      if (myScore > opponentScore) wins++;
+      else if (myScore < opponentScore) losses++;
+      else draws++;
     });
 
     const totalMatches = wins + losses + draws;
@@ -98,150 +119,513 @@ export default function Profile({ session }) {
       .select('tournament_id')
       .in('team_id', uniqueTeamIds);
 
-    const uniqueTournaments = new Set(participations?.map(p => p.tournament_id) || []);
+    const tournamentsCount = new Set(participations?.map(p => p.tournament_id) || []).size;
 
     setPlayerStats({
       totalMatches,
       wins,
       losses,
       draws,
-      winRate: parseFloat(winRate),
-      tournamentsCount: uniqueTournaments.size,
+      winRate,
+      tournamentsCount,
       teamsCount: uniqueTeamIds.length
     });
-    setLoading(false);
+  }
+
+  async function fetchRecentMatches() {
+    // Récupérer les équipes
+    const { data: captainTeams } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('captain_id', session.user.id);
+    
+    const { data: memberTeams } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', session.user.id);
+
+    const allTeamIds = [
+      ...(captainTeams?.map(t => t.id) || []),
+      ...(memberTeams?.map(tm => tm.team_id) || [])
+    ];
+    const uniqueTeamIds = [...new Set(allTeamIds)];
+
+    if (uniqueTeamIds.length === 0) {
+      setRecentMatches([]);
+      return;
+    }
+
+    // Récupérer les 10 derniers matchs
+    const { data: matches } = await supabase
+      .from('matches')
+      .select('*, tournaments(name, game)')
+      .or(uniqueTeamIds.map(id => `player1_id.eq.${id},player2_id.eq.${id}`).join(','))
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    setRecentMatches(matches || []);
+  }
+
+  async function fetchMyTeams() {
+    const { data: captainTeams } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('captain_id', session.user.id);
+    
+    const { data: memberTeamsData } = await supabase
+      .from('team_members')
+      .select('team_id, teams(*)')
+      .eq('user_id', session.user.id);
+
+    const allTeams = [
+      ...(captainTeams || []),
+      ...(memberTeamsData?.map(m => m.teams).filter(Boolean) || [])
+    ];
+
+    const uniqueTeams = Array.from(new Map(allTeams.map(t => [t.id, t])).values());
+    setMyTeams(uniqueTeams);
   }
 
   async function updateProfile() {
-    const { error } = await supabase.from('profiles').upsert({
-      id: session.user.id,
-      username,
-      avatar_url: avatarUrl,
-      updated_at: new Date(),
-    });
-    if (error) toast.error("Erreur : " + error.message);
-    else toast.success("Profil mis à jour !");
+    try {
+      setEditing(false);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          username: username.trim(),
+          bio: bio.trim(),
+        })
+        .eq('id', session.user.id);
+
+      if (error) throw error;
+
+      toast.success('✅ Profil mis à jour avec succès !');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour: ' + error.message);
+      console.error(error);
+    }
   }
+
+  async function uploadAvatar(event) {
+    try {
+      setUploading(true);
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('Sélectionnez une image');
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      toast.success('✅ Avatar mis à jour !');
+    } catch (error) {
+      toast.error('Erreur: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout session={session}>
+        <div className="text-center py-20">
+          <div className="text-6xl mb-4 animate-pulse">⏳</div>
+          <p className="font-body text-fluky-text">Chargement du profil...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Tabs configuration
+  const tabs = [
+    {
+      id: 'overview',
+      label: 'Vue d\'ensemble',
+      icon: '👤',
+      content: (
+        <div className="space-y-6">
+          {/* Informations personnelles */}
+          <Card variant="glass" padding="lg">
+            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              Informations Personnelles
+            </h3>
+            
+            {editing ? (
+              <div className="space-y-4">
+                <Input
+                  label="Nom d'utilisateur"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Votre pseudo..."
+                />
+                <div>
+                  <label className="block text-sm font-medium text-fluky-text mb-2">
+                    Bio
+                  </label>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Parlez de vous..."
+                    rows={4}
+                    className="w-full px-4 py-2 rounded-lg border-2 border-white/10 bg-background/50 text-fluky-text placeholder:text-fluky-text/50 focus:outline-none focus:ring-2 focus:ring-fluky-primary focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="primary" onClick={updateProfile}>
+                    💾 Enregistrer
+                  </Button>
+                  <Button variant="ghost" onClick={() => setEditing(false)}>
+                    Annuler
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-fluky-text/60 font-body">Nom d'utilisateur</label>
+                  <p className="text-lg text-fluky-text font-body">{username || 'Non défini'}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-fluky-text/60 font-body">Email</label>
+                  <p className="text-lg text-fluky-text font-body">{session.user.email}</p>
+                </div>
+                {bio && (
+                  <div>
+                    <label className="text-sm text-fluky-text/60 font-body">Bio</label>
+                    <p className="text-fluky-text font-body">{bio}</p>
+                  </div>
+                )}
+                <Button variant="outline" onClick={() => setEditing(true)}>
+                  ✏️ Modifier
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {/* Avatar */}
+          <Card variant="glass" padding="lg">
+            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              Avatar
+            </h3>
+            <div className="flex items-center gap-6">
+              <Avatar
+                src={avatarUrl}
+                name={username || session.user.email}
+                size="2xl"
+              />
+              <div className="flex-1">
+                <p className="text-sm text-fluky-text/70 font-body mb-3">
+                  Téléchargez une image pour personnaliser votre profil
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={uploadAvatar}
+                  disabled={uploading}
+                  id="avatar-upload"
+                  className="hidden"
+                />
+                <label htmlFor="avatar-upload">
+                  <Button variant="outline" size="sm" disabled={uploading} as="span">
+                    {uploading ? 'Upload...' : '📷 Changer Avatar'}
+                  </Button>
+                </label>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      id: 'stats',
+      label: 'Statistiques',
+      icon: '📊',
+      badge: playerStats?.totalMatches || 0,
+      content: (
+        <div className="space-y-6">
+          {/* Stats globales */}
+          {playerStats && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card variant="glass" padding="lg">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">⚔️</div>
+                  <div className="text-3xl font-display text-fluky-secondary">
+                    {playerStats.totalMatches}
+                  </div>
+                  <div className="text-sm font-body text-fluky-text/70">
+                    Matchs Joués
+                  </div>
+                </div>
+              </Card>
+
+              <Card variant="glass" padding="lg">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">✅</div>
+                  <div className="text-3xl font-display text-green-500">
+                    {playerStats.wins}
+                  </div>
+                  <div className="text-sm font-body text-fluky-text/70">
+                    Victoires
+                  </div>
+                </div>
+              </Card>
+
+              <Card variant="glass" padding="lg">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📈</div>
+                  <div className="text-3xl font-display text-fluky-secondary">
+                    {playerStats.winRate}%
+                  </div>
+                  <div className="text-sm font-body text-fluky-text/70">
+                    Taux de Victoire
+                  </div>
+                </div>
+              </Card>
+
+              <Card variant="glass" padding="lg">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">🏆</div>
+                  <div className="text-3xl font-display text-fluky-secondary">
+                    {playerStats.tournamentsCount}
+                  </div>
+                  <div className="text-sm font-body text-fluky-text/70">
+                    Tournois
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Matchs récents */}
+          <Card variant="glass" padding="lg">
+            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              📜 Historique des Matchs
+            </h3>
+            {recentMatches.length > 0 ? (
+              <div className="space-y-3">
+                {recentMatches.map((match) => (
+                  <div
+                    key={match.id}
+                    className="bg-black/30 border border-fluky-primary/30 rounded-lg p-4 hover:border-fluky-secondary transition-all cursor-pointer"
+                    onClick={() => navigate(`/match/${match.id}`)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="font-body text-fluky-text text-sm mb-1">
+                          {match.tournaments?.name}
+                        </div>
+                        <div className="text-xs text-fluky-text/60">
+                          {new Date(match.created_at).toLocaleDateString('fr-FR')}
+                        </div>
+                      </div>
+                      <Badge variant={match.score_p1 > match.score_p2 ? 'success' : 'error'} size="sm">
+                        {match.score_p1} - {match.score_p2}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-fluky-text/60 font-body py-8">
+                Aucun match joué pour le moment
+              </p>
+            )}
+          </Card>
+        </div>
+      ),
+    },
+    {
+      id: 'teams',
+      label: 'Mes Équipes',
+      icon: '👥',
+      badge: myTeams.length || 0,
+      content: (
+        <div className="space-y-6">
+          {myTeams.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myTeams.map((team) => (
+                <Card
+                  key={team.id}
+                  variant="glass"
+                  hover
+                  clickable
+                  onClick={() => navigate('/my-team')}
+                  className="border-fluky-primary/30"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <Avatar
+                      src={team.logo_url}
+                      name={team.name}
+                      size="lg"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-display text-lg text-fluky-secondary">
+                        {team.name}
+                      </h4>
+                      <p className="text-sm text-fluky-text/60 font-body">
+                        [{team.tag}]
+                      </p>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant={team.captain_id === session.user.id ? 'primary' : 'outline'}
+                    size="sm"
+                  >
+                    {team.captain_id === session.user.id ? '👑 Capitaine' : '👤 Membre'}
+                  </Badge>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card variant="outlined" padding="xl" className="text-center">
+              <div className="text-6xl mb-4">👥</div>
+              <h3 className="font-display text-2xl text-fluky-secondary mb-2">
+                Aucune Équipe
+              </h3>
+              <p className="font-body text-fluky-text/70 mb-6">
+                Créez ou rejoignez une équipe pour participer aux tournois
+              </p>
+              <div className="flex gap-4 justify-center">
+                <Button variant="primary" onClick={() => navigate('/create-team')}>
+                  ➕ Créer une Équipe
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/')}>
+                  🔍 Trouver une Équipe
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'achievements',
+      label: 'Succès',
+      icon: '🏅',
+      content: (
+        <Card variant="glass" padding="lg">
+          <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            🏅 Badges & Succès
+          </h3>
+          <BadgeDisplay userId={session.user.id} />
+          <div className="mt-6 text-center">
+            <p className="font-body text-fluky-text/60 text-sm">
+              Continuez à jouer pour débloquer plus de badges !
+            </p>
+          </div>
+        </Card>
+      ),
+    },
+    {
+      id: 'settings',
+      label: 'Paramètres',
+      icon: '⚙️',
+      content: (
+        <div className="space-y-6">
+          <Card variant="glass" padding="lg">
+            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              ⚙️ Paramètres du Compte
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-fluky-text/60 font-body">ID Utilisateur</label>
+                <p className="text-fluky-text font-mono text-sm">{session.user.id}</p>
+              </div>
+              <div>
+                <label className="text-sm text-fluky-text/60 font-body">Inscrit le</label>
+                <p className="text-fluky-text font-body">
+                  {new Date(session.user.created_at).toLocaleDateString('fr-FR', { dateStyle: 'long' })}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card variant="outlined" padding="lg" className="border-red-500/30">
+            <h3 className="font-display text-xl text-red-500 mb-4">
+              ⚠️ Zone Danger
+            </h3>
+            <p className="text-sm text-fluky-text/70 font-body mb-4">
+              Les actions suivantes sont irréversibles
+            </p>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => toast.info('Fonctionnalité bientôt disponible')}
+            >
+              🗑️ Supprimer Mon Compte
+            </Button>
+          </Card>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <DashboardLayout session={session}>
-      <div className="w-full max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Colonne gauche : Paramètres */}
-        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
-          <h2 className="font-display text-3xl text-fluky-secondary mb-8" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>⚙️ Paramètres du Profil</h2>
-          
-          <div className="flex flex-col gap-5">
-            <div>
-              <label className="block mb-2 text-fluky-text font-bold font-body">Pseudo :</label>
-              <input 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-2 text-fluky-text font-bold font-body">Photo de profil (URL) :</label>
-              <input 
-                value={avatarUrl} 
-                onChange={(e) => setAvatarUrl(e.target.value)} 
-                placeholder="https://..." 
-                className="w-full px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-              />
-            </div>
-
-            {avatarUrl && (
-              <div className="text-center p-5 bg-[#030913]/60 rounded-xl border border-fluky-secondary">
-                <img 
-                  src={avatarUrl} 
-                  className="w-32 h-32 rounded-full object-cover border-4 border-fluky-secondary mx-auto" 
-                  alt="Aperçu" 
-                />
-              </div>
+      {/* HEADER PROFILE */}
+      <Card variant="glass" padding="lg" className="mb-8 border-fluky-primary/30">
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          <Avatar
+            src={avatarUrl}
+            name={username || session.user.email}
+            size="2xl"
+            status="online"
+          />
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="font-display text-3xl text-fluky-secondary mb-1">
+              {username || session.user.email}
+            </h1>
+            {bio && (
+              <p className="font-body text-fluky-text/70 text-sm mb-3">
+                {bio}
+              </p>
             )}
-
-            <button 
-              type="button"
-              onClick={updateProfile} 
-              className="mt-2 px-6 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
-            >
-              💾 Sauvegarder les modifications
-            </button>
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+              <Badge variant="primary" size="sm">
+                👤 Joueur
+              </Badge>
+              {playerStats?.tournamentsCount > 0 && (
+                <Badge variant="success" size="sm">
+                  🏆 {playerStats.tournamentsCount} Tournois
+                </Badge>
+              )}
+              {playerStats && playerStats.winRate > 50 && (
+                <Badge variant="warning" size="sm">
+                  🔥 {playerStats.winRate}% Win Rate
+                </Badge>
+              )}
+            </div>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setEditing(!editing)}
+          >
+            ✏️ Modifier Profil
+          </Button>
         </div>
+      </Card>
 
-        {/* Colonne droite : Statistiques */}
-        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
-          <h2 className="font-display text-3xl text-fluky-secondary mb-8" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>📊 Mes Statistiques</h2>
-          
-          {loading ? (
-            <div className="text-center py-10 text-fluky-text font-body">
-              Chargement des statistiques...
-            </div>
-          ) : playerStats ? (
-            <div>
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
-                  <div className="font-display text-3xl font-bold text-fluky-secondary mb-2">
-                    {playerStats.totalMatches}
-                  </div>
-                  <div className="text-sm text-fluky-text font-body">Matchs joués</div>
-                </div>
-                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
-                  <div className="font-display text-3xl font-bold text-fluky-accent-orange mb-2">
-                    {playerStats.winRate}%
-                  </div>
-                  <div className="text-sm text-fluky-text font-body">Win Rate</div>
-                </div>
-                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
-                  <div className="font-display text-3xl font-bold text-fluky-primary mb-2">
-                    {playerStats.wins}
-                  </div>
-                  <div className="text-sm text-fluky-text font-body">Victoires</div>
-                </div>
-                <div className="bg-[#030913]/60 p-5 rounded-xl text-center border border-white/5">
-                  <div className="font-display text-3xl font-bold text-fluky-secondary mb-2">
-                    {playerStats.losses}
-                  </div>
-                  <div className="text-sm text-fluky-text font-body">Défaites</div>
-                </div>
-              </div>
-
-              <div className="bg-[#030913]/60 p-5 rounded-xl border border-white/5">
-                <div className="flex justify-between mb-4 pb-4 border-b border-white/5">
-                  <span className="text-fluky-text font-body">Équipes :</span>
-                  <span className="font-bold text-fluky-secondary font-body">{playerStats.teamsCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-fluky-text font-body">Tournois :</span>
-                  <span className="font-bold text-fluky-secondary font-body">{playerStats.tournamentsCount}</span>
-                </div>
-              </div>
-
-              <div className="mt-8 text-center">
-                <button
-                  type="button"
-                  onClick={() => navigate('/stats')}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
-                >
-                  📊 Voir les statistiques détaillées
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-10 text-fluky-text font-body">
-              Aucune statistique disponible. Rejoignez une équipe pour commencer !
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Section Badges et Achievements */}
-      <div className="mt-8">
-        <BadgeDisplay userId={session?.user?.id} session={session} />
-      </div>
-      </div>
+      {/* TABS */}
+      <Tabs tabs={tabs} defaultTab="overview" />
     </DashboardLayout>
   );
 }

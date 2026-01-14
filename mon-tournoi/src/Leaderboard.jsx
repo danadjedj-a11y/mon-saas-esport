@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import BadgeDisplay from './components/BadgeDisplay';
 import Skeleton from './components/Skeleton';
 import DashboardLayout from './layouts/DashboardLayout';
+import { Pagination } from './shared/components/ui';
 
 export default function Leaderboard({ session, supabase }) {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -13,16 +14,41 @@ export default function Leaderboard({ session, supabase }) {
   const [gameFilter, setGameFilter] = useState('all');
   const [games, setGames] = useState([]);
   const [activeTab, setActiveTab] = useState('teams'); // 'teams' ou 'levels'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentLevelPage, setCurrentLevelPage] = useState(1);
+  const itemsPerPage = 20; // Nombre d'éléments par page
   const navigate = useNavigate();
 
   useEffect(() => {
     if (activeTab === 'teams') {
+      setCurrentPage(1); // Réinitialiser la page quand on change de tab
       fetchLeaderboard();
       fetchGames();
     } else {
+      setCurrentLevelPage(1); // Réinitialiser la page quand on change de tab
       fetchLevelLeaderboard();
     }
   }, [sortBy, gameFilter, activeTab]);
+
+  // Calculer les données paginées pour les équipes
+  const paginatedLeaderboard = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return leaderboard.slice(startIndex, endIndex);
+  }, [leaderboard, currentPage, itemsPerPage]);
+
+  // Calculer le nombre total de pages pour les équipes
+  const totalPages = Math.ceil(leaderboard.length / itemsPerPage);
+
+  // Calculer les données paginées pour les niveaux
+  const paginatedLevelLeaderboard = useMemo(() => {
+    const startIndex = (currentLevelPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return levelLeaderboard.slice(startIndex, endIndex);
+  }, [levelLeaderboard, currentLevelPage, itemsPerPage]);
+
+  // Calculer le nombre total de pages pour les niveaux
+  const totalLevelPages = Math.ceil(levelLeaderboard.length / itemsPerPage);
 
   const fetchGames = async () => {
     const { data } = await supabase
@@ -312,8 +338,8 @@ export default function Leaderboard({ session, supabase }) {
                 </tr>
               </thead>
               <tbody>
-                {levelLeaderboard.map((userLevel, index) => {
-                  const rank = index + 1;
+                {paginatedLevelLeaderboard.map((userLevel, index) => {
+                  const rank = (currentLevelPage - 1) * itemsPerPage + index + 1;
                   const isTop3 = rank <= 3;
                   const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
                   const profile = userLevel.profiles || {};
@@ -381,8 +407,8 @@ export default function Leaderboard({ session, supabase }) {
               </tr>
             </thead>
             <tbody>
-              {leaderboard.map((stat, index) => {
-                const rank = index + 1;
+              {paginatedLeaderboard.map((stat, index) => {
+                const rank = (currentPage - 1) * itemsPerPage + index + 1;
                 const isTop3 = rank <= 3;
                 const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
 
@@ -439,9 +465,31 @@ export default function Leaderboard({ session, supabase }) {
         )}
       </div>
 
-      {leaderboard.length > 0 && (
-            <div className="mt-5 text-center text-fluky-text text-sm font-body">
-          {leaderboard.length} équipe{leaderboard.length > 1 ? 's' : ''} classée{leaderboard.length > 1 ? 's' : ''}
+      {/* Pagination */}
+      {activeTab === 'teams' && leaderboard.length > 0 && (
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            isLoading={loading}
+          />
+          <div className="text-center text-fluky-text/70 text-sm font-body">
+            Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, leaderboard.length)} sur {leaderboard.length} équipe{leaderboard.length > 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
+      {activeTab === 'levels' && levelLeaderboard.length > 0 && (
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <Pagination
+            currentPage={currentLevelPage}
+            totalPages={totalLevelPages}
+            onPageChange={setCurrentLevelPage}
+            isLoading={loading}
+          />
+          <div className="text-center text-fluky-text/70 text-sm font-body">
+            Affichage de {(currentLevelPage - 1) * itemsPerPage + 1} à {Math.min(currentLevelPage * itemsPerPage, levelLeaderboard.length)} sur {levelLeaderboard.length} joueur{levelLeaderboard.length > 1 ? 's' : ''}
+          </div>
         </div>
       )}
     </div>

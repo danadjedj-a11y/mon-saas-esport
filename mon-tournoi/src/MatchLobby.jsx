@@ -1,18 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Chat from './Chat';
 import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
-import { updateSwissScores } from './swissUtils'; // <--- IMPORT AJOUTÉ
-import { calculateMatchWinner, getNextVetoTeam, generateVetoOrder, getAvailableMaps, getMapForGame } from './bofUtils'; // <--- IMPORT BEST-OF-X
+import { updateSwissScores } from './swissUtils';
+import { calculateMatchWinner, getNextVetoTeam, generateVetoOrder, getAvailableMaps, getMapForGame } from './bofUtils';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
+import { useMatch } from './shared/hooks';
+import { supabase } from './supabaseClient';
 
-export default function MatchLobby({ session, supabase }) {
+export default function MatchLobby({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  const [match, setMatch] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Utiliser le hook useMatch pour charger le match principal
+  const {
+    match: rawMatch,
+    loading: matchLoading,
+    error: matchError,
+    refetch: refetchMatch,
+    myTeam,
+    opponentTeam,
+    isMyMatch,
+  } = useMatch(id, {
+    enabled: !!id,
+    subscribe: true,
+    myTeamId: null, // Sera déterminé plus tard
+  });
+
+  // États supplémentaires (non gérés par le hook)
   const [myTeamId, setMyTeamId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tournamentOwnerId, setTournamentOwnerId] = useState(null);
@@ -38,138 +54,170 @@ export default function MatchLobby({ session, supabase }) {
   // États pour la déclaration de score par manche
   const [gameScores, setGameScores] = useState({}); // { gameNumber: { team1Score, team2Score } }
 
-  useEffect(() => {
-    fetchMatchDetails();
-    // Realtime pour voir les changements de scores
-    const channel = supabase.channel(`match-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${id}` }, 
-      () => fetchMatchDetails())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_reports', filter: `match_id=eq.${id}` }, 
-      () => fetchScoreReports())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games', filter: `match_id=eq.${id}` }, 
-      () => fetchMatchDetails())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_vetos', filter: `match_id=eq.${id}` }, 
-      () => fetchMatchDetails())
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+  // Utiliser le match du hook, formaté pour compatibilité avec le code existant
+  const match = useMemo(() => {
+    if (!rawMatch) return null;
+    
+    // Le hook charge déjà player1 et player2 comme relations
+    return {
+      ...rawMatch,
+      team1: rawMatch.player1 || null,
+      team2: rawMatch.player2 || null,
+    };
+  }, [rawMatch]);
+
+  // Charger les manches et vetos (défini avant son utilisation)
+  const loadMatchGamesAndVetos = useCallback(async () => {
+    if (!id) return;
+    try {
+      const { data: gamesData } = await supabase
+        .from('match_games')
+        .select('*')
+        .eq('match_id', id)
+        .order('game_number', { ascending: true });
+      
+      setMatchGames(gamesData || []);
+      
+      const { data: vetosData } = await supabase
+        .from('match_vetos')
+        .select('*')
+        .eq('match_id', id)
+        .order('veto_order', { ascending: true });
+      
+      setVetos(vetosData || []);
+    } catch (error) {
+      console.warn('Tables match_games/match_vetos non disponibles:', error);
+      setMatchGames([]);
+      setVetos([]);
+    }
   }, [id]);
 
-  const fetchMatchDetails = async () => {
-    try {
-      const { data: matchData, error: matchError } = await supabase.from('matches').select('*').eq('id', id).single();
-      
-      if (matchError) {
-        console.error('Erreur lors du chargement du match:', matchError);
-        setLoading(false);
-        return;
-      }
-      
-      if (!matchData) {
-        console.warn('Match non trouvé pour l\'ID:', id);
-        setLoading(false);
-        return;
+  // Identifier mon équipe et charger les données supplémentaires
+  useEffect(() => {
+    if (!match || !session?.user?.id) return;
+
+    // Identifier mon équipe
+    const identifyMyTeam = async () => {
+      let foundTeamId = null;
+
+      if (match.player1_id) {
+        const [membersResult, teamResult] = await Promise.all([
+          supabase
+            .from('team_members')
+            .select('*')
+            .match({ team_id: match.player1_id, user_id: session.user.id }),
+          supabase
+            .from('teams')
+            .select('captain_id')
+            .eq('id', match.player1_id)
+            .single()
+        ]);
+        
+        const isMember = membersResult.data && membersResult.data.length > 0;
+        const isCaptain = teamResult.data?.captain_id === session.user.id;
+        
+        if (isMember || isCaptain) {
+          foundTeamId = match.player1_id;
+        }
       }
 
-    // Récupérer le tournoi pour vérifier si on est admin, le format, best_of et maps_pool
-    const { data: tournament } = await supabase
-      .from('tournaments')
-      .select('owner_id, format, best_of, maps_pool')
-      .eq('id', matchData.tournament_id)
-      .single();
-    
+      if (!foundTeamId && match.player2_id) {
+        const [membersResult, teamResult] = await Promise.all([
+          supabase
+            .from('team_members')
+            .select('*')
+            .match({ team_id: match.player2_id, user_id: session.user.id }),
+          supabase
+            .from('teams')
+            .select('captain_id')
+            .eq('id', match.player2_id)
+            .single()
+        ]);
+        
+        const isMember = membersResult.data && membersResult.data.length > 0;
+        const isCaptain = teamResult.data?.captain_id === session.user.id;
+        
+        if (isMember || isCaptain) {
+          foundTeamId = match.player2_id;
+        }
+      }
+
+      if (foundTeamId && foundTeamId !== myTeamId) {
+        setMyTeamId(foundTeamId);
+      }
+    };
+
+    identifyMyTeam();
+
+    // Récupérer les infos du tournoi depuis rawMatch.tournaments (relation Supabase)
+    // Note: Pour les relations many-to-one, Supabase peut retourner un objet ou un array avec un seul élément
+    const tournamentData = rawMatch?.tournaments;
+    const tournament = Array.isArray(tournamentData) ? tournamentData[0] : tournamentData;
     if (tournament) {
       setTournamentOwnerId(tournament.owner_id);
       setIsAdmin(session?.user?.id === tournament.owner_id);
       setTournamentFormat(tournament.format);
       setTournamentBestOf(tournament.best_of || 1);
       setTournamentMapsPool(tournament.maps_pool || []);
-    }
-    
-    // Récupérer les manches (match_games) si Best-of-X > 1
-    if (tournament?.best_of > 1) {
-      try {
-        const { data: gamesData } = await supabase
-          .from('match_games')
-          .select('*')
-          .eq('match_id', id)
-          .order('game_number', { ascending: true });
-        
-        setMatchGames(gamesData || []);
-        
-        // Récupérer les vetos
-        const { data: vetosData } = await supabase
-          .from('match_vetos')
-          .select('*')
-          .eq('match_id', id)
-          .order('veto_order', { ascending: true });
-        
-        setVetos(vetosData || []);
-      } catch (error) {
-        // Si les tables n'existent pas encore, ignorer l'erreur
-        console.warn('Tables match_games/match_vetos non disponibles:', error);
-        setMatchGames([]);
-        setVetos([]);
-      }
-    }
-    
-    // Récupérer les noms/logos des équipes
-    const { data: team1 } = await supabase.from('teams').select('*').eq('id', matchData.player1_id).single();
-    const { data: team2 } = await supabase.from('teams').select('*').eq('id', matchData.player2_id).single();
-
-    // Identifier mon équipe
-    let myTeam = null;
-    if (session && matchData.player1_id) {
-      // Vérifier si je suis membre ou capitaine de l'équipe 1
-      const { data: isMem1 } = await supabase.from('team_members').select('*').match({team_id: matchData.player1_id, user_id: session.user.id});
-      const { data: team1Data } = await supabase.from('teams').select('captain_id').eq('id', matchData.player1_id).single();
-      const isCaptain1 = team1Data?.captain_id === session.user.id;
       
-      if ((isMem1?.length > 0) || isCaptain1) {
-        setMyTeamId(matchData.player1_id);
-        myTeam = matchData.player1_id;
+      // Charger les manches et vetos si Best-of-X
+      if (tournament.best_of > 1) {
+        loadMatchGamesAndVetos();
       }
     }
 
-    if (session && matchData.player2_id && !myTeam) {
-      // Vérifier si je suis membre ou capitaine de l'équipe 2
-      const { data: isMem2 } = await supabase.from('team_members').select('*').match({team_id: matchData.player2_id, user_id: session.user.id});
-      const { data: team2Data } = await supabase.from('teams').select('captain_id').eq('id', matchData.player2_id).single();
-      const isCaptain2 = team2Data?.captain_id === session.user.id;
-      
-      if ((isMem2?.length > 0) || isCaptain2) {
-        setMyTeamId(matchData.player2_id);
-        myTeam = matchData.player2_id;
+    // Initialiser les scores déclarés
+    if (myTeamId && match) {
+      const isTeam1 = myTeamId === match.player1_id;
+      if (isTeam1 && match.reported_by_team1) {
+        setMyScore(match.score_p1_reported || 0);
+        setOpponentScore(match.score_p2_reported || 0);
+      } else if (!isTeam1 && myTeamId === match.player2_id && match.reported_by_team2) {
+        setMyScore(match.score_p2_reported || 0);
+        setOpponentScore(match.score_p1_reported || 0);
       }
     }
 
-    setMatch({ ...matchData, team1, team2 });
-    if(matchData.proof_url) setProofUrl(matchData.proof_url);
-    
-    // Initialiser les scores déclarés par mon équipe (si déjà déclaré)
-    if (myTeam === matchData.player1_id && matchData.reported_by_team1) {
-      setMyScore(matchData.score_p1_reported || 0);
-      setOpponentScore(matchData.score_p2_reported || 0);
-    } else if (myTeam === matchData.player2_id && matchData.reported_by_team2) {
-      setMyScore(matchData.score_p2_reported || 0);
-      setOpponentScore(matchData.score_p1_reported || 0);
-    }
-    
-      fetchScoreReports();
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur dans fetchMatchDetails:', error);
-      setLoading(false);
-    }
-  };
+    // Charger la preuve
+    if (match?.proof_url) setProofUrl(match.proof_url);
+  }, [rawMatch, match, session, myTeamId, loadMatchGamesAndVetos]);
 
-  const fetchScoreReports = async () => {
+  // Charger les rapports de score (défini avant son utilisation)
+  const loadScoreReports = useCallback(async () => {
+    if (!id) return;
     const { data } = await supabase
       .from('score_reports')
       .select('*, teams(name, tag), profiles(username)')
       .eq('match_id', id)
       .order('created_at', { ascending: false });
     setScoreReports(data || []);
+  }, [id]);
+
+  // Charger les rapports au montage et lors des changements
+  useEffect(() => {
+    if (!id) return;
+    loadScoreReports();
+
+    // Realtime pour score_reports, match_games, match_vetos
+    const channel = supabase.channel(`match-details-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score_reports', filter: `match_id=eq.${id}` }, 
+      () => loadScoreReports())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games', filter: `match_id=eq.${id}` }, 
+      () => loadMatchGamesAndVetos())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_vetos', filter: `match_id=eq.${id}` }, 
+      () => loadMatchGamesAndVetos())
+      .subscribe();
+    
+    return () => supabase.removeChannel(channel);
+  }, [id, loadScoreReports, loadMatchGamesAndVetos]);
+
+  // Alias pour compatibilité avec le code existant
+  const fetchMatchDetails = () => {
+    refetchMatch();
+    loadMatchGamesAndVetos();
+    loadScoreReports();
   };
+
 
   // --- LOGIQUE DE PROGRESSION (COPIÉE ET ADAPTÉE DE TOURNAMENT.JSX) ---
 
@@ -469,7 +517,8 @@ export default function MatchLobby({ session, supabase }) {
         }
       }
 
-      fetchMatchDetails();
+      refetchMatch();
+      loadScoreReports();
     } catch (error) {
       toast.error("Erreur : " + error.message);
     }
@@ -519,7 +568,8 @@ export default function MatchLobby({ session, supabase }) {
        }
     }
     
-    fetchMatchDetails();
+    refetchMatch();
+    loadScoreReports();
   };
 
   // ========== FONCTIONS BEST-OF-X ==========
@@ -547,7 +597,7 @@ export default function MatchLobby({ session, supabase }) {
       }
       
       await supabase.from('match_games').insert(gamesToCreate);
-      fetchMatchDetails();
+      loadMatchGamesAndVetos();
     } catch (error) {
       // Si la table n'existe pas encore, ignorer l'erreur
       console.warn('Table match_games non disponible:', error);
@@ -727,7 +777,8 @@ export default function MatchLobby({ session, supabase }) {
         toast.success('Score déclaré ! En attente de la déclaration de l\'adversaire.');
       }
       
-      fetchMatchDetails();
+      refetchMatch();
+      loadMatchGamesAndVetos();
     } catch (error) {
       toast.error('Erreur : ' + error.message);
     }
@@ -803,7 +854,8 @@ export default function MatchLobby({ session, supabase }) {
       }
     }
     
-    fetchMatchDetails();
+    refetchMatch();
+    loadMatchGamesAndVetos();
   };
 
   const uploadProof = async (e) => {
@@ -837,9 +889,17 @@ export default function MatchLobby({ session, supabase }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentBestOf, match?.id, matchGames.length]);
 
-  if (loading || !match) return (
+  if (matchLoading || !match) return (
     <DashboardLayout session={session}>
       <div className="text-fluky-text font-body text-center py-20">Chargement du Lobby...</div>
+    </DashboardLayout>
+  );
+
+  if (matchError) return (
+    <DashboardLayout session={session}>
+      <div className="text-red-400 font-body text-center py-20">
+        Erreur lors du chargement: {matchError.message || 'Erreur inconnue'}
+      </div>
     </DashboardLayout>
   );
 

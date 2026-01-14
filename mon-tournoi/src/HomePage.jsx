@@ -6,12 +6,12 @@ import { toast } from './utils/toast';
 import TournamentCard from './components/TournamentCard';
 import { TournamentCardSkeleton } from './components/Skeleton';
 import { EmptyTournaments } from './components/EmptyState';
-import LanguageSelector from './components/LanguageSelector';
 import DashboardLayout from './layouts/DashboardLayout';
 
+// Temporairement revenir à l'ancien système jusqu'à ce que useAuth soit stable
 export default function HomePage() {
   const { t } = useTranslation();
-  const [allTournaments, setAllTournaments] = useState([]); // Tous les tournois chargés
+  const [allTournaments, setAllTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
@@ -21,13 +21,12 @@ export default function HomePage() {
   const [gameFilter, setGameFilter] = useState('all');
   const [formatFilter, setFormatFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('date'); // 'date', 'name', 'participants'
+  const [sortBy, setSortBy] = useState('date');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const isFetchingRef = useRef(false);
 
   const fetchTournaments = useCallback(async () => {
-    // Éviter les appels multiples simultanés avec un ref
     if (isFetchingRef.current) {
       console.log('⏸️ Chargement déjà en cours, ignoré');
       return;
@@ -39,8 +38,6 @@ export default function HomePage() {
     try {
       console.log('🔄 Chargement des tournois...');
       
-      // Requête simple sans timeout au premier chargement
-      // Le timeout peut causer des problèmes si Supabase met du temps à s'initialiser
       const { data, error } = await supabase
         .from('tournaments')
         .select('*')
@@ -78,22 +75,18 @@ export default function HomePage() {
       if (mounted) setSession(session);
     });
 
-    // Attendre un peu que Supabase soit prêt avant de charger les tournois
-    // Cela évite les problèmes de connexion au démarrage
-    // En mode développement avec StrictMode, React peut appeler useEffect deux fois
-    // Le ref isFetchingRef empêche les appels multiples
     timeoutId = setTimeout(() => {
       if (mounted) {
         fetchTournaments();
       }
-    }, 300); // Petit délai de 300ms pour laisser Supabase s'initialiser
+    }, 300);
 
     return () => {
       mounted = false;
       if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []); // Retirer fetchTournaments des dépendances pour éviter les re-renders
+  }, []);
 
   // Récupérer les jeux uniques pour le filtre
   const availableGames = useMemo(() => {

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import DashboardLayout from './layouts/DashboardLayout';
+import { Pagination } from './shared/components/ui';
 
 const COLORS = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
 
@@ -14,6 +15,8 @@ export default function StatsDashboard({ session, supabase }) {
   const [performanceData, setPerformanceData] = useState([]);
   const [gameStats, setGameStats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Nombre de tournois par page
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,9 +27,20 @@ export default function StatsDashboard({ session, supabase }) {
 
   useEffect(() => {
     if (selectedTeam) {
+      setCurrentPage(1); // Réinitialiser la page quand on change d'équipe
       fetchTeamStats();
     }
   }, [selectedTeam]);
+
+  // Calculer les tournois paginés
+  const paginatedTournamentStats = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return tournamentStats.slice(startIndex, endIndex);
+  }, [tournamentStats, currentPage, itemsPerPage]);
+
+  // Calculer le nombre total de pages
+  const totalPages = Math.ceil(tournamentStats.length / itemsPerPage);
 
   const fetchMyTeams = async () => {
     const { data: captainTeams } = await supabase
@@ -433,52 +447,69 @@ export default function StatsDashboard({ session, supabase }) {
               Aucune participation à un tournoi pour cette équipe.
             </div>
           ) : (
-            <div className="grid gap-4">
-              {tournamentStats.map((stat, index) => (
-                <div
-                  key={index}
-                  className="bg-[#030913]/60 p-5 rounded-xl border border-white/5 transition-all duration-300 cursor-pointer hover:translate-x-1 hover:border-fluky-primary"
-                  onClick={() => navigate(`/tournament/${stat.tournament?.id}`)}
-                >
-                  <div className="flex justify-between items-start flex-wrap gap-5">
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="font-display text-xl font-bold mb-2 text-fluky-text">
-                        {stat.tournament?.name || 'Tournoi'}
-                      </div>
-                      <div className="text-sm text-fluky-secondary font-body">
-                        🎮 {stat.tournament?.game} | 📊 {stat.tournament?.format === 'elimination' ? 'Élimination' : 
-                                                        stat.tournament?.format === 'double_elimination' ? 'Double Élimination' : 
-                                                        stat.tournament?.format === 'round_robin' ? 'Round Robin' : stat.tournament?.format}
-                      </div>
-                    </div>
-                    <div className="flex gap-8 text-center flex-wrap">
-                      <div>
-                        <div className="font-display text-2xl font-bold text-fluky-secondary">{stat.totalMatches}</div>
-                        <div className="text-xs text-fluky-text font-body">Matchs</div>
-                      </div>
-                      <div>
-                        <div className="font-display text-2xl font-bold text-fluky-primary">{stat.wins}</div>
-                        <div className="text-xs text-fluky-text font-body">Victoires</div>
-                      </div>
-                      <div>
-                        <div className="font-display text-2xl font-bold text-fluky-secondary">{stat.losses}</div>
-                        <div className="text-xs text-fluky-text font-body">Défaites</div>
-                      </div>
-                      {stat.draws > 0 && (
-                        <div>
-                          <div className="font-display text-2xl font-bold text-fluky-accent-orange">{stat.draws}</div>
-                          <div className="text-xs text-fluky-text font-body">Nuls</div>
+            <>
+              <div className="grid gap-4">
+                {paginatedTournamentStats.map((stat, index) => (
+                  <div
+                    key={index}
+                    className="bg-[#030913]/60 p-5 rounded-xl border border-white/5 transition-all duration-300 cursor-pointer hover:translate-x-1 hover:border-fluky-primary"
+                    onClick={() => navigate(`/tournament/${stat.tournament?.id}`)}
+                  >
+                    <div className="flex justify-between items-start flex-wrap gap-5">
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="font-display text-xl font-bold mb-2 text-fluky-text">
+                          {stat.tournament?.name || 'Tournoi'}
                         </div>
-                      )}
-                      <div>
-                        <div className="font-display text-2xl font-bold text-fluky-accent-orange">{stat.winRate}%</div>
-                        <div className="text-xs text-fluky-text font-body">Win Rate</div>
+                        <div className="text-sm text-fluky-secondary font-body">
+                          🎮 {stat.tournament?.game} | 📊 {stat.tournament?.format === 'elimination' ? 'Élimination' : 
+                                                          stat.tournament?.format === 'double_elimination' ? 'Double Élimination' : 
+                                                          stat.tournament?.format === 'round_robin' ? 'Round Robin' : stat.tournament?.format}
+                        </div>
+                      </div>
+                      <div className="flex gap-8 text-center flex-wrap">
+                        <div>
+                          <div className="font-display text-2xl font-bold text-fluky-secondary">{stat.totalMatches}</div>
+                          <div className="text-xs text-fluky-text font-body">Matchs</div>
+                        </div>
+                        <div>
+                          <div className="font-display text-2xl font-bold text-fluky-primary">{stat.wins}</div>
+                          <div className="text-xs text-fluky-text font-body">Victoires</div>
+                        </div>
+                        <div>
+                          <div className="font-display text-2xl font-bold text-fluky-secondary">{stat.losses}</div>
+                          <div className="text-xs text-fluky-text font-body">Défaites</div>
+                        </div>
+                        {stat.draws > 0 && (
+                          <div>
+                            <div className="font-display text-2xl font-bold text-fluky-accent-orange">{stat.draws}</div>
+                            <div className="text-xs text-fluky-text font-body">Nuls</div>
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-display text-2xl font-bold text-fluky-accent-orange">{stat.winRate}%</div>
+                          <div className="text-xs text-fluky-text font-body">Win Rate</div>
+                        </div>
                       </div>
                     </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Pagination pour les tournois */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex flex-col items-center gap-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    isLoading={loading}
+                  />
+                  <div className="text-center text-fluky-text/70 text-sm font-body">
+                    Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, tournamentStats.length)} sur {tournamentStats.length} tournoi{tournamentStats.length > 1 ? 's' : ''}
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

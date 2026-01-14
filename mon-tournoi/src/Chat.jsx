@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from './utils/toast';
+import { messageSchema } from './shared/utils/schemas/message';
 
 export default function Chat({ tournamentId, matchId, session, supabase }) {
   const [messages, setMessages] = useState([]);
@@ -116,14 +117,17 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
     e.preventDefault();
     if (!session || sending) return;
 
-    const trimmedMessage = newMessage.trim();
-    if (!trimmedMessage) return;
-
-    // Vérifier la longueur
-    if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
-      toast.warning(`Message trop long (maximum ${MAX_MESSAGE_LENGTH} caractères)`);
+    // Validation avec Zod
+    const result = messageSchema.safeParse({ content: newMessage });
+    
+    if (!result.success) {
+      // Afficher la première erreur
+      const firstError = result.error.issues[0];
+      toast.warning(firstError.message);
       return;
     }
+    
+    const trimmedMessage = result.data.content;
 
     const now = Date.now();
     

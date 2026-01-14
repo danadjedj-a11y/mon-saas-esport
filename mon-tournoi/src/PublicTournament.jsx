@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import { getSwissScores } from './swissUtils';
 import { calculateMatchWinner } from './bofUtils';
 import TeamJoinButton from './TeamJoinButton';
 import FollowButton from './components/FollowButton';
@@ -9,212 +8,121 @@ import CommentSection from './components/CommentSection';
 import RatingDisplay from './components/RatingDisplay';
 import Skeleton from './components/Skeleton';
 import DashboardLayout from './layouts/DashboardLayout';
+import { useTournament } from './shared/hooks';
+import { useAuth } from './shared/hooks';
 
 export default function PublicTournament() {
   const { id } = useParams();
   const navigate = useNavigate();
-  // Note: session n'est plus nécessaire ici car c'est une vue publique
-  // Si on a besoin de la session pour certaines fonctionnalités (comme rejoindre), 
-  // on devrait la passer en prop depuis App.jsx ou utiliser un Context
-  const [session, setSession] = useState(null);
   
-  const [tournoi, setTournoi] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [matches, setMatches] = useState([]);
+  // Utiliser les hooks pour la session et le tournoi
+  const { session } = useAuth();
+  
+  // Utiliser le hook useTournament pour charger les données principales
+  const {
+    tournament: tournoi,
+    participants,
+    matches: rawMatches,
+    swissScores,
+    loading,
+    error,
+    refetch,
+  } = useTournament(id, {
+    enabled: !!id,
+    subscribe: true,
+    currentUserId: session?.user?.id,
+  });
+  
+  // États supplémentaires
   const [matchGames, setMatchGames] = useState([]); // Pour Best-of-X
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'bracket', 'results', 'comments'
-  const [swissScores, setSwissScores] = useState([]);
-  const isMountedRef = useRef(true);
-  const fetchDataRef = useRef(null); // Pour éviter les race conditions
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Mémoriser fetchData avec useCallback pour éviter les race conditions
-  const fetchData = useCallback(async () => {
-    if (!id || !isMountedRef.current) return;
+  // Enrichir les matchs avec les informations des participants (noms, logos)
+  const matches = useMemo(() => {
+    if (!rawMatches || !participants || rawMatches.length === 0) return [];
+    
+    const participantsMap = new Map(participants.map(p => [p.team_id, p]));
+    
+    return rawMatches.map(match => {
+      const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
+      const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
+      
+      const getTeamName = (p) => p ? `${p.teams?.name || 'Inconnu'} [${p.teams?.tag || '?'}]` : 'En attente';
+      const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
 
-    // Annuler la requête précédente si elle est en cours
-    if (fetchDataRef.current) {
-      fetchDataRef.current.abort();
+      return {
+        ...match,
+        p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
+        p1_avatar: getTeamLogo(p1),
+        p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
+        p2_avatar: getTeamLogo(p2),
+      };
+    });
+  }, [rawMatches, participants]);
+
+  // Charger les manches pour Best-of-X
+  const loadMatchGames = useCallback(async () => {
+    if (!id || !tournoi?.best_of || tournoi.best_of <= 1 || !matches || matches.length === 0) {
+      setMatchGames([]);
+      return;
     }
-
-    const abortController = new AbortController();
-    fetchDataRef.current = abortController;
 
     try {
-      // 1. Charger le tournoi
-      const { data: tData, error: tError } = await supabase.from('tournaments').select('*').eq('id', id).single();
-      if (abortController.signal.aborted || !isMountedRef.current) return;
-      if (tError) {
-        console.error('Erreur chargement tournoi:', tError);
-        if (isMountedRef.current) setLoading(false);
+      const matchIds = matches.map(m => m.id);
+      if (matchIds.length === 0) {
+        setMatchGames([]);
         return;
       }
-      if (isMountedRef.current) setTournoi(tData);
 
-      // 2. Charger les participants
-      const { data: pData, error: pError } = await supabase
-        .from('participants')
-        .select('*, teams(*)')
-        .eq('tournament_id', id)
-        .order('seed_order', { ascending: true, nullsLast: true });
+      const { data: gamesData, error: gamesError } = await supabase
+        .from('match_games')
+        .select('*')
+        .in('match_id', matchIds)
+        .order('match_id', { ascending: true })
+        .order('game_number', { ascending: true });
       
-      if (abortController.signal.aborted || !isMountedRef.current) return;
-      if (pError) {
-        console.error('Erreur chargement participants:', pError);
-        if (isMountedRef.current) setParticipants([]);
+      if (gamesError) {
+        console.warn('Erreur récupération manches:', gamesError);
+        setMatchGames([]);
       } else {
-        if (isMountedRef.current) setParticipants(pData || []);
-      }
-
-      // 3. Charger les matchs
-      const { data: mData, error: mError } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
-      
-      if (abortController.signal.aborted || !isMountedRef.current) return;
-
-      if (mError) {
-        console.error('Erreur chargement matchs:', mError);
-        if (isMountedRef.current) setMatches([]);
-      } else if (mData && mData.length > 0 && pData) {
-        const enrichedMatches = mData.map(match => {
-          const p1 = pData.find(p => p.team_id === match.player1_id);
-          const p2 = pData.find(p => p.team_id === match.player2_id);
-          
-          const getTeamName = (p) => p ? `${p.teams.name} [${p.teams.tag}]` : 'En attente';
-          const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
-
-          return {
-            ...match,
-            p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
-            p1_avatar: getTeamLogo(p1),
-            p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
-            p2_avatar: getTeamLogo(p2),
-          };
-        });
-        if (isMountedRef.current) setMatches(enrichedMatches);
-
-        // 4. Charger les manches pour les matchs Best-of-X
-        if (tData?.best_of > 1) {
-          try {
-            const matchIds = enrichedMatches.map(m => m.id);
-            const { data: gamesData, error: gamesError } = await supabase
-              .from('match_games')
-              .select('*')
-              .in('match_id', matchIds)
-              .order('match_id', { ascending: true })
-              .order('game_number', { ascending: true });
-            
-            if (abortController.signal.aborted || !isMountedRef.current) return;
-            
-            if (gamesError) {
-              console.warn('Erreur récupération manches:', gamesError);
-              if (isMountedRef.current) setMatchGames([]);
-            } else {
-              if (isMountedRef.current) setMatchGames(gamesData || []);
-            }
-          } catch (error) {
-            if (!abortController.signal.aborted && isMountedRef.current) {
-              console.warn('Erreur récupération manches:', error);
-              setMatchGames([]);
-            }
-          }
-        } else {
-          if (isMountedRef.current) setMatchGames([]);
-        }
-      } else {
-        if (isMountedRef.current) setMatches([]);
-      }
-      
-      // Charger les scores suisses si format suisse
-      if (tData?.format === 'swiss') {
-        try {
-          const scores = await getSwissScores(supabase, id);
-          if (abortController.signal.aborted || !isMountedRef.current) return;
-          if (isMountedRef.current) setSwissScores(scores);
-        } catch (error) {
-          if (!abortController.signal.aborted && isMountedRef.current) {
-            console.error('Erreur chargement scores suisses:', error);
-            setSwissScores([]);
-          }
-        }
-      } else {
-        if (isMountedRef.current) setSwissScores([]);
-      }
-      
-      if (isMountedRef.current) {
-        setLoading(false);
+        setMatchGames(gamesData || []);
       }
     } catch (error) {
-      if (!abortController.signal.aborted && isMountedRef.current) {
-        console.error('Erreur lors du chargement des données:', error);
-        setLoading(false);
-      }
-    } finally {
-      if (fetchDataRef.current === abortController) {
-        fetchDataRef.current = null;
-      }
+      console.warn('Erreur récupération manches:', error);
+      setMatchGames([]);
     }
-  }, [id, supabase]);
+  }, [id, tournoi?.best_of, matches]);
 
+  // Charger les manches quand les matchs changent
   useEffect(() => {
-    isMountedRef.current = true;
+    loadMatchGames();
+  }, [loadMatchGames]);
 
-    // Optionnel : récupérer la session uniquement si nécessaire pour certaines fonctionnalités
-    // On laisse cela mais sans créer de double listener
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMountedRef.current) {
-        setSession(session);
-      }
-    });
+  // Realtime pour match_games seulement (les autres sont gérés par useTournament)
+  useEffect(() => {
+    if (!id || !tournoi?.best_of || tournoi.best_of <= 1 || !matches || matches.length === 0) return;
 
-    // Note: On ne crée PLUS de listener onAuthStateChange ici
-    // App.jsx gère déjà tout. Si on a besoin de la session, elle devrait venir via props/Context
+    const matchIds = matches.map(m => m.id).filter(Boolean);
+    if (matchIds.length === 0) return;
 
-    fetchData();
-
-    // Abonnement temps réel pour les mises à jour publiques
-    const channel = supabase.channel(`public-tournament-updates-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, 
-      () => {
-        if (isMountedRef.current) {
-          fetchData();
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${id}` }, 
-      () => {
-        if (isMountedRef.current) {
-          fetchData();
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${id}` }, 
-      () => {
-        if (isMountedRef.current) {
-          fetchData();
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, 
-      () => {
-        if (isMountedRef.current) {
-          fetchData();
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games' }, 
-      () => {
-        if (isMountedRef.current) {
-          fetchData();
+    const channel = supabase.channel(`public-tournament-match-games-${id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'match_games'
+      }, 
+      (payload) => {
+        // Vérifier si la manche appartient à un match de ce tournoi
+        if (payload.new && matchIds.includes(payload.new.match_id)) {
+          loadMatchGames();
         }
       })
       .subscribe();
 
     return () => {
-      isMountedRef.current = false;
       supabase.removeChannel(channel);
-      // Annuler toute requête en cours
-      if (fetchDataRef.current) {
-        fetchDataRef.current.abort();
-        fetchDataRef.current = null;
-      }
     };
-  }, [id, fetchData, supabase]);
+  }, [id, tournoi?.best_of, matches, loadMatchGames]);
 
 
   // Fonction helper pour obtenir le score Best-of-X d'un match en temps réel
@@ -826,7 +734,7 @@ export default function PublicTournament() {
                     tournamentId={id} 
                     supabase={supabase} 
                     session={session} 
-                    onJoinSuccess={fetchData} 
+                    onJoinSuccess={refetch} 
                     tournament={tournoi} 
                   />
                 ) : (
