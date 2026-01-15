@@ -22,7 +22,9 @@ export default function ActiveMatchWidget({ session }) {
   const opponentScore = isUserTeam1 ? activeMatch.score_p2 : activeMatch.score_p1;
 
   const handleGoToMatch = () => {
-    navigate(`/match/${activeMatch.id}`);
+    if (activeMatch?.id) {
+      navigate(`/match/${activeMatch.id}`);
+    }
   };
 
   if (isMinimized) {

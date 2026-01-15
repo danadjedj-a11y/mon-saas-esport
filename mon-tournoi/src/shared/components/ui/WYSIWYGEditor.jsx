@@ -3,6 +3,12 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 /**
  * Simple WYSIWYG Editor Component
  * Provides basic rich text editing capabilities without external dependencies
+ * 
+ * NOTE: Uses document.execCommand() which is deprecated but still widely supported.
+ * For production use, consider migrating to modern alternatives like:
+ * - TipTap (https://tiptap.dev/)
+ * - Slate.js (https://www.slatejs.org/)
+ * - Lexical (https://lexical.dev/)
  */
 export default function WYSIWYGEditor({ 
   value = '', 

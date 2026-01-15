@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Modal, Card, Badge } from '../shared/components/ui';
 import { toast } from '../utils/toast';
+import { sanitizeHTML, stripHTML } from '../utils/sanitize';
 
 export default function NewsSection() {
   const [articles, setArticles] = useState([]);
@@ -44,9 +45,8 @@ export default function NewsSection() {
   };
 
   const getExcerpt = (content, maxLength = 150) => {
-    const div = document.createElement('div');
-    div.innerHTML = content;
-    const text = div.textContent || div.innerText || '';
+    // Strip HTML tags safely using stripHTML utility
+    const text = stripHTML(content);
     return text.length > maxLength 
       ? text.substring(0, maxLength) + '...' 
       : text;
@@ -190,7 +190,7 @@ export default function NewsSection() {
             {/* Content */}
             <div 
               className="prose prose-invert max-w-none text-fluky-text font-body"
-              dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedArticle.content) }}
               style={{
                 lineHeight: '1.8',
               }}

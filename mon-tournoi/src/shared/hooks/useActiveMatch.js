@@ -38,6 +38,7 @@ export default function useActiveMatch(session) {
       const teamIds = teamMembers.map(tm => tm.team_id);
 
       // Find active matches for user's teams
+      // Match where user's team is either player1 OR player2
       const { data: matches, error: matchError } = await supabase
         .from('matches')
         .select(`
@@ -61,8 +62,7 @@ export default function useActiveMatch(session) {
             logo_url
           )
         `)
-        .in('player1_id', teamIds)
-        .or(`player2_id.in.(${teamIds.join(',')})`)
+        .or(`player1_id.in.(${teamIds.join(',')}),player2_id.in.(${teamIds.join(',')})`)
         .in('status', ['pending', 'ongoing'])
         .order('created_at', { ascending: false })
         .limit(1);
