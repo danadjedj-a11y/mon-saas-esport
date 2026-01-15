@@ -1,5 +1,10 @@
 // Configuration globale pour les tests
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
+
+// Polyfills pour Node.js
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
 // Mock de Supabase
 global.supabase = {
