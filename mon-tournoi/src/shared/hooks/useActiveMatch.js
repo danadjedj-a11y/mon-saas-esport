@@ -118,7 +118,7 @@ export default function useActiveMatch(session) {
           schema: 'public',
           table: 'matches',
         },
-        (payload) => {
+        (_payload) => {
           // Refetch when matches change
           fetchActiveMatch();
         }

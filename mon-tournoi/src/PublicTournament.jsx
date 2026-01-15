@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { calculateMatchWinner } from './bofUtils';
@@ -25,7 +25,7 @@ export default function PublicTournament() {
     matches: rawMatches,
     swissScores,
     loading,
-    error,
+    error: _error,
     refetch,
   } = useTournament(id, {
     enabled: !!id,
@@ -87,14 +87,15 @@ export default function PublicTournament() {
       } else {
         setMatchGames(gamesData || []);
       }
-    } catch (error) {
-      console.warn('Erreur récupération manches:', error);
+    } catch (_error) {
+      console.warn('Erreur récupération manches:', _error);
       setMatchGames([]);
     }
-  }, [id, tournoi?.best_of, matches]);
+  }, [id, tournoi, matches]);
 
   // Charger les manches quand les matchs changent
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMatchGames();
   }, [loadMatchGames]);
 
@@ -1257,7 +1258,7 @@ export default function PublicTournament() {
                                     borderRadius:'10px 10px 0 0'
                                   }}>
                                     <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                      {m.player1_id && <img loading="lazy" src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
                                       <span style={{
                                         color: m.player1_id ? 'white' : '#666', 
                                         fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
@@ -1284,7 +1285,7 @@ export default function PublicTournament() {
                                     borderRadius:'0 0 10px 10px'
                                   }}>
                                     <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                      {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                      {m.player2_id && <img loading="lazy" src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
                                       <span style={{
                                         color: m.player2_id ? 'white' : '#666', 
                                         fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 
@@ -1573,7 +1574,7 @@ export default function PublicTournament() {
                                   borderRadius:'10px 10px 0 0'
                                 }}>
                                   <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                    {m.player1_id && <img src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                    {m.player1_id && <img loading="lazy" src={m.p1_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
                                     <span style={{
                                       color: m.player1_id ? 'white' : '#666', 
                                       fontWeight: (m.score_p1 || 0) > (m.score_p2 || 0) ? 'bold' : 'normal', 
@@ -1600,7 +1601,7 @@ export default function PublicTournament() {
                                   borderRadius:'0 0 10px 10px'
                                 }}>
                                   <div style={{display:'flex', alignItems:'center', gap:'10px', flex: 1, minWidth: 0}}>
-                                    {m.player2_id && <img src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
+                                    {m.player2_id && <img loading="lazy" src={m.p2_avatar} style={{width:'28px', height:'28px', borderRadius:'50%', objectFit:'cover', border:'1px solid #555', flexShrink: 0}} alt="" />}
                                     <span style={{
                                       color: m.player2_id ? 'white' : '#666', 
                                       fontWeight: (m.score_p2 || 0) > (m.score_p1 || 0) ? 'bold' : 'normal', 

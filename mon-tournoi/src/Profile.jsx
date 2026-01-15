@@ -16,7 +16,7 @@ export default function Profile({ session }) {
   const [playerStats, setPlayerStats] = useState(null);
   const [recentMatches, setRecentMatches] = useState([]);
   const [myTeams, setMyTeams] = useState([]);
-  const [achievements, setAchievements] = useState([]);
+  const [_achievements, _setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -420,7 +420,7 @@ export default function Profile({ session }) {
                         .eq('id', session.user.id);
                       setBannerUrl('');
                       toast.success('✅ Bannière supprimée');
-                    } catch (error) {
+                    } catch {
                       toast.error('Erreur lors de la suppression');
                     }
                   }}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
 import BadgeDisplay from './components/BadgeDisplay';
 import Skeleton from './components/Skeleton';
 import DashboardLayout from './layouts/DashboardLayout';

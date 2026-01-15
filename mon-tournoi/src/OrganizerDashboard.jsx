@@ -66,14 +66,14 @@ export default function OrganizerDashboard({ session }) {
     if (!confirm("Dupliquer ce tournoi ?")) return;
 
     try {
-      const { id, created_at, updated_at, ...tournamentData } = tournament;
+      const { id: _id, created_at: _created_at, updated_at: _updated_at, ...tournamentData } = tournament;
       const newTournament = {
         ...tournamentData,
         name: `${tournament.name} (Copie)`,
         status: 'draft',
       };
 
-      const { data, error } = await supabase
+      const { data: _data, error } = await supabase
         .from('tournaments')
         .insert([newTournament])
         .select()

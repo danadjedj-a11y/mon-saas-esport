@@ -84,7 +84,7 @@ export default function CreateTeam() {
       const validatedData = teamSchema.parse(formData);
 
       // Créer l'équipe via le service API
-      const team = await createTeam({
+      const _team = await createTeam({
         name: validatedData.name,
         tag: validatedData.tag,
         captain_id: session.user.id,

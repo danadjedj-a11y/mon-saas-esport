@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import confetti from 'canvas-confetti';
@@ -11,7 +11,7 @@ import AdminPanel from './AdminPanel';
 import SeedingModal from './SeedingModal';
 import SchedulingModal from './SchedulingModal';
 import { notifyMatchResult } from './notificationUtils';
-import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores, recalculateBuchholzScores } from './swissUtils';
+import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores } from './swissUtils';
 import { exportTournamentToPDF } from './utils/pdfExport';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -51,7 +51,7 @@ export default function Tournament({ session }) {
   const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
   const [isSchedulingModalOpen, setIsSchedulingModalOpen] = useState(false);
   const [schedulingMatch, setSchedulingMatch] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false); // Pour les actions spécifiques (startTournament, etc.)
+  const [_actionLoading, setActionLoading] = useState(false); // Pour les actions spécifiques (startTournament, etc.)
 
   const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
   
@@ -1170,7 +1170,7 @@ export default function Tournament({ session }) {
                         <tr key={team.id} style={{ borderBottom: '1px solid #333' }}>
                         <td style={{ padding: '10px', color: index === 0 ? '#f1c40f' : 'white' }}>#{index + 1}</td>
                         <td style={{ padding: '10px', display:'flex', alignItems:'center', gap:'10px' }}>
-                            <img src={team.teams?.logo_url || `https://ui-avatars.com/api/?name=${team.teams?.tag}`} style={{width:'24px', height:'24px', borderRadius:'50%'}} alt=""/>
+                            <img loading="lazy" src={team.teams?.logo_url || `https://ui-avatars.com/api/?name=${team.teams?.tag}`} style={{width:'24px', height:'24px', borderRadius:'50%'}} alt=""/>
                             {team.teams?.name}
                         </td>
                         <td style={{ padding: '10px', textAlign:'center', color:'#4ade80' }}>{team.points}</td>
@@ -1277,9 +1277,9 @@ export default function Tournament({ session }) {
             <div style={{background:'#2a2a2a', padding:'30px', borderRadius:'12px', width:'300px', border:'1px solid #444'}}>
                 <h3 style={{textAlign:'center'}}>Score Admin</h3>
                 <div style={{display:'flex', justifyContent:'space-between', margin:'20px 0'}}>
-                    <input type="number" value={scoreA} onChange={e=>setScoreA(e.target.value)} style={{width:'50px', padding:'10px', background:'#111', color:'white', border:'none'}} />
+                    <input type="number" value={scoreA} onChange={e=>setScoreA(e.target.value)} aria-label="Score équipe 1" style={{width:'50px', padding:'10px', background:'#111', color:'white', border:'none'}} />
                     <span>-</span>
-                    <input type="number" value={scoreB} onChange={e=>setScoreB(e.target.value)} style={{width:'50px', padding:'10px', background:'#111', color:'white', border:'none'}} />
+                    <input type="number" value={scoreB} onChange={e=>setScoreB(e.target.value)} aria-label="Score équipe 2" style={{width:'50px', padding:'10px', background:'#111', color:'white', border:'none'}} />
                 </div>
                 <button onClick={saveScore} style={{width:'100%', padding:'10px', background:'#4ade80', border:'none', cursor:'pointer'}}>Valider & Avancer</button>
                 <button onClick={()=>setIsModalOpen(false)} style={{width:'100%', padding:'10px', background:'transparent', border:'none', color:'#ccc', marginTop:'10px', cursor:'pointer'}}>Annuler</button>
@@ -1305,7 +1305,7 @@ export default function Tournament({ session }) {
 }
 
 // Petit sous-composant pour alléger le rendu (Render pur)
-function MatchCard({ match, onClick, isOwner }) {
+function MatchCard({ match, onClick, _isOwner }) {
     const hasDisqualified = match.p1_disqualified || match.p2_disqualified;
     const isCompleted = match.status === 'completed';
     const isScheduled = match.scheduled_at && !isCompleted;
@@ -1340,7 +1340,7 @@ function MatchCard({ match, onClick, isOwner }) {
             {/* J1 */}
             <div style={{padding:'10px', display:'flex', justifyContent:'space-between', alignItems:'center', background: match.score_p1 > match.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
                 <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>
-                    {match.player1_id && <img src={match.p1_avatar} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="" />}
+                    {match.player1_id && <img loading="lazy" src={match.p1_avatar} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="" />}
                     <span style={{fontSize:'0.9rem', whiteSpace:'nowrap', textDecoration: match.p1_disqualified ? 'line-through' : 'none', color: match.p1_disqualified ? '#e74c3c' : 'white'}}>
                         {match.p1_name.split(' [')[0]}
                     </span>
@@ -1350,7 +1350,7 @@ function MatchCard({ match, onClick, isOwner }) {
             {/* J2 */}
             <div style={{padding:'10px', display:'flex', justifyContent:'space-between', alignItems:'center', background: match.score_p2 > match.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px', borderTop:'1px solid #333'}}>
                 <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>
-                    {match.player2_id && <img src={match.p2_avatar} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="" />}
+                    {match.player2_id && <img loading="lazy" src={match.p2_avatar} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="" />}
                     <span style={{fontSize:'0.9rem', whiteSpace:'nowrap', textDecoration: match.p2_disqualified ? 'line-through' : 'none', color: match.p2_disqualified ? '#e74c3c' : 'white'}}>
                         {match.p2_name.split(' [')[0]}
                     </span>

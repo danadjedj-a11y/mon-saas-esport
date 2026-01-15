@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getSwissScores } from '../swissUtils';
@@ -17,20 +17,7 @@ export default function StreamOverlay() {
   const [loading, setLoading] = useState(true);
   const [currentMatch, setCurrentMatch] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-
-    // Temps réel pour les overlays
-    const channel = supabase.channel('stream-overlay-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // Tournoi
       const { data: tData } = await supabase.from('tournaments').select('*').eq('id', id).single();
@@ -101,7 +88,20 @@ export default function StreamOverlay() {
       console.error('Erreur fetchData overlay:', error);
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+
+    // Temps réel pour les overlays
+    const channel = supabase.channel('stream-overlay-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, () => fetchData())
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [id, fetchData]);
 
   // Style global pour overlay (fond transparent, texte visible)
   const overlayStyle = {
@@ -166,7 +166,7 @@ export default function StreamOverlay() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          {match.p1_avatar && <img src={match.p1_avatar} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />}
+                          {match.p1_avatar && <img loading="lazy" src={match.p1_avatar} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />}
                           <span style={{ fontWeight: isCompleted && (match.score_p1 || 0) > (match.score_p2 || 0) ? 'bold' : 'normal', fontSize: '1.1rem' }}>
                             {match.p1_name.split(' [')[0]}
                           </span>
@@ -178,7 +178,7 @@ export default function StreamOverlay() {
                         </div>
                         <div style={{ height: '1px', background: 'rgba(255,255,255,0.2)', margin: '8px 0' }}></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {match.p2_avatar && <img src={match.p2_avatar} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />}
+                          {match.p2_avatar && <img loading="lazy" src={match.p2_avatar} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />}
                           <span style={{ fontWeight: isCompleted && (match.score_p2 || 0) > (match.score_p1 || 0) ? 'bold' : 'normal', fontSize: '1.1rem' }}>
                             {match.p2_name.split(' [')[0]}
                           </span>
@@ -241,7 +241,7 @@ export default function StreamOverlay() {
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', gap: '30px' }}>
           <div style={{ flex: 1 }}>
             {currentMatch.p1_avatar && (
-              <img src={currentMatch.p1_avatar} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px', border: '3px solid white' }} />
+              <img loading="lazy" src={currentMatch.p1_avatar} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px', border: '3px solid white' }} />
             )}
             <div style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '10px' }}>
               {currentMatch.p1_name.split(' [')[0]}
@@ -253,7 +253,7 @@ export default function StreamOverlay() {
           <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#aaa' }}>VS</div>
           <div style={{ flex: 1 }}>
             {currentMatch.p2_avatar && (
-              <img src={currentMatch.p2_avatar} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px', border: '3px solid white' }} />
+              <img loading="lazy" src={currentMatch.p2_avatar} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px', border: '3px solid white' }} />
             )}
             <div style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '10px' }}>
               {currentMatch.p2_name.split(' [')[0]}
@@ -312,7 +312,7 @@ export default function StreamOverlay() {
                     #{index + 1}
                   </div>
                   {team?.teams?.logo_url && (
-                    <img src={team.teams.logo_url} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                    <img loading="lazy" src={team.teams.logo_url} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
                   )}
                   <div style={{ flex: 1, fontSize: '1.3rem', fontWeight: 'bold' }}>
                     {team?.teams?.name || 'Inconnu'}
@@ -389,7 +389,7 @@ export default function StreamOverlay() {
                 #{index + 1}
               </div>
               {team.logo && (
-                <img src={team.logo} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                <img loading="lazy" src={team.logo} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
               )}
               <div style={{ flex: 1, fontSize: '1.3rem', fontWeight: 'bold' }}>{team.name}</div>
               <div style={{ display: 'flex', gap: '20px', fontSize: '1.2rem' }}>

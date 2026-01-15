@@ -30,7 +30,7 @@ export async function getUserRole(supabase, userId) {
     
     // Si pas de données, retourner 'player' par défaut
     return data?.role || 'player';
-  } catch (error) {
+  } catch {
     // En cas d'erreur quelconque, retourner 'player' par défaut
     return 'player';
   }

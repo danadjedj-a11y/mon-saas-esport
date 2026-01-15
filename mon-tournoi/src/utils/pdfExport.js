@@ -13,7 +13,7 @@ export function exportTournamentToPDF(tournament, participants, matches, standin
   
   // Couleurs
   const primaryColor = [52, 152, 219]; // #3498db
-  const darkColor = [26, 26, 26]; // #1a1a1a
+  const _darkColor = [26, 26, 26]; // #1a1a1a
   
   let yPos = 20;
   

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -9,15 +9,16 @@ export default function JoinTeam({ session, supabase }) {
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTeamInfo();
-  }, [teamId]);
-
-  const fetchTeamInfo = async () => {
+  const fetchTeamInfo = useCallback(async () => {
     const { data } = await supabase.from('teams').select('*').eq('id', teamId).single();
     setTeam(data);
     setLoading(false);
-  };
+  }, [supabase, teamId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTeamInfo();
+  }, [fetchTeamInfo]);
 
   const handleJoin = async () => {
     if (!session) {

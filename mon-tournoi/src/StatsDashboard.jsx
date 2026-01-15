@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import DashboardLayout from './layouts/DashboardLayout';
 import { Pagination } from './shared/components/ui';
@@ -269,7 +268,7 @@ export default function StatsDashboard({ session, supabase }) {
     );
   }
 
-  const currentTeam = myTeams.find(t => t.id === selectedTeam);
+  const _currentTeam = myTeams.find(t => t.id === selectedTeam);
   const pieData = teamStats ? [
     { name: 'Victoires', value: teamStats.wins, color: '#C10468' },
     { name: 'Défaites', value: teamStats.losses, color: '#FF36A3' },

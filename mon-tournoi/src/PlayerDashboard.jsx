@@ -125,7 +125,7 @@ export default function PlayerDashboard({ session }) {
     }
   };
 
-  const handleLogout = async () => {
+  const _handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {

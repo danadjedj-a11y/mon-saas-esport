@@ -89,6 +89,7 @@ export const useTournament = (tournamentId, options = {}) => {
   // Charger au montage
   useEffect(() => {
     if (enabled && tournamentId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true);
       fetchTournament();
     } else {

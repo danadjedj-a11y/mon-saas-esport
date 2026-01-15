@@ -243,7 +243,7 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
   `.trim();
 }
 
-function generateTeamInvitationText({ recipientName, teamName, inviterName, message, invitationUrl }) {
+export function generateTeamInvitationText({ recipientName, teamName, inviterName, message, invitationUrl }) {
   return `
 Fluky Boys - Invitation à rejoindre une équipe
 
@@ -262,7 +262,7 @@ Cet email a été envoyé automatiquement.
   `.trim();
 }
 
-function generateMatchNotificationHTML({ recipientName, matchInfo, tournamentName }) {
+function generateMatchNotificationHTML({ recipientName, _matchInfo, tournamentName }) {
   return `
 <!DOCTYPE html>
 <html>

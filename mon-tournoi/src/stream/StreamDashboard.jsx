@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getSwissScores } from '../swissUtils';
@@ -13,18 +13,7 @@ export default function StreamDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'recent', 'stats'
 
-  useEffect(() => {
-    fetchData();
-
-    const channel = supabase.channel('stream-dashboard-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const { data: tData } = await supabase.from('tournaments').select('*').eq('id', id).single();
       setTournoi(tData);
@@ -69,7 +58,18 @@ export default function StreamDashboard() {
       console.error('Erreur fetchData dashboard:', error);
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+
+    const channel = supabase.channel('stream-dashboard-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, () => fetchData())
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [id, fetchData]);
 
   if (loading) {
     return (
@@ -219,13 +219,13 @@ export default function StreamDashboard() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {match.p1_avatar && <img src={match.p1_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
+                          {match.p1_avatar && <img loading="lazy" src={match.p1_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
                           <span style={{ fontSize: '1.1rem' }}>{match.p1_name.split(' [')[0]}</span>
                         </div>
                         <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#666' }}>VS</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-end' }}>
                           <span style={{ fontSize: '1.1rem' }}>{match.p2_name.split(' [')[0]}</span>
-                          {match.p2_avatar && <img src={match.p2_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
+                          {match.p2_avatar && <img loading="lazy" src={match.p2_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
                         </div>
                       </div>
                       {match.scheduled_at && (
@@ -271,7 +271,7 @@ export default function StreamDashboard() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {match.p1_avatar && <img src={match.p1_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
+                          {match.p1_avatar && <img loading="lazy" src={match.p1_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
                           <span style={{ fontSize: '1.1rem', fontWeight: (match.score_p1 || 0) > (match.score_p2 || 0) ? 'bold' : 'normal' }}>
                             {match.p1_name.split(' [')[0]}
                           </span>
@@ -283,7 +283,7 @@ export default function StreamDashboard() {
                           <span style={{ fontSize: '1.1rem', fontWeight: (match.score_p2 || 0) > (match.score_p1 || 0) ? 'bold' : 'normal' }}>
                             {match.p2_name.split(' [')[0]}
                           </span>
-                          {match.p2_avatar && <img src={match.p2_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
+                          {match.p2_avatar && <img loading="lazy" src={match.p2_avatar} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />}
                         </div>
                       </div>
                     </div>
@@ -354,7 +354,7 @@ export default function StreamDashboard() {
                             #{index + 1}
                           </div>
                           {team?.teams?.logo_url && (
-                            <img src={team.teams.logo_url} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                            <img loading="lazy" src={team.teams.logo_url} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
                           )}
                           <div style={{ flex: 1, fontSize: '1.2rem', fontWeight: 'bold' }}>{team?.teams?.name || 'Inconnu'}</div>
                           <div style={{ display: 'flex', gap: '15px', fontSize: '1rem' }}>

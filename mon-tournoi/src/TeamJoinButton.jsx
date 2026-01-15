@@ -113,11 +113,11 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
   };
 
   // Fonction pour promouvoir automatiquement de la waitlist
-  const promoteFromWaitlist = async () => {
+  const _promoteFromWaitlist = async () => {
     if (!tournamentInfo?.max_participants) return null;
 
     // Récupérer le nombre actuel de participants
-    const { data: participants, count } = await supabase
+    const { data: _participants, count } = await supabase
       .from('participants')
       .select('*', { count: 'exact', head: true })
       .eq('tournament_id', tournamentId);
@@ -210,7 +210,7 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
     
     try {
       // Vérifier les limitations
-      const { data: currentParticipants, count } = await supabase
+      const { data: _currentParticipants, count } = await supabase
         .from('participants')
         .select('*', { count: 'exact', head: true })
         .eq('tournament_id', tournamentId);

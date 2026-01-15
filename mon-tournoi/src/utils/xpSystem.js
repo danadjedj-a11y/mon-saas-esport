@@ -6,7 +6,7 @@ import { XP_REWARDS } from './badges';
 /**
  * Attribue de l'XP à un utilisateur et vérifie les badges
  */
-export async function awardXP(userId, xpAmount, actionType = 'general') {
+export async function awardXP(userId, xpAmount, _actionType = 'general') {
   if (!userId) return;
 
   try {

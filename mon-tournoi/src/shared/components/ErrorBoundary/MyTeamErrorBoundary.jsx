@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button, Card } from '../ui';
 import monitoring from '../../../utils/monitoring';
 

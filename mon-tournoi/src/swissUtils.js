@@ -70,7 +70,7 @@ function havePlayedTogether(team1Id, team2Id, allMatches) {
  */
 export function swissPairing(swissScores, allMatches) {
   // Créer une map pour accès rapide
-  const scoresMap = new Map(swissScores.map(s => [s.team_id, s]));
+  const _scoresMap = new Map(swissScores.map(s => [s.team_id, s]));
   
   // Trier par score (wins desc, puis buchholz desc)
   const sortedTeams = [...swissScores].sort((a, b) => {

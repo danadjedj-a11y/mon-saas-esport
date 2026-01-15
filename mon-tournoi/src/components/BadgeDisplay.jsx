@@ -4,7 +4,7 @@ import { getBadgeRarityColor, getRarityLabel, getCategoryLabel } from '../utils/
 import Skeleton from './Skeleton';
 import { EmptyBadges } from './EmptyState';
 
-export default function BadgeDisplay({ userId, session, compact = false }) {
+export default function BadgeDisplay({ userId, _session, compact = false }) {
   const [badges, setBadges] = useState([]);
   const [userLevel, setUserLevel] = useState(null);
   const [loading, setLoading] = useState(true);

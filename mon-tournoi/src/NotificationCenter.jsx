@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Skeleton from './components/Skeleton';
@@ -12,8 +12,26 @@ export default function NotificationCenter({ session }) {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  const fetchNotifications = useCallback(async () => {
+    if (!session?.user) return;
+    
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (data) {
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.read).length);
+    }
+    setLoading(false);
+  }, [session]);
+
   useEffect(() => {
     if (!session?.user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
     // Abonnement temps réel aux notifications
@@ -36,7 +54,7 @@ export default function NotificationCenter({ session }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session]);
+  }, [session, fetchNotifications]);
 
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
@@ -54,26 +72,6 @@ export default function NotificationCenter({ session }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
-
-  const fetchNotifications = async () => {
-    if (!session?.user) return;
-    
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('Erreur chargement notifications:', error);
-    } else {
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
-    }
-    setLoading(false);
-  };
 
   const markAsRead = async (notificationId) => {
     const { error } = await supabase

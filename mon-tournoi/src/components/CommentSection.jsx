@@ -218,7 +218,7 @@ export default function CommentSection({ tournamentId, session }) {
     try {
       const comment = comments.find(c => c.id === commentId);
       const currentVote = comment?.userVote;
-      const wasLiked = currentVote === 'like';
+      const _wasLiked = currentVote === 'like';
       const isLiking = voteType === 'like' && currentVote !== 'like';
 
       if (currentVote === voteType) {

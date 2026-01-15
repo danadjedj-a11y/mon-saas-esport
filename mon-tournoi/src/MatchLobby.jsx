@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Chat from './Chat';
 import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
 import { updateSwissScores } from './swissUtils';
-import { calculateMatchWinner, getNextVetoTeam, generateVetoOrder, getAvailableMaps, getMapForGame } from './bofUtils';
+import { calculateMatchWinner, getMapForGame } from './bofUtils';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { useMatch } from './shared/hooks';
@@ -13,7 +13,7 @@ import { getUserGamingAccounts } from './shared/services/api/gamingAccounts';
 
 export default function MatchLobby({ session }) {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   
   // Utiliser le hook useMatch pour charger le match principal
   const {
@@ -21,9 +21,9 @@ export default function MatchLobby({ session }) {
     loading: matchLoading,
     error: matchError,
     refetch: refetchMatch,
-    myTeam,
-    opponentTeam,
-    isMyMatch,
+    myTeam: _myTeam,
+    opponentTeam: _opponentTeam,
+    isMyMatch: _isMyMatch,
   } = useMatch(id, {
     enabled: !!id,
     subscribe: true,
@@ -33,7 +33,7 @@ export default function MatchLobby({ session }) {
   // États supplémentaires (non gérés par le hook)
   const [myTeamId, setMyTeamId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tournamentOwnerId, setTournamentOwnerId] = useState(null);
+  const [_tournamentOwnerId, setTournamentOwnerId] = useState(null);
   const [tournamentFormat, setTournamentFormat] = useState(null);
   
   // États pour le score déclaré par MON équipe (pour single game)
@@ -54,7 +54,7 @@ export default function MatchLobby({ session }) {
   const [vetos, setVetos] = useState([]);
   
   // États pour la déclaration de score par manche
-  const [gameScores, setGameScores] = useState({}); // { gameNumber: { team1Score, team2Score } }
+  const [_gameScores, _setGameScores] = useState({}); // { gameNumber: { team1Score, team2Score } }
   
   // États pour les comptes gaming
   const [team1GamingAccounts, setTeam1GamingAccounts] = useState({});
@@ -262,7 +262,7 @@ export default function MatchLobby({ session }) {
   }, [id, loadScoreReports, loadMatchGamesAndVetos]);
 
   // Alias pour compatibilité avec le code existant
-  const fetchMatchDetails = () => {
+  const _fetchMatchDetails = () => {
     refetchMatch();
     loadMatchGamesAndVetos();
     loadScoreReports();
@@ -384,7 +384,7 @@ export default function MatchLobby({ session }) {
       
     } else if (bracketType === 'losers') {
       // --- LOSERS BRACKET ---
-      const currentLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
+      const _currentLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === roundNumber).sort((a,b) => a.match_number - b.match_number);
       const nextLosersRound = roundNumber + 1;
       const nextLosersMatches = allMatches.filter(m => m.bracket_type === 'losers' && m.round_number === nextLosersRound).sort((a,b) => a.match_number - b.match_number);
       
@@ -1285,9 +1285,9 @@ export default function MatchLobby({ session }) {
             <div style={{background: '#c0392b', padding: '20px', borderRadius: '10px', marginTop: '20px', border: '2px solid #e74c3c'}}>
               <h3 style={{marginTop: 0, marginBottom: '15px', color: 'white'}}>⚖️ Résoudre le conflit (Admin)</h3>
               <div style={{display: 'flex', gap: '15px', alignItems: 'center', justifyContent: 'center'}}>
-                <input type="number" defaultValue={match.score_p1_reported || 0} id="admin-score-p1" min="0" style={{fontSize:'1.5rem', width:'80px', textAlign:'center', background:'#fff', color:'#000', borderRadius:'5px', padding: '10px'}} />
+                <input type="number" defaultValue={match.score_p1_reported || 0} id="admin-score-p1" aria-label="Score équipe 1" min="0" style={{fontSize:'1.5rem', width:'80px', textAlign:'center', background:'#fff', color:'#000', borderRadius:'5px', padding: '10px'}} />
                 <span style={{fontSize:'2rem'}}>:</span>
-                <input type="number" defaultValue={match.score_p2_reported || 0} id="admin-score-p2" min="0" style={{fontSize:'1.5rem', width:'80px', textAlign:'center', background:'#fff', color:'#000', borderRadius:'5px', padding: '10px'}} />
+                <input type="number" defaultValue={match.score_p2_reported || 0} id="admin-score-p2" aria-label="Score équipe 2" min="0" style={{fontSize:'1.5rem', width:'80px', textAlign:'center', background:'#fff', color:'#000', borderRadius:'5px', padding: '10px'}} />
               </div>
               <button 
                 onClick={() => {
@@ -1310,7 +1310,7 @@ export default function MatchLobby({ session }) {
             <h3>📷 Preuve du résultat (Screenshot)</h3>
             {proofUrl ? (
                 <a href={proofUrl} target="_blank" rel="noreferrer">
-                    <img src={proofUrl} style={{maxWidth:'100%', maxHeight:'300px', borderRadius:'5px', border:'1px solid #555'}} alt="Preuve" />
+                    <img loading="lazy" src={proofUrl} style={{maxWidth:'100%', maxHeight:'300px', borderRadius:'5px', border:'1px solid #555'}} alt="Preuve" />
                 </a>
             ) : (
                 <p style={{color:'#666'}}>Aucune preuve envoyée.</p>
@@ -1318,7 +1318,7 @@ export default function MatchLobby({ session }) {
             
             {myTeamId && (
                 <div style={{marginTop:'10px'}}>
-              <input type="file" accept="image/*" onChange={uploadProof} disabled={uploading} style={{color:'white'}} />
+              <input type="file" accept="image/*" onChange={uploadProof} disabled={uploading} aria-label="Télécharger une preuve de screenshot" style={{color:'white'}} />
               {uploading && <span style={{marginLeft: '10px', color: '#aaa'}}>Upload en cours...</span>}
             </div>
           )}
@@ -1368,7 +1368,7 @@ export default function MatchLobby({ session }) {
                   <h4 style={{marginTop: 0, marginBottom: '10px', fontSize: '0.9rem', color: '#aaa'}}>📊 Statut des manches</h4>
                   <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px'}}>
                     {matchGames.map((game) => {
-                      const isCompleted = game.status === 'completed';
+                      const _isCompleted = game.status === 'completed';
                       const isConfirmed = game.score_status === 'confirmed';
                       const hasConflict = game.score_status === 'disputed';
                       

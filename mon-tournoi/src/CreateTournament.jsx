@@ -5,7 +5,7 @@ import { handleRateLimitError } from './utils/rateLimitHandler';
 import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './shared/hooks';
 import { createTournament } from './shared/services/api/tournaments';
-import { tournamentSchema } from './shared/utils/schemas/tournament';
+import { tournamentSchema as _tournamentSchema } from './shared/utils/schemas/tournament';
 import { Button, Input, Textarea, Select, Card, Badge, WYSIWYGEditor } from './shared/components/ui';
 
 export default function CreateTournament() {

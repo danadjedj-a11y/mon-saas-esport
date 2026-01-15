@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { calculateMatchWinner } from './bofUtils';
 import { toast } from './utils/toast';
 
-export default function AdminPanel({ tournamentId, supabase, session, participants, matches, onUpdate, onScheduleMatch, tournament }) {
+export default function AdminPanel({ tournamentId, supabase, participants, matches, onUpdate, onScheduleMatch }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'matches', 'conflicts', 'teams', 'schedule', 'stats'
   const [conflicts, setConflicts] = useState([]);
@@ -15,18 +15,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
   const [editScore1, setEditScore1] = useState(0);
   const [editScore2, setEditScore2] = useState(0);
 
-  useEffect(() => {
-    if (activeTab === 'conflicts') fetchConflicts();
-    if (activeTab === 'stats' || activeTab === 'overview') calculateStats();
-    if (activeTab === 'teams') calculateTeamStats();
-    if (activeTab === 'matches') {
-      // Réinitialiser la sélection quand on change d'onglet
-      setSelectedMatch(null);
-      setEditScoreModal(false);
-    }
-  }, [activeTab, matches, participants]);
-
-  const fetchConflicts = async () => {
+  const fetchConflicts = useCallback(async () => {
     // Récupérer les conflits de matchs (single game)
     const { data: matchesData } = await supabase
       .from('matches')
@@ -34,17 +23,25 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       .eq('tournament_id', tournamentId)
       .eq('score_status', 'disputed');
     
-    // Enrichir avec les noms des équipes
+    // Enrichir avec les noms des équipes en une seule requête
     let enriched = [];
-    if (matchesData) {
-      enriched = await Promise.all(matchesData.map(async (match) => {
-        const { data: team1 } = await supabase.from('teams').select('name, tag').eq('id', match.player1_id).single();
-        const { data: team2 } = await supabase.from('teams').select('name, tag').eq('id', match.player2_id).single();
-        return {
-          ...match,
-          team1: team1 || { name: 'Équipe 1', tag: 'T1' },
-          team2: team2 || { name: 'Équipe 2', tag: 'T2' }
-        };
+    if (matchesData && matchesData.length > 0) {
+      // Collecter tous les IDs d'équipes uniques
+      const teamIds = [...new Set(matchesData.flatMap(m => [m.player1_id, m.player2_id].filter(Boolean)))];
+      
+      // Une seule requête pour toutes les équipes
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select('id, name, tag')
+        .in('id', teamIds);
+      
+      // Créer un map pour accès rapide
+      const teamsMap = (teamsData || []).reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
+      
+      enriched = matchesData.map(match => ({
+        ...match,
+        team1: teamsMap[match.player1_id] || { name: 'Équipe 1', tag: 'T1' },
+        team2: teamsMap[match.player2_id] || { name: 'Équipe 2', tag: 'T2' }
       }));
     }
     setConflicts(enriched || []);
@@ -73,25 +70,39 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
             .eq('score_status', 'disputed');
           
           if (gamesData && gamesData.length > 0) {
-            const enrichedGames = await Promise.all(gamesData.map(async (game) => {
-              const { data: matchData } = await supabase
-                .from('matches')
-                .select('*')
-                .eq('id', game.match_id)
-                .single();
-              
+            // Récupérer tous les matchs concernés en une requête
+            const gameMatchIds = [...new Set(gamesData.map(g => g.match_id))];
+            const { data: matchesForGames } = await supabase
+              .from('matches')
+              .select('*')
+              .in('id', gameMatchIds);
+            
+            const matchesMap = (matchesForGames || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
+            
+            // Collecter tous les IDs d'équipes
+            const teamIdsFromMatches = [...new Set(
+              (matchesForGames || []).flatMap(m => [m.player1_id, m.player2_id].filter(Boolean))
+            )];
+            
+            // Une seule requête pour toutes les équipes
+            const { data: teamsForGames } = await supabase
+              .from('teams')
+              .select('id, name, tag')
+              .in('id', teamIdsFromMatches);
+            
+            const teamsMapForGames = (teamsForGames || []).reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
+            
+            const enrichedGames = gamesData.map(game => {
+              const matchData = matchesMap[game.match_id];
               if (!matchData) return null;
-              
-              const { data: team1 } = await supabase.from('teams').select('name, tag').eq('id', matchData.player1_id).single();
-              const { data: team2 } = await supabase.from('teams').select('name, tag').eq('id', matchData.player2_id).single();
               
               return {
                 ...game,
                 match: matchData,
-                team1: team1 || { name: 'Équipe 1', tag: 'T1' },
-                team2: team2 || { name: 'Équipe 2', tag: 'T2' }
+                team1: teamsMapForGames[matchData.player1_id] || { name: 'Équipe 1', tag: 'T1' },
+                team2: teamsMapForGames[matchData.player2_id] || { name: 'Équipe 2', tag: 'T2' }
               };
-            }));
+            });
             
             const filtered = enrichedGames.filter(g => g !== null);
             setGameConflicts(filtered);
@@ -108,9 +119,9 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       console.warn('Erreur récupération conflits manches:', error);
       setGameConflicts([]);
     }
-  };
+  }, [supabase, tournamentId]);
 
-  const calculateStats = () => {
+  const calculateStats = useCallback(() => {
     const totalParticipants = participants.length;
     const checkedIn = participants.filter(p => p.checked_in).length;
     const disqualified = participants.filter(p => p.disqualified).length;
@@ -160,9 +171,9 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
       avgScore2,
       bestOfStats
     });
-  };
+  }, [participants, matches]);
 
-  const calculateTeamStats = () => {
+  const calculateTeamStats = useCallback(() => {
     const teamStatsMap = new Map();
 
     participants.forEach(p => {
@@ -223,9 +234,21 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
     });
 
     setTeamStats(statsArray);
-  };
+  }, [participants, matches]);
 
-  const handleManualCheckIn = async (participantId, teamId) => {
+  // useEffect pour charger les données selon l'onglet actif
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Chargement légitime basé sur l'onglet
+    if (activeTab === 'conflicts') fetchConflicts();
+    if (activeTab === 'stats' || activeTab === 'overview') calculateStats();
+    if (activeTab === 'teams') calculateTeamStats();
+    if (activeTab === 'matches') {
+      setSelectedMatch(null);
+      setEditScoreModal(false);
+    }
+  }, [activeTab, fetchConflicts, calculateStats, calculateTeamStats]);
+
+  const handleManualCheckIn = async (participantId) => {
     if (!confirm("Marquer cette équipe comme check-in ?")) return;
     
     const { error } = await supabase
@@ -596,7 +619,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
                 >
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '15px' }}>
                     {p.teams?.logo_url && (
-                      <img src={p.teams.logo_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                      <img loading="lazy" src={p.teams.logo_url} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
                     )}
                     <div>
                       <div style={{ fontWeight: 'bold', color: p.disqualified ? '#e74c3c' : p.checked_in ? '#4ade80' : 'white', fontSize: '1.05rem' }}>
@@ -709,7 +732,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '8px' }}>
                           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            {match.p1_avatar && <img src={match.p1_avatar} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />}
+                            {match.p1_avatar && <img loading="lazy" src={match.p1_avatar} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />}
                             <span style={{ fontWeight: isCompleted && (match.score_p1 || 0) > (match.score_p2 || 0) ? 'bold' : 'normal' }}>
                               {match.p1_name ? match.p1_name.split(' [')[0] : 'En attente'}
                             </span>
@@ -721,7 +744,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
                             <span style={{ fontWeight: isCompleted && (match.score_p2 || 0) > (match.score_p1 || 0) ? 'bold' : 'normal' }}>
                               {match.p2_name ? match.p2_name.split(' [')[0] : 'En attente'}
                             </span>
-                            {match.p2_avatar && <img src={match.p2_avatar} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />}
+                            {match.p2_avatar && <img loading="lazy" src={match.p2_avatar} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />}
                           </div>
                         </div>
                         {match.scheduled_at && (
@@ -1018,7 +1041,7 @@ export default function AdminPanel({ tournamentId, supabase, session, participan
                         #{index + 1}
                       </td>
                       <td style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {team.teamLogo && <img src={team.teamLogo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />}
+                        {team.teamLogo && <img loading="lazy" src={team.teamLogo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />}
                         <div>
                           <div style={{ fontWeight: 'bold' }}>{team.teamName}</div>
                           <div style={{ fontSize: '0.85rem', color: '#aaa' }}>[{team.teamTag}]</div>

@@ -56,7 +56,7 @@ export function generateVetoOrder(numMaps, bestOf) {
   // Pour BO5 : ban1, ban2, pick1, pick2, ban3, ban4, pick3, ban5, ban6, pick4, pick5
   
   let currentPhase = 1;
-  const phasesPerRound = 4; // 2 bans + 2 picks par round
+  const _phasesPerRound = 4; // 2 bans + 2 picks par round
   
   while (order.length < mapsNeeded && order.length < numMaps) {
     // Round 1 : 2 bans (équipe 1, équipe 2)
@@ -70,7 +70,7 @@ export function generateVetoOrder(numMaps, bestOf) {
     }
     // Round 2+ : alternance bans puis picks
     else {
-      const round = Math.floor((order.length - 4) / 2) + 2;
+      const _round = Math.floor((order.length - 4) / 2) + 2;
       const posInRound = (order.length - 4) % 2;
       if (posInRound === 0) {
         order.push(`ban${currentPhase}`);
@@ -90,7 +90,7 @@ export function generateVetoOrder(numMaps, bestOf) {
  * @param {Array} vetoOrder - Ordre des phases généré
  * @returns {String} 'team1' ou 'team2' ou null si terminé
  */
-export function getNextVetoTeam(vetos, vetoOrder, team1Id, team2Id) {
+export function getNextVetoTeam(vetos, vetoOrder, _team1Id, _team2Id) {
   const nextPhaseIndex = vetos.length;
   
   if (nextPhaseIndex >= vetoOrder.length) {
@@ -138,7 +138,7 @@ export function getMapForGame(games, gameNumber, mapsPool, vetos) {
   }
   
   // Sinon, déterminer la carte selon l'ordre de veto
-  const availableMaps = getAvailableMaps(mapsPool, vetos.filter(v => v.veto_phase.startsWith('ban')));
+  const _availableMaps = getAvailableMaps(mapsPool, vetos.filter(v => v.veto_phase.startsWith('ban')));
   const picks = vetos.filter(v => v.veto_phase.startsWith('pick')).sort((a, b) => {
     const numA = parseInt(a.veto_phase.replace(/\D/g, ''));
     const numB = parseInt(b.veto_phase.replace(/\D/g, ''));

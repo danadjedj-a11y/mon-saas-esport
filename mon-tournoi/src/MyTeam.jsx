@@ -32,7 +32,7 @@ export default function MyTeam() {
     members,
     loading: teamLoading,
     error: teamError,
-    refetch: refetchTeam,
+    refetch: _refetchTeam,
     removeMember,
     updateTeam,
     updateMemberRole,

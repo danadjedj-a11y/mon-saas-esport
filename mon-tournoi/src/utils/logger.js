@@ -72,7 +72,7 @@ class Logger {
     }
   }
 
-  sendToExternalService(logEntry) {
+  sendToExternalService(_logEntry) {
     // Ici, vous pourriez envoyer à Sentry, LogRocket, ou votre propre API
     // Example:
     // if (window.Sentry) {

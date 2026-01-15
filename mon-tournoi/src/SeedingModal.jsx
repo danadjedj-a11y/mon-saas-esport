@@ -1,18 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from './utils/toast';
 
 export default function SeedingModal({ isOpen, onClose, participants, tournamentId, supabase, onSave }) {
   const [seededTeams, setSeededTeams] = useState([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && participants) {
-      // Charger l'ordre de seeding existant ou utiliser l'ordre actuel
-      loadSeeding();
-    }
-  }, [isOpen, participants]);
-
-  const loadSeeding = async () => {
+  const loadSeeding = useCallback(async () => {
     // Récupérer l'ordre de seeding depuis la base (si existe)
     const { data } = await supabase
       .from('participants')
@@ -41,7 +34,15 @@ export default function SeedingModal({ isOpen, onClose, participants, tournament
         .sort((a, b) => (a.seed_order || 999) - (b.seed_order || 999));
       setSeededTeams(ordered);
     }
-  };
+  }, [supabase, tournamentId, participants]);
+
+  useEffect(() => {
+    if (isOpen && participants) {
+      // Charger l'ordre de seeding existant ou utiliser l'ordre actuel
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      loadSeeding();
+    }
+  }, [isOpen, participants, loadSeeding]);
 
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);

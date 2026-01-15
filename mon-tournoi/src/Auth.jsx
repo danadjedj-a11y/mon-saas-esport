@@ -210,7 +210,7 @@ export default function Auth() {
                 <div className="relative">
                   <div className="w-24 h-24 rounded-full border-2 border-fluky-primary overflow-hidden bg-black/30 flex items-center justify-center">
                     {avatarPreview ? (
-                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <img loading="lazy" src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-4xl">👤</span>
                     )}
