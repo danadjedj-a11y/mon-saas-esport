@@ -295,7 +295,7 @@ export default function MatchDetails({ session }) {
               </Button>
               {(match.status === 'ongoing' || match.status === 'pending') && session && (
                 <Button
-                  onClick={() => navigate(`/match/${match.id}`)}
+                  onClick={() => navigate(`/match/${match.id}/lobby`)}
                   className="w-full"
                 >
                   Accéder au lobby du match

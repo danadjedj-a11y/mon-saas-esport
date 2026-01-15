@@ -22,6 +22,7 @@ const CreateTeam = lazy(() => import('./CreateTeam'));
 const MyTeam = lazy(() => import('./MyTeam'));
 const JoinTeam = lazy(() => import('./JoinTeam'));
 const MatchLobby = lazy(() => import('./MatchLobby'));
+const MatchDetails = lazy(() => import('./pages/MatchDetails'));
 const CreateTournament = lazy(() => import('./CreateTournament'));
 const PublicTournament = lazy(() => import('./PublicTournament'));
 const StatsDashboard = lazy(() => import('./StatsDashboard'));
@@ -553,6 +554,9 @@ function App() {
           ) : <Navigate to="/auth" />
         } />
         <Route path="/match/:id" element={
+          <MatchDetails session={session} supabase={supabase} />
+        } />
+        <Route path="/match/:id/lobby" element={
           session ? (
             <PlayerRoute session={session}>
               <MatchLobby session={session} supabase={supabase} />
