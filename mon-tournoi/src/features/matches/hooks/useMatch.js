@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { useSupabaseSubscription } from '../../../shared/hooks';
+import { useSupabaseSubscription } from '../../../shared/hooks/useSupabaseSubscription';
 
 /**
  * Hook personnalisé pour gérer un match
