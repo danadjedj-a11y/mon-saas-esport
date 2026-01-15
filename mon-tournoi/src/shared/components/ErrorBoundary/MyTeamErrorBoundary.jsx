@@ -52,7 +52,6 @@ class MyTeamErrorBoundary extends React.Component {
   }
 
   handleReload = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
     window.location.reload();
   };
 

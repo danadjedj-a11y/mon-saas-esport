@@ -47,7 +47,7 @@ export default function MyTeam() {
   useEffect(() => {
     if (teamError) {
       console.error('Erreur chargement équipe:', teamError);
-      toast.error('Erreur lors du chargement de l\'équipe');
+      // Ne pas afficher de toast car l'ErrorBoundary gère l'affichage
     }
   }, [teamError]);
 
@@ -107,7 +107,10 @@ export default function MyTeam() {
       setAllTeams(uniqueTeams);
     } catch (error) {
       console.error('Erreur chargement équipes:', error);
-      toast.error('Erreur lors du chargement des équipes');
+      // Toast seulement si c'est une erreur réseau/API, pas une erreur fatale
+      if (error.message && !error.message.includes('lexical declaration')) {
+        toast.error('Erreur lors du chargement des équipes');
+      }
     } finally {
       setTeamsLoading(false);
     }
