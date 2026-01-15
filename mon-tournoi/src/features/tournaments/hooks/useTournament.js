@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSupabaseSubscription } from '../../../shared/hooks';
+import { useSupabaseSubscription } from '../../../shared/hooks/useSupabaseSubscription';
 import { getTournamentComplete } from '../../../shared/services/api/tournaments';
 import useTournamentStore from '../../../stores/tournamentStore';
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../supabaseClient';
-import { useSupabaseSubscription } from '../../../shared/hooks';
+import { useSupabaseSubscription } from '../../../shared/hooks/useSupabaseSubscription';
 
 /**
  * Hook personnalisé pour gérer une équipe
