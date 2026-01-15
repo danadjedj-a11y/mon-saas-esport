@@ -122,11 +122,11 @@ describe('MyTeam', () => {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          order: jest.fn().mockReturnThis(),
-          in: jest.fn().mockResolvedValue({
+          order: jest.fn().mockResolvedValue({
             data: [mockTeam],
             error: null
           }),
+          in: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
             data: mockTeam,
             error: null
@@ -196,6 +196,11 @@ describe('MyTeam', () => {
           order: jest.fn().mockResolvedValue({
             data: [],
             error: null
+          }),
+          in: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: null,
+            error: null
           })
         };
       }
@@ -209,7 +214,9 @@ describe('MyTeam', () => {
         };
       }
       return {
-        select: jest.fn().mockReturnThis()
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis()
       };
     });
 
@@ -322,7 +329,8 @@ describe('MyTeam', () => {
           data: null,
           error: null
         }),
-        in: jest.fn().mockResolvedValue({
+        in: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
           data: null,
           error: null
         })
