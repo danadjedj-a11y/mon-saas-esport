@@ -30,6 +30,8 @@ const Leaderboard = lazy(() => import('./Leaderboard'));
 const StreamOverlay = lazy(() => import('./stream/StreamOverlay'));
 const StreamDashboard = lazy(() => import('./stream/StreamDashboard'));
 const TournamentAPI = lazy(() => import('./api/TournamentAPI'));
+const PublicProfile = lazy(() => import('./pages/PublicProfile'));
+const PublicTeam = lazy(() => import('./pages/PublicTeam'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Composant de chargement pour Suspense
@@ -462,6 +464,8 @@ function App() {
         <Routes>
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
+        <Route path="/player/:userId" element={<PublicProfile session={session} />} />
+        <Route path="/team/:teamId" element={<PublicTeam session={session} />} />
         
         {/* STREAM & API ROUTES (Accessibles sans authentification) */}
         <Route path="/stream/overlay/:id" element={<StreamOverlay />} />

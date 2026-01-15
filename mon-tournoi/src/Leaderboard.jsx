@@ -423,7 +423,10 @@ export default function Leaderboard({ session, supabase }) {
                       #{rank}
                     </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-3">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => navigate(`/team/${stat.team.id}`)}
+                        >
                         {stat.team.logo_url && (
                           <img 
                             src={stat.team.logo_url} 

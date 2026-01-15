@@ -4,12 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Badge, Tabs, Avatar, Input, ImageUploader } from './shared/components/ui';
 import { toast } from './utils/toast';
 import BadgeDisplay from './components/BadgeDisplay';
+import GamingAccountsSection from './components/GamingAccountsSection';
 import DashboardLayout from './layouts/DashboardLayout';
 
 export default function Profile({ session }) {
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
   const [playerStats, setPlayerStats] = useState(null);
   const [recentMatches, setRecentMatches] = useState([]);
   const [myTeams, setMyTeams] = useState([]);
@@ -44,7 +47,7 @@ export default function Profile({ session }) {
   async function getProfile() {
     const { data } = await supabase
       .from('profiles')
-      .select('username, avatar_url, bio')
+      .select('username, avatar_url, bio, banner_url, is_public')
       .eq('id', session.user.id)
       .single();
     
@@ -52,6 +55,8 @@ export default function Profile({ session }) {
       setUsername(data.username || '');
       setAvatarUrl(data.avatar_url || '');
       setBio(data.bio || '');
+      setBannerUrl(data.banner_url || '');
+      setIsPublic(data.is_public !== false); // Default to true if null
     }
   }
 
@@ -195,6 +200,7 @@ export default function Profile({ session }) {
         .update({ 
           username: username.trim(),
           bio: bio.trim(),
+          is_public: isPublic,
         })
         .eq('id', session.user.id);
 
@@ -241,6 +247,43 @@ export default function Profile({ session }) {
 
       setAvatarUrl(publicUrl);
       toast.success('✅ Avatar mis à jour !');
+    } catch (error) {
+      toast.error('Erreur: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function uploadBanner(event) {
+    try {
+      setUploading(true);
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('Sélectionnez une image');
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `banner-${session.user.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ banner_url: publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) throw updateError;
+
+      setBannerUrl(publicUrl);
+      toast.success('✅ Bannière mise à jour !');
     } catch (error) {
       toast.error('Erreur: ' + error.message);
     } finally {
@@ -335,6 +378,99 @@ export default function Profile({ session }) {
               currentImage={avatarUrl}
               loading={uploading}
             />
+          </Card>
+
+          {/* Banner */}
+          <Card variant="glass" padding="lg">
+            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              Bannière du Profil Public
+            </h3>
+            {bannerUrl && (
+              <div className="mb-4 rounded-lg overflow-hidden">
+                <img 
+                  src={bannerUrl} 
+                  alt="Banner" 
+                  className="w-full h-32 object-cover"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={uploadBanner}
+                disabled={uploading}
+                id="banner-upload"
+                className="hidden"
+              />
+              <label htmlFor="banner-upload">
+                <Button variant="outline" size="sm" disabled={uploading} as="span">
+                  {uploading ? 'Upload...' : '🖼️ Changer Bannière'}
+                </Button>
+              </label>
+              {bannerUrl && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={async () => {
+                    try {
+                      await supabase
+                        .from('profiles')
+                        .update({ banner_url: null })
+                        .eq('id', session.user.id);
+                      setBannerUrl('');
+                      toast.success('✅ Bannière supprimée');
+                    } catch (error) {
+                      toast.error('Erreur lors de la suppression');
+                    }
+                  }}
+                >
+                  🗑️ Supprimer
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Public Profile Settings */}
+          <Card variant="glass" padding="lg">
+            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              Profil Public
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="font-body text-fluky-text font-semibold">
+                    Rendre mon profil public
+                  </label>
+                  <p className="text-sm text-fluky-text/60 mt-1">
+                    Les autres joueurs pourront voir votre profil, statistiques et équipes
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={isPublic}
+                    onChange={(e) => {
+                      setIsPublic(e.target.checked);
+                      supabase
+                        .from('profiles')
+                        .update({ is_public: e.target.checked })
+                        .eq('id', session.user.id)
+                        .then(() => {
+                          toast.success(e.target.checked ? '✅ Profil maintenant public' : '🔒 Profil maintenant privé');
+                        });
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-fluky-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fluky-primary"></div>
+                </label>
+              </div>
+              {isPublic && (
+                <Button variant="outline" onClick={() => navigate(`/player/${session.user.id}`)}>
+                  👁️ Voir mon profil public
+                </Button>
+              )}
+            </div>
           </Card>
         </div>
       ),
@@ -518,6 +654,12 @@ export default function Profile({ session }) {
           </div>
         </Card>
       ),
+    },
+    {
+      id: 'gaming-accounts',
+      label: 'Comptes Gaming',
+      icon: '🎮',
+      content: <GamingAccountsSection session={session} />,
     },
     {
       id: 'settings',

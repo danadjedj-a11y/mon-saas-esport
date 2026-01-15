@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import { handleRateLimitError } from './utils/rateLimitHandler';
+import { getPlatformForGame, getRequiredPlatformName } from './utils/gamePlatforms';
+import { checkUserHasPlatformAccount } from './shared/services/api/gamingAccounts';
 
 export default function TeamJoinButton({ tournamentId, supabase, session, onJoinSuccess, tournament }) {
+  const navigate = useNavigate();
   const [myTeams, setMyTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +29,7 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
   const fetchTournamentInfo = async () => {
     const { data } = await supabase
       .from('tournaments')
-      .select('max_participants, registration_deadline, status')
+      .select('max_participants, registration_deadline, status, game')
       .eq('id', tournamentId)
       .single();
     
@@ -176,6 +180,30 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
     if (!canRegister) {
       toast.warning(registrationMessage);
       return;
+    }
+
+    // Vérifier si le joueur a le compte gaming requis pour ce jeu
+    const game = tournament?.game || tournamentInfo?.game;
+    if (game) {
+      const requiredPlatform = getPlatformForGame(game);
+      if (requiredPlatform) {
+        const hasAccount = await checkUserHasPlatformAccount(session.user.id, requiredPlatform);
+        if (!hasAccount) {
+          const platformName = getRequiredPlatformName(game);
+          toast.error(
+            `⚠️ Compte ${platformName} requis`,
+            {
+              description: `Pour rejoindre ce tournoi ${game}, vous devez lier votre compte ${platformName}. Allez dans votre profil > Comptes Gaming pour l'ajouter.`,
+              action: {
+                label: '👤 Aller au profil',
+                onClick: () => navigate('/profile'),
+              },
+            }
+          );
+          setLoading(false);
+          return;
+        }
+      }
     }
 
     setLoading(true);
