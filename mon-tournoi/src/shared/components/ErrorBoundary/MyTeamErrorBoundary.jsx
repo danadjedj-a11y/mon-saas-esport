@@ -22,12 +22,13 @@ class MyTeamErrorBoundary extends React.Component {
     // Détecter le type d'erreur
     let errorType = 'unknown';
     const errorMessage = error?.message || error?.toString() || '';
+    const lowerMessage = errorMessage.toLowerCase();
     
     if (errorMessage.includes('lexical declaration') || errorMessage.includes('before initialization')) {
       errorType = 'initialization';
-    } else if (errorMessage.includes('undefined') || errorMessage.includes('null')) {
+    } else if (lowerMessage.includes('undefined') || lowerMessage.includes('null')) {
       errorType = 'data';
-    } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+    } else if (lowerMessage.includes('network') || lowerMessage.includes('fetch failed') || lowerMessage.match(/\b(failed|error)\b.*\b(request|connection)\b/i)) {
       errorType = 'network';
     }
     
@@ -80,6 +81,8 @@ class MyTeamErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const isDev = process.env.NODE_ENV === 'development';
+      
       return (
         <div className="min-h-screen flex items-center justify-center bg-fluky-bg p-4">
           <Card variant="outlined" padding="xl" className="max-w-2xl border-fluky-primary/30">
@@ -96,7 +99,7 @@ class MyTeamErrorBoundary extends React.Component {
               </p>
             </div>
             
-            {import.meta.env.DEV && this.state.error && (
+            {isDev && this.state.error && (
               <details className="bg-black/30 border border-white/10 rounded-lg p-4 mb-6 text-left">
                 <summary className="cursor-pointer font-semibold text-fluky-text mb-3">
                   🔍 Détails techniques (mode développement)
