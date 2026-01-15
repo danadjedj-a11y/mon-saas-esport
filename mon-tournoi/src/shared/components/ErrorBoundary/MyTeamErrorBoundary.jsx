@@ -22,12 +22,13 @@ class MyTeamErrorBoundary extends React.Component {
     // Détecter le type d'erreur
     let errorType = 'unknown';
     const errorMessage = error?.message || error?.toString() || '';
+    const lowerMessage = errorMessage.toLowerCase();
     
     if (errorMessage.includes('lexical declaration') || errorMessage.includes('before initialization')) {
       errorType = 'initialization';
-    } else if (errorMessage.includes('undefined') || errorMessage.includes('null')) {
+    } else if (lowerMessage.includes('undefined') || lowerMessage.includes('null')) {
       errorType = 'data';
-    } else if (errorMessage.toLowerCase().includes('network') || errorMessage.toLowerCase().includes('fetch') || errorMessage.toLowerCase().includes('failed')) {
+    } else if (lowerMessage.includes('network') || lowerMessage.includes('fetch failed') || lowerMessage.match(/\b(failed|error)\b.*\b(request|connection)\b/i)) {
       errorType = 'network';
     }
     
