@@ -212,46 +212,102 @@ export const cancelInvitation = async (invitationId) => {
  * Récupérer les invitations en attente d'une équipe
  */
 export const getPendingInvitations = async (teamId) => {
-  const { data, error } = await supabase
-    .from('team_invitations')
-    .select(`
-      *,
-      invited_user:profiles!team_invitations_invited_user_id_fkey(id, username, avatar_url),
-      invited_by_user:profiles!team_invitations_invited_by_fkey(id, username, avatar_url)
-    `)
-    .eq('team_id', teamId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
+  try {
+    // Fetch invitations first
+    const { data: invitations, error: invError } = await supabase
+      .from('team_invitations')
+      .select('*')
+      .eq('team_id', teamId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
 
-  if (error) {
+    if (invError) {
+      console.error('Erreur getPendingInvitations:', invError);
+      throw invError;
+    }
+
+    if (!invitations || invitations.length === 0) {
+      return [];
+    }
+
+    // Get unique user IDs for profiles
+    const userIds = [...new Set([
+      ...invitations.map(i => i.invited_user_id),
+      ...invitations.map(i => i.invited_by)
+    ].filter(Boolean))];
+
+    // Fetch profiles separately
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', userIds);
+
+    const profilesMap = (profiles || []).reduce((acc, p) => {
+      acc[p.id] = p;
+      return acc;
+    }, {});
+
+    // Map profiles to invitations
+    return invitations.map(inv => ({
+      ...inv,
+      invited_user: profilesMap[inv.invited_user_id] || null,
+      invited_by_user: profilesMap[inv.invited_by] || null,
+    }));
+  } catch (error) {
     console.error('Erreur getPendingInvitations:', error);
     throw error;
   }
-
-  return data || [];
 };
 
 /**
  * Récupérer les invitations reçues par un utilisateur
  */
 export const getUserInvitations = async (userId) => {
-  const { data, error } = await supabase
-    .from('team_invitations')
-    .select(`
-      *,
-      team:teams(id, name, tag, logo_url),
-      invited_by_user:profiles!team_invitations_invited_by_fkey(id, username, avatar_url)
-    `)
-    .eq('invited_user_id', userId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
+  try {
+    // Fetch invitations first
+    const { data: invitations, error: invError } = await supabase
+      .from('team_invitations')
+      .select('*')
+      .eq('invited_user_id', userId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
 
-  if (error) {
+    if (invError) {
+      console.error('Erreur getUserInvitations:', invError);
+      throw invError;
+    }
+
+    if (!invitations || invitations.length === 0) {
+      return [];
+    }
+
+    // Get unique team IDs and user IDs
+    const teamIds = [...new Set(invitations.map(i => i.team_id).filter(Boolean))];
+    const inviterIds = [...new Set(invitations.map(i => i.invited_by).filter(Boolean))];
+
+    // Fetch teams and profiles separately
+    const [teamsResult, profilesResult] = await Promise.all([
+      teamIds.length > 0 
+        ? supabase.from('teams').select('id, name, tag, logo_url').in('id', teamIds)
+        : { data: [] },
+      inviterIds.length > 0
+        ? supabase.from('profiles').select('id, username, avatar_url').in('id', inviterIds)
+        : { data: [] }
+    ]);
+
+    const teamsMap = (teamsResult.data || []).reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
+    const profilesMap = (profilesResult.data || []).reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+
+    // Map data to invitations
+    return invitations.map(inv => ({
+      ...inv,
+      team: teamsMap[inv.team_id] || null,
+      invited_by_user: profilesMap[inv.invited_by] || null,
+    }));
+  } catch (error) {
     console.error('Erreur getUserInvitations:', error);
     throw error;
   }
-
-  return data || [];
 };
 
 /**

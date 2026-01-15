@@ -48,18 +48,6 @@ export default function useActiveMatch(session) {
             name,
             game,
             status
-          ),
-          team1:player1_id (
-            id,
-            name,
-            tag,
-            logo_url
-          ),
-          team2:player2_id (
-            id,
-            name,
-            tag,
-            logo_url
           )
         `)
         .or(`player1_id.in.(${teamIds.join(',')}),player2_id.in.(${teamIds.join(',')})`)
@@ -69,6 +57,24 @@ export default function useActiveMatch(session) {
 
       if (matchError) throw matchError;
 
+      // Fetch team details separately if match found
+      let team1Data = null;
+      let team2Data = null;
+      if (matches && matches.length > 0) {
+        const match = matches[0];
+        const teamIdsToFetch = [match.player1_id, match.player2_id].filter(Boolean);
+        if (teamIdsToFetch.length > 0) {
+          const { data: teamsData } = await supabase
+            .from('teams')
+            .select('id, name, tag, logo_url')
+            .in('id', teamIdsToFetch);
+          if (teamsData) {
+            team1Data = teamsData.find(t => t.id === match.player1_id) || null;
+            team2Data = teamsData.find(t => t.id === match.player2_id) || null;
+          }
+        }
+      }
+
       if (matches && matches.length > 0) {
         const match = matches[0];
         
@@ -77,6 +83,8 @@ export default function useActiveMatch(session) {
         
         setActiveMatch({
           ...match,
+          team1: team1Data,
+          team2: team2Data,
           isUserTeam1: isTeam1,
           userTeamId: isTeam1 ? match.player1_id : match.player2_id,
           opponentTeamId: isTeam1 ? match.player2_id : match.player1_id,

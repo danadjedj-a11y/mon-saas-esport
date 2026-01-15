@@ -39,6 +39,7 @@ export default function CreateTournament() {
     mapsPool: '',
     sponsors: [],
     streamUrls: { twitch: '', youtube: '' },
+    clips: [], // Nouvelle section clips
   });
   
   const [loading, setLoading] = useState(false);
@@ -94,6 +95,29 @@ export default function CreateTournament() {
     setFormData(prev => ({
       ...prev,
       sponsors: prev.sponsors.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addClip = () => {
+    setFormData(prev => ({
+      ...prev,
+      clips: [...prev.clips, { title: '', url: '', platform: 'twitch' }]
+    }));
+  };
+
+  const removeClip = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      clips: prev.clips.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateClip = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      clips: prev.clips.map((clip, i) => 
+        i === index ? { ...clip, [field]: value } : clip
+      )
     }));
   };
 
@@ -156,6 +180,9 @@ export default function CreateTournament() {
       // Prepare sponsors (only include non-empty sponsors)
       const sponsors = formData.sponsors.filter(s => s.name.trim() || s.logo_url.trim());
 
+      // Prepare clips (only include non-empty clips)
+      const clips = formData.clips.filter(c => c.url.trim());
+
       // Prepare stream URLs (only include non-empty URLs)
       const streamUrls = {};
       if (formData.streamUrls.twitch) streamUrls.twitch = formData.streamUrls.twitch;
@@ -178,6 +205,7 @@ export default function CreateTournament() {
         cashprize_distribution: Object.keys(cashprizeDistribution).length > 0 ? cashprizeDistribution : null,
         sponsors: sponsors.length > 0 ? sponsors : null,
         stream_urls: Object.keys(streamUrls).length > 0 ? streamUrls : null,
+        clips: clips.length > 0 ? clips : null,
       };
 
       const tournament = await createTournament(tournamentData);
@@ -517,6 +545,68 @@ export default function CreateTournament() {
         ) : (
           <p className="text-sm text-fluky-text/50 text-center py-4 font-body">
             Aucun sponsor pour le moment
+          </p>
+        )}
+      </Card>
+
+      {/* Section Clips */}
+      <Card variant="outlined" padding="md" className="border-fluky-secondary">
+        <div className="flex justify-between items-center mb-3">
+          <label className="text-fluky-text font-body font-bold">
+            🎬 Clips & Temps Forts
+          </label>
+          <Button size="sm" onClick={addClip} variant="secondary">
+            + Ajouter un clip
+          </Button>
+        </div>
+
+        {formData.clips.length > 0 ? (
+          <div className="space-y-4">
+            {formData.clips.map((clip, index) => (
+              <Card key={index} variant="outlined" padding="sm" className="border-white/10">
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      placeholder="Titre du clip (ex: Action finale Round 13)"
+                      value={clip.title}
+                      onChange={e => updateClip(index, 'title', e.target.value)}
+                      size="sm"
+                    />
+                    <div className="flex gap-2">
+                      <Select
+                        value={clip.platform}
+                        onChange={e => updateClip(index, 'platform', e.target.value)}
+                        options={[
+                          { value: 'twitch', label: '🟣 Twitch' },
+                          { value: 'youtube', label: '🔴 YouTube' },
+                          { value: 'twitter', label: '𝕏 Twitter/X' },
+                        ]}
+                        className="w-36"
+                      />
+                      <Input
+                        placeholder="URL du clip"
+                        type="url"
+                        value={clip.url}
+                        onChange={e => updateClip(index, 'url', e.target.value)}
+                        size="sm"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeClip(index)}
+                    className="text-red-400 hover:text-red-500 transition-colors text-xl"
+                    title="Retirer ce clip"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-fluky-text/50 text-center py-4 font-body">
+            Ajoutez des clips pour mettre en avant les meilleurs moments du tournoi
           </p>
         )}
       </Card>

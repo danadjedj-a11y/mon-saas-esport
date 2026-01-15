@@ -8,6 +8,7 @@ import { supabase } from './supabaseClient';
 import InvitePlayerModal from './components/InvitePlayerModal';
 import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
 import { notifyTeamInvitation } from './notificationUtils';
+import { sendTeamInvitationEmail } from './shared/services/emailService';
 import { Card, Badge, Button } from './shared/components/ui';
 import MyTeamErrorBoundary from './shared/components/ErrorBoundary/MyTeamErrorBoundary';
 
@@ -161,13 +162,42 @@ export default function MyTeam() {
         .eq('id', session.user.id)
         .single();
       
-      // Envoyer la notification
+      // Récupérer les infos de l'utilisateur invité
+      const { data: invitedUserData } = await supabase
+        .from('profiles')
+        .select('username, email')
+        .eq('id', userId)
+        .single();
+      
+      // Envoyer la notification in-app
       await notifyTeamInvitation(
         userId,
         selectedTeamId,
         currentTeam.name,
         profileData?.username || session.user.email
       );
+      
+      // Envoyer l'email d'invitation
+      // L'email est stocké dans profiles.email (synchronisé depuis auth.users)
+      const recipientEmail = invitedUserData?.email;
+      
+      if (recipientEmail) {
+        try {
+          await sendTeamInvitationEmail({
+            recipientEmail: recipientEmail,
+            recipientName: invitedUserData.username,
+            teamName: currentTeam.name,
+            inviterName: profileData?.username || 'Un capitaine',
+            message: message,
+            invitationUrl: `${window.location.origin}/player/invitations`
+          });
+          console.log('✅ Email envoyé à:', recipientEmail);
+        } catch (emailError) {
+          console.warn('Email non envoyé:', emailError);
+        }
+      } else {
+        console.warn('⚠️ Pas d\'email trouvé pour le joueur invité');
+      }
       
       toast.success('✅ Invitation envoyée avec succès !');
       setShowInviteModal(false);

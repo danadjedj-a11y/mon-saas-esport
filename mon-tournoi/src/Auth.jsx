@@ -11,6 +11,8 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState(null)
   const [mode, setMode] = useState('login') // 'login' ou 'signup'
   const [errors, setErrors] = useState({})
   const navigate = useNavigate()
@@ -34,6 +36,45 @@ export default function Auth() {
     // NE PAS créer de listener ici - App.jsx gère déjà onAuthStateChange
     // Cela évite les doubles redirections qui causent le clignotement
   }, [navigate])
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('La photo ne doit pas dépasser 2 Mo')
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast.error('Le fichier doit être une image')
+        return
+      }
+      setAvatarFile(file)
+      setAvatarPreview(URL.createObjectURL(file))
+    }
+  }
+
+  const uploadAvatar = async (userId) => {
+    if (!avatarFile) return null
+    
+    const fileExt = avatarFile.name.split('.').pop()
+    const fileName = `${userId}-${Date.now()}.${fileExt}`
+    const filePath = `${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, avatarFile)
+
+    if (uploadError) {
+      console.error('Erreur upload avatar:', uploadError)
+      return null
+    }
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+
+    return data.publicUrl
+  }
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -88,8 +129,15 @@ export default function Auth() {
         }
       })
       
-      // Si inscription réussie, créer le profil
+      // Si inscription réussie, créer le profil et uploader l'avatar
       if (authResult.data?.user && !authResult.error) {
+        let avatarUrl = null
+        
+        // Upload l'avatar si fourni
+        if (avatarFile) {
+          avatarUrl = await uploadAvatar(authResult.data.user.id)
+        }
+
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
@@ -97,6 +145,7 @@ export default function Auth() {
             username: validatedData.username,
             pseudonym: validatedData.username,
             date_of_birth: validatedData.dateOfBirth,
+            avatar_url: avatarUrl,
             updated_at: new Date().toISOString()
           })
         
@@ -156,6 +205,31 @@ export default function Auth() {
           
           {mode === 'signup' && (
             <>
+              {/* Avatar Upload */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full border-2 border-fluky-primary overflow-hidden bg-black/30 flex items-center justify-center">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-4xl">👤</span>
+                    )}
+                  </div>
+                  <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-fluky-secondary rounded-full flex items-center justify-center cursor-pointer hover:bg-fluky-primary transition-colors">
+                    <span className="text-white text-sm">📷</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <p className="text-fluky-text/60 text-xs font-body">
+                  Photo de profil (optionnel, max 2 Mo)
+                </p>
+              </div>
+
               <div>
                 <input
                   type="text"

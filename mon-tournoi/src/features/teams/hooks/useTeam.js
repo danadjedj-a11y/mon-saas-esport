@@ -193,7 +193,8 @@ export const useTeam = (teamId, options = {}) => {
     if (!teamId) return { error: 'No team ID' };
 
     // Vérifier que l'utilisateur actuel est le capitaine
-    if (!isCaptain) {
+    const userIsCaptain = team?.captain_id === options.currentUserId;
+    if (!userIsCaptain) {
       return { error: 'Seul le capitaine peut changer les rôles' };
     }
 
@@ -221,7 +222,7 @@ export const useTeam = (teamId, options = {}) => {
       console.error('Erreur mise à jour rôle membre:', err);
       return { data: null, error: err };
     }
-  }, [teamId, isCaptain, fetchTeam]);
+  }, [teamId, team?.captain_id, options.currentUserId, fetchTeam]);
 
   // Fonction pour forcer un refresh
   const refetch = useCallback(() => {

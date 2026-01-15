@@ -5,6 +5,86 @@ import { toast } from '../utils/toast';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { Card, Badge, Button } from '../shared/components/ui';
 
+// Composant pour embed Twitch
+const TwitchEmbed = ({ channel }) => {
+  if (!channel) return null;
+  
+  // Extraire le nom de la chaîne de l'URL si c'est une URL complète
+  const channelName = channel.includes('twitch.tv/') 
+    ? channel.split('twitch.tv/')[1]?.split(/[?/]/)[0]
+    : channel;
+
+  return (
+    <div className="aspect-video w-full rounded-lg overflow-hidden">
+      <iframe
+        src={`https://player.twitch.tv/?channel=${channelName}&parent=${window.location.hostname}`}
+        height="100%"
+        width="100%"
+        allowFullScreen
+        className="rounded-lg"
+      />
+    </div>
+  );
+};
+
+// Composant pour embed YouTube
+const YouTubeEmbed = ({ url }) => {
+  if (!url) return null;
+  
+  // Extraire l'ID de la vidéo YouTube
+  let videoId = '';
+  if (url.includes('youtube.com/watch?v=')) {
+    videoId = url.split('v=')[1]?.split('&')[0];
+  } else if (url.includes('youtu.be/')) {
+    videoId = url.split('youtu.be/')[1]?.split('?')[0];
+  } else if (url.includes('youtube.com/live/')) {
+    videoId = url.split('live/')[1]?.split('?')[0];
+  }
+
+  if (!videoId) return null;
+
+  return (
+    <div className="aspect-video w-full rounded-lg overflow-hidden">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        height="100%"
+        width="100%"
+        allowFullScreen
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        className="rounded-lg"
+      />
+    </div>
+  );
+};
+
+// Composant pour afficher les tweets liés au match
+const TwitterFeed = ({ hashtag, teamNames }) => {
+  const searchQuery = hashtag || (teamNames ? teamNames.join(' OR ') : null);
+  
+  if (!searchQuery) return null;
+
+  return (
+    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">𝕏</span>
+        <h4 className="font-display text-lg text-fluky-text">Réactions sur X</h4>
+      </div>
+      <p className="text-fluky-text/70 text-sm mb-4 font-body">
+        Suivez les réactions en temps réel avec #{hashtag || 'le hashtag du match'}
+      </p>
+      <a
+        href={`https://twitter.com/search?q=${encodeURIComponent(searchQuery)}&f=live`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 text-[#1DA1F2] rounded-lg transition-colors font-body"
+      >
+        <span>Voir sur X</span>
+        <span>→</span>
+      </a>
+    </div>
+  );
+};
+
 export default function MatchDetails({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -22,32 +102,37 @@ export default function MatchDetails({ session }) {
     try {
       setLoading(true);
 
-      // Fetch match with related data
+      // Fetch match data
       const { data: matchData, error: matchError } = await supabase
         .from('matches')
-        .select(`
-          *,
-          team1:player1_id (
-            id,
-            name,
-            tag,
-            logo_url,
-            captain_id
-          ),
-          team2:player2_id (
-            id,
-            name,
-            tag,
-            logo_url,
-            captain_id
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
       if (matchError) throw matchError;
 
-      setMatch(matchData);
+      // Fetch teams separately to avoid FK relationship issues
+      let team1Data = null;
+      let team2Data = null;
+      
+      if (matchData.player1_id || matchData.player2_id) {
+        const teamIds = [matchData.player1_id, matchData.player2_id].filter(Boolean);
+        const { data: teamsData } = await supabase
+          .from('teams')
+          .select('id, name, tag, logo_url, captain_id')
+          .in('id', teamIds);
+        
+        if (teamsData) {
+          team1Data = teamsData.find(t => t.id === matchData.player1_id) || null;
+          team2Data = teamsData.find(t => t.id === matchData.player2_id) || null;
+        }
+      }
+
+      setMatch({
+        ...matchData,
+        team1: team1Data,
+        team2: team2Data
+      });
 
       // Fetch tournament details
       const { data: tournamentData, error: tournamentError } = await supabase
@@ -302,6 +387,61 @@ export default function MatchDetails({ session }) {
                 </Button>
               )}
             </div>
+          </Card>
+        </div>
+
+        {/* Stream Section */}
+        {tournament?.stream_urls && (tournament.stream_urls.twitch || tournament.stream_urls.youtube) && (
+          <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6 mb-6">
+            <h3 className="font-display text-xl text-fluky-text mb-4">📺 Stream en Direct</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {tournament.stream_urls.twitch && (
+                <div>
+                  <p className="text-sm text-fluky-text/70 mb-2 font-body flex items-center gap-2">
+                    <span className="text-purple-400">●</span> Twitch
+                  </p>
+                  <TwitchEmbed channel={tournament.stream_urls.twitch} />
+                </div>
+              )}
+              {tournament.stream_urls.youtube && (
+                <div>
+                  <p className="text-sm text-fluky-text/70 mb-2 font-body flex items-center gap-2">
+                    <span className="text-red-500">●</span> YouTube
+                  </p>
+                  <YouTubeEmbed url={tournament.stream_urls.youtube} />
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Social Media / Tweets Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <TwitterFeed 
+            hashtag={tournament?.name?.replace(/\s+/g, '') || null}
+            teamNames={[team1?.name, team2?.name].filter(Boolean)}
+          />
+          
+          {/* Temps forts / Clips */}
+          <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">🎬</span>
+              <h4 className="font-display text-lg text-fluky-text">Temps Forts</h4>
+            </div>
+            <p className="text-fluky-text/70 text-sm font-body">
+              Les clips et moments marquants du match apparaîtront ici.
+            </p>
+            {tournament?.name && (
+              <a
+                href={`https://clips.twitch.tv/search?query=${encodeURIComponent(tournament.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg transition-colors font-body"
+              >
+                <span>Voir les clips Twitch</span>
+                <span>→</span>
+              </a>
+            )}
           </Card>
         </div>
       </div>
