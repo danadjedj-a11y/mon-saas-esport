@@ -2,12 +2,15 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import MyTeam from '../MyTeam';
 import { useAuth } from '../shared/hooks';
-import { useTeam } from '../shared/hooks';
+import { useTeam } from '../features/teams/hooks/useTeam';
 import { supabase } from '../supabaseClient';
 
 // Mock des hooks
 jest.mock('../shared/hooks', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('../features/teams/hooks/useTeam', () => ({
   useTeam: jest.fn(),
 }));
 

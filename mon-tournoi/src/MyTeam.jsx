@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './shared/hooks';
-import { useTeam } from './shared/hooks';
+import { useTeam } from './features/teams/hooks/useTeam';
 import { supabase } from './supabaseClient';
 import InvitePlayerModal from './components/InvitePlayerModal';
 import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
