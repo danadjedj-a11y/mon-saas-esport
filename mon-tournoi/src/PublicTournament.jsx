@@ -2,14 +2,20 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { calculateMatchWinner } from './bofUtils';
-import TeamJoinButton from './TeamJoinButton';
-import FollowButton from './components/FollowButton';
 import CommentSection from './components/CommentSection';
-import RatingDisplay from './components/RatingDisplay';
-import Skeleton from './components/Skeleton';
 import DashboardLayout from './layouts/DashboardLayout';
-import { useTournament } from './shared/hooks';
-import { useAuth } from './shared/hooks';
+import { useTournament, useAuth } from './shared/hooks';
+
+// Import des nouveaux composants refactorisés
+import { 
+  TournamentHeader, 
+  TournamentTabs, 
+  TournamentOverview,
+  ParticipantsList,
+  MatchCard,
+  defaultTabs 
+} from './components/tournament';
+import { TournamentPageSkeleton } from './components/ui/Skeletons';
 
 export default function PublicTournament() {
   const { id } = useParams();
@@ -420,72 +426,26 @@ export default function PublicTournament() {
     });
   };
 
+  // État de chargement
   if (loading || !tournoi) {
     return (
       <DashboardLayout session={session}>
-        <div className="w-full max-w-7xl mx-auto">
-          <Skeleton variant="text" height="50px" width="60%" style={{ marginBottom: '30px' }} />
-          <Skeleton variant="text" height="30px" width="40%" style={{ marginBottom: '20px' }} />
-          <div className="flex gap-4 mb-10">
-            <Skeleton variant="text" height="40px" width="120px" />
-            <Skeleton variant="text" height="40px" width="120px" />
-            <Skeleton variant="text" height="40px" width="120px" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
-                <Skeleton variant="text" height="24px" width="70%" style={{ marginBottom: '15px' }} />
-                <Skeleton variant="text" height="16px" width="50%" style={{ marginBottom: '10px' }} />
-                <Skeleton variant="text" height="14px" count={2} />
-              </div>
-            ))}
-          </div>
-        </div>
+        <TournamentPageSkeleton />
       </DashboardLayout>
     );
   }
   
+  // Tournoi introuvable
   if (!tournoi) return (
     <DashboardLayout session={session}>
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#030913',
-        color: '#F8F6F2',
-        fontFamily: "'Protest Riot', sans-serif"
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '20px' }}>❌</div>
-          <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Tournoi introuvable</p>
+      <div className="min-h-screen flex items-center justify-center bg-fluky-bg text-fluky-text font-display">
+        <div className="text-center">
+          <div className="text-5xl mb-5">❌</div>
+          <p className="text-xl text-fluky-accent">Tournoi introuvable</p>
           <button
             type="button"
             onClick={() => navigate('/')}
-            style={{
-              marginTop: '20px',
-              padding: '12px 30px',
-              background: '#C10468',
-              border: '2px solid #FF36A3',
-              color: '#F8F6F2',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontFamily: "'Shadows Into Light', cursive",
-              fontSize: '1rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#FF36A3';
-              e.currentTarget.style.borderColor = '#C10468';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#C10468';
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            className="mt-5 px-8 py-3 bg-fluky-primary border-2 border-fluky-accent text-fluky-text rounded-lg cursor-pointer font-handwriting text-base uppercase tracking-wider transition-all duration-300 hover:bg-fluky-accent hover:border-fluky-primary hover:-translate-y-0.5"
           >
             Retour à l'accueil
           </button>
@@ -497,461 +457,42 @@ export default function PublicTournament() {
   const winnerMatch = matches.find(m => m.round_number === Math.max(...matches.map(m => m.round_number), 0) && m.status === 'completed');
   const winnerName = winnerMatch ? (winnerMatch.score_p1 > winnerMatch.score_p2 ? winnerMatch.p1_name : winnerMatch.p2_name) : null;
 
-  const tabs = [
-    { id: 'overview', label: '📋 Présentation', icon: '📋' },
-    { id: 'participants', label: '👥 Participants', icon: '👥' },
-    { id: 'bracket', label: '🏆 Arbre / Classement', icon: '🏆' },
-    { id: 'schedule', label: '📅 Planning', icon: '📅' },
-    { id: 'results', label: '📊 Résultats', icon: '📊' },
-    { id: 'comments', label: '💬 Commentaires', icon: '💬' }
-  ];
-
-  const getFormatLabel = (format) => {
-    switch (format) {
-      case 'elimination': return 'Élimination Directe';
-      case 'double_elimination': return 'Double Elimination';
-      case 'round_robin': return 'Championnat';
-      case 'swiss': return 'Système Suisse';
-      default: return format;
-    }
-  };
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'draft': return { bg: '#E7632C', text: 'Inscriptions ouvertes', icon: '📝' };
-      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
-      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
-    }
-  };
-
-  const statusStyle = getStatusStyle(tournoi.status);
-
   return (
     <DashboardLayout session={session}>
       <div className="w-full max-w-7xl mx-auto">
-        {/* HEADER */}
-        <div className="text-center mb-10 pb-8 border-b-4 border-fluky-secondary bg-gradient-to-br from-fluky-primary/10 to-fluky-secondary/5 p-8 rounded-xl border border-fluky-secondary shadow-lg shadow-fluky-primary/30">
-          <h1 className="font-display text-5xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>
-            {tournoi.name}
-          </h1>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ 
-              background: 'rgba(3, 9, 19, 0.9)', 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              fontSize: '0.95rem',
-              border: '2px solid #FF36A3',
-              fontFamily: "'Protest Riot', sans-serif",
-              color: '#F8F6F2'
-            }}>
-              🎮 {tournoi.game}
-            </span>
-            <span style={{ 
-              background: 'rgba(3, 9, 19, 0.9)', 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              fontSize: '0.95rem',
-              border: '2px solid #FF36A3',
-              fontFamily: "'Protest Riot', sans-serif",
-              color: '#F8F6F2'
-            }}>
-              📊 {getFormatLabel(tournoi.format)}
-            </span>
-            <span style={{ 
-              background: statusStyle.bg,
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              fontSize: '0.95rem',
-              fontWeight: 'bold',
-              border: '2px solid #FF36A3',
-              fontFamily: "'Protest Riot', sans-serif",
-              color: '#F8F6F2'
-            }}>
-              {statusStyle.icon} {statusStyle.text}
-            </span>
-            {session && (
-              <FollowButton session={session} tournamentId={id} type="tournament" />
-            )}
-            <RatingDisplay tournamentId={id} />
-          </div>
-        </div>
-
-        {/* BANNIÈRE VAINQUEUR */}
-        {winnerName && (
-          <div className="bg-gradient-to-br from-fluky-secondary to-fluky-primary text-fluky-text p-8 rounded-xl text-center mb-8 shadow-lg shadow-fluky-secondary/50 border-4 border-fluky-secondary">
-            <h2 className="font-display text-3xl m-0 uppercase tracking-widest">
-              👑 VAINQUEUR : {winnerName.split(' [')[0]} 👑
-            </h2>
-          </div>
-        )}
+        {/* HEADER + BANNIÈRE VAINQUEUR */}
+        <TournamentHeader
+          tournoi={tournoi}
+          session={session}
+          tournamentId={id}
+          winnerName={winnerName}
+        />
 
         {/* ONGLETS */}
-        <div className="flex gap-3 mb-8 border-b-4 border-fluky-secondary overflow-x-auto pb-3">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-4 cursor-pointer text-base font-display transition-all duration-300 whitespace-nowrap rounded-t-lg uppercase tracking-wide ${
-                activeTab === tab.id
-                  ? 'bg-fluky-primary text-white border-2 border-fluky-secondary border-b-4 border-b-fluky-secondary font-bold'
-                  : 'bg-transparent text-fluky-text border-2 border-transparent hover:bg-fluky-primary/30 hover:border-fluky-secondary'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <TournamentTabs
+          tabs={defaultTabs}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
 
       {/* CONTENU DES ONGLETS */}
       <div style={{ minHeight: '400px' }}>
         
         {/* ONGLET PRÉSENTATION */}
         {activeTab === 'overview' && (
-          <div style={{ 
-            background: 'rgba(3, 9, 19, 0.95)', 
-            padding: '30px', 
-            borderRadius: '15px', 
-            border: '2px solid #FF36A3',
-            boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
-          }}>
-            <h2 style={{ 
-              marginTop: 0, 
-              color: '#FF36A3',
-              fontFamily: "'Shadows Into Light', cursive",
-              fontSize: '2rem',
-              marginBottom: '25px'
-            }}>
-              Informations du tournoi
-            </h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
-              <div style={{ 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                padding: '20px', 
-                borderRadius: '10px',
-                border: '2px solid #C10468'
-              }}>
-                <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Jeu</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>{tournoi.game}</div>
-              </div>
-              
-              <div style={{ 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                padding: '20px', 
-                borderRadius: '10px',
-                border: '2px solid #C10468'
-              }}>
-                <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Format</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {getFormatLabel(tournoi.format)}
-                </div>
-                {tournoi.best_of > 1 && (
-                  <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
-                    🎮 Best-of-{tournoi.best_of}
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                padding: '20px', 
-                borderRadius: '10px',
-                border: '2px solid #C10468'
-              }}>
-                <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Équipes inscrites</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
-                  {participants.length}
-                  {tournoi.max_participants && ` / ${tournoi.max_participants}`}
-                </div>
-              </div>
-              
-              {tournoi.registration_deadline && (
-                <div style={{ 
-                  background: 'rgba(3, 9, 19, 0.8)', 
-                  padding: '20px', 
-                  borderRadius: '10px',
-                  border: '2px solid #C10468'
-                }}>
-                  <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Date limite d'inscription</div>
-                  <div style={{ 
-                    fontSize: '1rem', 
-                    fontWeight: 'bold', 
-                    color: new Date(tournoi.registration_deadline) < new Date() ? '#E7632C' : '#F8F6F2',
-                    fontFamily: "'Protest Riot', sans-serif"
-                  }}>
-                    {new Date(tournoi.registration_deadline).toLocaleDateString('fr-FR', { 
-                      day: 'numeric', 
-                      month: 'short', 
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                    {new Date(tournoi.registration_deadline) < new Date() && ' (Expirée)'}
-                  </div>
-                </div>
-              )}
-              
-              {tournoi.start_date && (
-                <div style={{ 
-                  background: 'rgba(3, 9, 19, 0.8)', 
-                  padding: '20px', 
-                  borderRadius: '10px',
-                  border: '2px solid #C10468'
-                }}>
-                  <div style={{ fontSize: '0.9rem', color: '#FF36A3', marginBottom: '8px', fontFamily: "'Protest Riot', sans-serif" }}>Date de début</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
-                    {new Date(tournoi.start_date).toLocaleDateString('fr-FR', { 
-                      day: 'numeric', 
-                      month: 'long', 
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* BOUTON D'INSCRIPTION */}
-            {tournoi.status === 'draft' && (
-              <div style={{ 
-                marginTop: '30px', 
-                background: 'linear-gradient(135deg, #C10468 0%, #FF36A3 100%)', 
-                padding: '25px', 
-                borderRadius: '10px', 
-                border: '2px solid #FF36A3',
-                boxShadow: '0 4px 12px rgba(193, 4, 104, 0.4)'
-              }}>
-                <h3 style={{ 
-                  margin: '0 0 15px 0', 
-                  color: '#F8F6F2', 
-                  fontSize: '1.5rem',
-                  fontFamily: "'Shadows Into Light', cursive"
-                }}>
-                  🎯 Inscription au Tournoi
-                </h3>
-                {session ? (
-                  <TeamJoinButton 
-                    tournamentId={id} 
-                    supabase={supabase} 
-                    session={session} 
-                    onJoinSuccess={refetch} 
-                    tournament={tournoi} 
-                  />
-                ) : (
-                  <div>
-                    <p style={{ 
-                      margin: '0 0 15px 0', 
-                      color: '#F8F6F2', 
-                      fontSize: '0.95rem',
-                      fontFamily: "'Protest Riot', sans-serif"
-                    }}>
-                      Connectez-vous pour vous inscrire à ce tournoi avec votre équipe
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/auth')}
-                      style={{
-                        padding: '12px 30px',
-                        background: '#030913',
-                        color: '#F8F6F2',
-                        border: '2px solid #FF36A3',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontFamily: "'Shadows Into Light', cursive",
-                        fontSize: '1rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#FF36A3';
-                        e.currentTarget.style.borderColor = '#C10468';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#030913';
-                        e.currentTarget.style.borderColor = '#FF36A3';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      🔐 Se Connecter
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* RÈGLEMENT */}
-            {tournoi.rules && (
-              <div style={{ 
-                marginTop: '30px', 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                padding: '25px', 
-                borderRadius: '10px', 
-                border: '2px solid #C10468'
-              }}>
-                <h3 style={{ 
-                  margin: '0 0 15px 0', 
-                  color: '#FF36A3', 
-                  fontSize: '1.5rem',
-                  fontFamily: "'Shadows Into Light', cursive"
-                }}>
-                  📋 Règlement du Tournoi
-                </h3>
-                <div style={{ 
-                  color: '#F8F6F2', 
-                  lineHeight: '1.8', 
-                  whiteSpace: 'pre-wrap',
-                  fontFamily: "'Protest Riot', sans-serif",
-                  fontSize: '0.95rem'
-                }}>
-                  {tournoi.rules}
-                </div>
-              </div>
-            )}
-
-            {matches.length > 0 && (
-              <div style={{ 
-                marginTop: '30px', 
-                background: 'rgba(3, 9, 19, 0.8)', 
-                padding: '20px', 
-                borderRadius: '10px',
-                border: '2px solid #C10468'
-              }}>
-                <div style={{ 
-                  fontSize: '0.9rem', 
-                  color: '#FF36A3', 
-                  marginBottom: '10px',
-                  fontFamily: "'Protest Riot', sans-serif"
-                }}>
-                  Progression
-                </div>
-                <div style={{ 
-                  fontSize: '1.1rem',
-                  color: '#F8F6F2',
-                  fontFamily: "'Protest Riot', sans-serif",
-                  marginBottom: '10px'
-                }}>
-                  {matches.filter(m => m.status === 'completed').length} / {matches.length} matchs joués
-                </div>
-                <div style={{ 
-                  width: '100%', 
-                  height: '12px', 
-                  background: 'rgba(3, 9, 19, 0.5)', 
-                  borderRadius: '6px', 
-                  marginTop: '10px',
-                  overflow: 'hidden',
-                  border: '1px solid #FF36A3'
-                }}>
-                  <div style={{ 
-                    width: `${(matches.filter(m => m.status === 'completed').length / matches.length) * 100}%`, 
-                    height: '100%', 
-                    background: 'linear-gradient(90deg, #C10468, #FF36A3)',
-                    transition: 'width 0.3s'
-                  }}></div>
-                </div>
-              </div>
-            )}
-          </div>
+          <TournamentOverview
+            tournoi={tournoi}
+            participants={participants}
+            matches={matches}
+            session={session}
+            tournamentId={id}
+            onRefetch={refetch}
+          />
         )}
 
         {/* ONGLET PARTICIPANTS */}
         {activeTab === 'participants' && (
-          <div style={{ 
-            background: 'rgba(3, 9, 19, 0.95)', 
-            padding: '30px', 
-            borderRadius: '15px', 
-            border: '2px solid #FF36A3',
-            boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
-          }}>
-            <h2 style={{ 
-              marginTop: 0, 
-              color: '#FF36A3', 
-              marginBottom: '20px',
-              fontFamily: "'Shadows Into Light', cursive",
-              fontSize: '2rem'
-            }}>
-              Participants ({participants.length})
-            </h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
-              {participants.map(p => (
-                <div 
-                  key={p.id}
-                  style={{ 
-                    background: 'rgba(3, 9, 19, 0.8)', 
-                    padding: '15px', 
-                    borderRadius: '10px', 
-                    textAlign: 'center',
-                    border: '2px solid #C10468',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.borderColor = '#FF36A3';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.borderColor = '#C10468';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <img 
-                    src={p.teams?.logo_url || `https://ui-avatars.com/api/?name=${p.teams?.tag || '?'}&background=random&size=128`}
-                    alt=""
-                    style={{ 
-                      width: '60px', 
-                      height: '60px', 
-                      borderRadius: '10px', 
-                      objectFit: 'cover', 
-                      marginBottom: '10px',
-                      border: '2px solid #FF36A3'
-                    }}
-                  />
-                  <div style={{ 
-                    fontWeight: 'bold', 
-                    fontSize: '1rem',
-                    color: '#F8F6F2',
-                    fontFamily: "'Shadows Into Light', cursive"
-                  }}>
-                    {p.teams?.name || 'Équipe inconnue'}
-                  </div>
-                  <div style={{ 
-                    color: '#FF36A3', 
-                    fontSize: '0.85rem', 
-                    marginTop: '5px',
-                    fontFamily: "'Protest Riot', sans-serif"
-                  }}>
-                    [{p.teams?.tag || '?'}]
-                  </div>
-                  {p.seed_order && (
-                    <div style={{ 
-                      marginTop: '8px', 
-                      fontSize: '0.75rem', 
-                      color: p.seed_order <= 3 ? '#FF36A3' : '#F8F6F2',
-                      fontWeight: p.seed_order <= 3 ? 'bold' : 'normal',
-                      fontFamily: "'Protest Riot', sans-serif"
-                    }}>
-                      Seed #{p.seed_order}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            {participants.length === 0 && (
-              <p style={{ 
-                textAlign: 'center', 
-                color: '#F8F6F2', 
-                marginTop: '50px',
-                fontFamily: "'Protest Riot', sans-serif"
-              }}>
-                Aucun participant pour le moment.
-              </p>
-            )}
-          </div>
+          <ParticipantsList participants={participants} tournamentId={id} />
         )}
 
         {/* ONGLET ARBRE / CLASSEMENT */}

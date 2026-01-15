@@ -18,7 +18,8 @@ const LOG_LEVEL_NAMES = {
 class Logger {
   constructor() {
     // Déterminer le niveau de log selon l'environnement
-    this.logLevel = process.env.NODE_ENV === 'production' 
+    // En production (import.meta.env.PROD), on n'affiche que WARN et ERROR
+    this.logLevel = import.meta.env?.PROD 
       ? LOG_LEVELS.WARN 
       : LOG_LEVELS.DEBUG;
     
@@ -67,7 +68,7 @@ class Logger {
     }
 
     // En production, on pourrait envoyer les erreurs à un service externe
-    if (process.env.NODE_ENV === 'production' && level >= LOG_LEVELS.ERROR) {
+    if (import.meta.env?.PROD && level >= LOG_LEVELS.ERROR) {
       this.sendToExternalService(logEntry);
     }
   }
