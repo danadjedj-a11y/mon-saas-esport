@@ -9,6 +9,7 @@ import InvitePlayerModal from './components/InvitePlayerModal';
 import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
 import { notifyTeamInvitation } from './notificationUtils';
 import { Card, Badge, Button } from './shared/components/ui';
+import MyTeamErrorBoundary from './shared/components/ErrorBoundary/MyTeamErrorBoundary';
 
 export default function MyTeam() {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ export default function MyTeam() {
     team: currentTeam,
     members,
     loading: teamLoading,
+    error: teamError,
     refetch: refetchTeam,
     removeMember,
     updateTeam,
@@ -40,6 +42,14 @@ export default function MyTeam() {
     subscribe: true,
     currentUserId: session?.user?.id,
   });
+
+  // Gestion d'erreur pour le chargement de l'équipe
+  useEffect(() => {
+    if (teamError) {
+      console.error('Erreur chargement équipe:', teamError);
+      toast.error('Erreur lors du chargement de l\'équipe');
+    }
+  }, [teamError]);
 
   // Calculer si l'utilisateur peut gérer les membres (inviter/exclure)
   const canManage = isCaptain || canManageMembers(currentUserRole);
@@ -53,36 +63,51 @@ export default function MyTeam() {
 
     try {
       // 1. Récupérer les équipes où je suis CAPITAINE
-      const { data: captainTeams } = await supabase
+      const { data: captainTeams, error: captainError } = await supabase
         .from('teams')
         .select('*')
         .eq('captain_id', session.user.id)
         .order('created_at', { ascending: true });
 
+      if (captainError) {
+        console.error('Erreur chargement équipes capitaine:', captainError);
+      }
+
       // 2. Récupérer les équipes où je suis MEMBRE
-      const { data: memberData } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('team_members')
         .select('team_id')
         .eq('user_id', session.user.id);
 
+      if (memberError) {
+        console.error('Erreur chargement membres:', memberError);
+      }
+
       let memberTeams = [];
       if (memberData && memberData.length > 0) {
-        const ids = memberData.map(m => m.team_id);
-        const { data: teams } = await supabase
-          .from('teams')
-          .select('*')
-          .in('id', ids)
-          .order('created_at', { ascending: true });
-        memberTeams = teams || [];
+        const ids = memberData.map(m => m.team_id).filter(Boolean);
+        if (ids.length > 0) {
+          const { data: teams, error: teamsError } = await supabase
+            .from('teams')
+            .select('*')
+            .in('id', ids)
+            .order('created_at', { ascending: true });
+          
+          if (teamsError) {
+            console.error('Erreur chargement équipes membres:', teamsError);
+          }
+          memberTeams = teams || [];
+        }
       }
 
       // 3. Fusionner les deux listes (en évitant les doublons)
-      const mergedTeams = [...(captainTeams || []), ...memberTeams];
+      const mergedTeams = [...(captainTeams || []), ...memberTeams].filter(Boolean);
       const uniqueTeams = Array.from(new Map(mergedTeams.map(item => [item.id, item])).values());
 
       setAllTeams(uniqueTeams);
     } catch (error) {
       console.error('Erreur chargement équipes:', error);
+      toast.error('Erreur lors du chargement des équipes');
     } finally {
       setTeamsLoading(false);
     }
@@ -108,11 +133,14 @@ export default function MyTeam() {
   }, [selectedTeamId]);
 
   const loadPendingInvitations = async () => {
+    if (!selectedTeamId) return;
+    
     try {
       const invitations = await getPendingInvitations(selectedTeamId);
-      setPendingInvitations(invitations);
+      setPendingInvitations(invitations || []);
     } catch (error) {
       console.error('Erreur chargement invitations:', error);
+      // Ne pas afficher de toast ici pour éviter trop de notifications
     }
   };
 
@@ -259,53 +287,60 @@ export default function MyTeam() {
 
   // Si on charge les équipes ou si on charge l'équipe sélectionnée
   if (loading) return (
-    <DashboardLayout session={session}>
-      <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
-    </DashboardLayout>
+    <MyTeamErrorBoundary>
+      <DashboardLayout session={session}>
+        <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
+      </DashboardLayout>
+    </MyTeamErrorBoundary>
   );
 
   // Si pas d'équipes du tout
   if (allTeams.length === 0) return (
-    <DashboardLayout session={session}>
-      <div className="text-center py-20">
-        <h2 className="font-display text-4xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
-        <button 
-          type="button"
-          onClick={() => navigate('/create-team')} 
-          className="px-8 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
-        >
-          Créer une Team
-        </button>
-      </div>
-    </DashboardLayout>
+    <MyTeamErrorBoundary>
+      <DashboardLayout session={session}>
+        <div className="text-center py-20">
+          <h2 className="font-display text-4xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
+          <button 
+            type="button"
+            onClick={() => navigate('/create-team')} 
+            className="px-8 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+          >
+            Créer une Team
+          </button>
+        </div>
+      </DashboardLayout>
+    </MyTeamErrorBoundary>
   );
 
   // Si on a des équipes mais pas d'équipe sélectionnée OU si l'équipe est en cours de chargement
   if (allTeams.length > 0 && (!selectedTeamId || !currentTeam)) {
     return (
-      <DashboardLayout session={session}>
-        <div className="text-fluky-text font-body text-center py-20">Chargement de l'équipe...</div>
-      </DashboardLayout>
+      <MyTeamErrorBoundary>
+        <DashboardLayout session={session}>
+          <div className="text-fluky-text font-body text-center py-20">Chargement de l'équipe...</div>
+        </DashboardLayout>
+      </MyTeamErrorBoundary>
     );
   }
 
   return (
-    <DashboardLayout session={session}>
-      <div className="w-full max-w-3xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
-          {allTeams.length > 1 && (
-            <select 
-              value={selectedTeamId || ''} 
-              onChange={(e) => handleTeamSwitch(e.target.value)}
-              className="px-4 py-2 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
-            >
-              {allTeams.map(t => (
-                <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
-              ))}
-            </select>
-          )}
-        </div>
+    <MyTeamErrorBoundary>
+      <DashboardLayout session={session}>
+        <div className="w-full max-w-3xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
+            {allTeams.length > 1 && (
+              <select 
+                value={selectedTeamId || ''} 
+                onChange={(e) => handleTeamSwitch(e.target.value)}
+                className="px-4 py-2 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              >
+                {allTeams.map(t => (
+                  <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
+                ))}
+              </select>
+            )}
+          </div>
         
         <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
         
@@ -458,5 +493,6 @@ export default function MyTeam() {
         loading={inviting}
       />
     </DashboardLayout>
+    </MyTeamErrorBoundary>
   );
 }
