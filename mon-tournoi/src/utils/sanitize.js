@@ -51,9 +51,16 @@ export function sanitizeHTML(html) {
         if (!allowedAttrs.includes(attr.name.toLowerCase())) {
           node.removeAttribute(attr.name);
         } else if (attr.name === 'href') {
-          // Sanitize href to prevent javascript: and data: URLs
+          // Sanitize href to prevent dangerous URL schemes
           const href = attr.value.toLowerCase().trim();
-          if (href.startsWith('javascript:') || href.startsWith('data:')) {
+          // List of dangerous URL schemes to block
+          const dangerousSchemes = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:'];
+          const isDangerous = dangerousSchemes.some(scheme => href.startsWith(scheme));
+          
+          if (isDangerous) {
+            node.removeAttribute('href');
+          } else if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('/') && !href.startsWith('#')) {
+            // Only allow http(s), relative paths, and anchors
             node.removeAttribute('href');
           }
         }
