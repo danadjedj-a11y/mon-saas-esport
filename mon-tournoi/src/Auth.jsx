@@ -9,6 +9,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [mode, setMode] = useState('login') // 'login' ou 'signup'
   const [errors, setErrors] = useState({})
   const navigate = useNavigate()
@@ -40,7 +42,10 @@ export default function Auth() {
     
     // Validation avec Zod
     const schema = mode === 'signup' ? signupSchema : loginSchema
-    const result = schema.safeParse({ email, password })
+    const dataToValidate = mode === 'signup' 
+      ? { email, password, username, dateOfBirth }
+      : { email, password }
+    const result = schema.safeParse(dataToValidate)
     
     if (!result.success) {
       // Mapper les erreurs Zod
@@ -59,14 +64,46 @@ export default function Auth() {
     
     let authResult
     if (mode === 'signup') {
+      // Vérifier si le pseudonyme existe déjà
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', validatedData.username)
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        setErrors({ username: 'Ce pseudonyme est déjà utilisé' })
+        setLoading(false)
+        return
+      }
+      
       // Inscription
       authResult = await supabase.auth.signUp({ 
         email: validatedData.email, 
         password: validatedData.password,
         options: {
-          data: { username: validatedData.email.split('@')[0] } // On crée un pseudo par défaut
+          data: { 
+            username: validatedData.username,
+            date_of_birth: validatedData.dateOfBirth
+          }
         }
       })
+      
+      // Si inscription réussie, créer le profil
+      if (authResult.data?.user && !authResult.error) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authResult.data.user.id,
+            username: validatedData.username,
+            pseudonym: validatedData.username,
+            date_of_birth: validatedData.dateOfBirth,
+            updated_at: new Date().toISOString()
+          })
+        
+        if (profileError) {
+          console.error('Erreur création profil:', profileError)
+        }
+      }
     } else {
       // Connexion
       authResult = await supabase.auth.signInWithPassword({ 
@@ -107,7 +144,7 @@ export default function Auth() {
                 setEmail(e.target.value)
                 if (errors.email) setErrors(prev => ({ ...prev, email: undefined }))
               }}
-              className={`px-4 py-3 bg-black/50 border-2 ${
+              className={`w-full px-4 py-3 bg-black/50 border-2 ${
                 errors.email ? 'border-red-500' : 'border-fluky-primary'
               } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
               required
@@ -116,6 +153,59 @@ export default function Auth() {
               <p className="text-red-400 text-sm mt-1 font-body">{errors.email}</p>
             )}
           </div>
+          
+          {mode === 'signup' && (
+            <>
+              <div>
+                <input
+                  type="text"
+                  placeholder="Pseudonyme"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value)
+                    if (errors.username) setErrors(prev => ({ ...prev, username: undefined }))
+                  }}
+                  className={`w-full px-4 py-3 bg-black/50 border-2 ${
+                    errors.username ? 'border-red-500' : 'border-fluky-primary'
+                  } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+                  required
+                />
+                {errors.username && (
+                  <p className="text-red-400 text-sm mt-1 font-body">{errors.username}</p>
+                )}
+                {!errors.username && (
+                  <p className="text-fluky-text/60 text-xs mt-1 font-body">
+                    3-20 caractères (lettres, chiffres, - et _)
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <input
+                  type="date"
+                  placeholder="Date de naissance"
+                  value={dateOfBirth}
+                  onChange={(e) => {
+                    setDateOfBirth(e.target.value)
+                    if (errors.dateOfBirth) setErrors(prev => ({ ...prev, dateOfBirth: undefined }))
+                  }}
+                  className={`w-full px-4 py-3 bg-black/50 border-2 ${
+                    errors.dateOfBirth ? 'border-red-500' : 'border-fluky-primary'
+                  } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+                  required
+                />
+                {errors.dateOfBirth && (
+                  <p className="text-red-400 text-sm mt-1 font-body">{errors.dateOfBirth}</p>
+                )}
+                {!errors.dateOfBirth && (
+                  <p className="text-fluky-text/60 text-xs mt-1 font-body">
+                    Vous devez avoir au moins 13 ans
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+          
           <div>
             <input
               type="password"
@@ -125,7 +215,7 @@ export default function Auth() {
                 setPassword(e.target.value)
                 if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
               }}
-              className={`px-4 py-3 bg-black/50 border-2 ${
+              className={`w-full px-4 py-3 bg-black/50 border-2 ${
                 errors.password ? 'border-red-500' : 'border-fluky-primary'
               } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
               required

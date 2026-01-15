@@ -167,6 +167,160 @@ export const removeTeamMember = async (teamId, userId) => {
   return true;
 };
 
+/**
+ * Envoyer une invitation à rejoindre une équipe
+ */
+export const sendTeamInvitation = async (teamId, userId, invitedBy, message = '') => {
+  const { data, error } = await supabase
+    .from('team_invitations')
+    .insert([{
+      team_id: teamId,
+      invited_user_id: userId,
+      invited_by: invitedBy,
+      message,
+      status: 'pending',
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erreur sendTeamInvitation:', error);
+    throw error;
+  }
+
+  return data;
+};
+
+/**
+ * Annuler une invitation
+ */
+export const cancelInvitation = async (invitationId) => {
+  const { error } = await supabase
+    .from('team_invitations')
+    .delete()
+    .eq('id', invitationId);
+
+  if (error) {
+    console.error('Erreur cancelInvitation:', error);
+    throw error;
+  }
+
+  return true;
+};
+
+/**
+ * Récupérer les invitations en attente d'une équipe
+ */
+export const getPendingInvitations = async (teamId) => {
+  const { data, error } = await supabase
+    .from('team_invitations')
+    .select(`
+      *,
+      invited_user:profiles!team_invitations_invited_user_id_fkey(id, username, avatar_url),
+      invited_by_user:profiles!team_invitations_invited_by_fkey(id, username, avatar_url)
+    `)
+    .eq('team_id', teamId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Erreur getPendingInvitations:', error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+/**
+ * Récupérer les invitations reçues par un utilisateur
+ */
+export const getUserInvitations = async (userId) => {
+  const { data, error } = await supabase
+    .from('team_invitations')
+    .select(`
+      *,
+      team:teams(id, name, tag, logo_url),
+      invited_by_user:profiles!team_invitations_invited_by_fkey(id, username, avatar_url)
+    `)
+    .eq('invited_user_id', userId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Erreur getUserInvitations:', error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+/**
+ * Accepter une invitation d'équipe
+ */
+export const acceptInvitation = async (invitationId) => {
+  // Récupérer l'invitation
+  const { data: invitation, error: fetchError } = await supabase
+    .from('team_invitations')
+    .select('team_id, invited_user_id')
+    .eq('id', invitationId)
+    .single();
+
+  if (fetchError) {
+    console.error('Erreur fetchInvitation:', fetchError);
+    throw fetchError;
+  }
+
+  // Ajouter le joueur à l'équipe
+  const { error: addError } = await supabase
+    .from('team_members')
+    .insert([{
+      team_id: invitation.team_id,
+      user_id: invitation.invited_user_id,
+      role: 'player',
+    }]);
+
+  if (addError) {
+    console.error('Erreur addTeamMember:', addError);
+    throw addError;
+  }
+
+  // Marquer l'invitation comme acceptée
+  const { error: updateError } = await supabase
+    .from('team_invitations')
+    .update({
+      status: 'accepted',
+      responded_at: new Date().toISOString(),
+    })
+    .eq('id', invitationId);
+
+  if (updateError) {
+    console.error('Erreur updateInvitation:', updateError);
+    throw updateError;
+  }
+
+  return true;
+};
+
+/**
+ * Refuser une invitation d'équipe
+ */
+export const declineInvitation = async (invitationId) => {
+  const { error } = await supabase
+    .from('team_invitations')
+    .update({
+      status: 'declined',
+      responded_at: new Date().toISOString(),
+    })
+    .eq('id', invitationId);
+
+  if (error) {
+    console.error('Erreur declineInvitation:', error);
+    throw error;
+  }
+
+  return true;
+};
+
 export default {
   getUserTeams,
   getTeamById,
@@ -176,4 +330,10 @@ export default {
   deleteTeam,
   addTeamMember,
   removeTeamMember,
+  sendTeamInvitation,
+  cancelInvitation,
+  getPendingInvitations,
+  getUserInvitations,
+  acceptInvitation,
+  declineInvitation,
 };

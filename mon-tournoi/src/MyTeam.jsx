@@ -5,6 +5,10 @@ import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './shared/hooks';
 import { useTeam } from './shared/hooks';
 import { supabase } from './supabaseClient';
+import InvitePlayerModal from './components/InvitePlayerModal';
+import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
+import { notifyTeamInvitation } from './notificationUtils';
+import { Card, Badge, Button } from './shared/components/ui';
 
 export default function MyTeam() {
   const navigate = useNavigate();
@@ -15,6 +19,10 @@ export default function MyTeam() {
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [currentUserRole, setCurrentUserRole] = useState('player');
 
   // Utiliser useTeam pour l'équipe sélectionnée
   const {
@@ -24,12 +32,17 @@ export default function MyTeam() {
     refetch: refetchTeam,
     removeMember,
     updateTeam,
+    updateMemberRole,
     isCaptain,
+    canManageMembers,
   } = useTeam(selectedTeamId, {
     enabled: !!selectedTeamId,
     subscribe: true,
     currentUserId: session?.user?.id,
   });
+
+  // Calculer si l'utilisateur peut gérer les membres (inviter/exclure)
+  const canManage = isCaptain || canManageMembers(currentUserRole);
 
   // Charger toutes les équipes de l'utilisateur
   const fetchAllMyTeams = useCallback(async () => {
@@ -87,9 +100,75 @@ export default function MyTeam() {
     }
   }, [allTeams.length, selectedTeamId]);
 
+  // Charger les invitations en attente quand l'équipe change
+  useEffect(() => {
+    if (selectedTeamId) {
+      loadPendingInvitations();
+    }
+  }, [selectedTeamId]);
+
+  const loadPendingInvitations = async () => {
+    try {
+      const invitations = await getPendingInvitations(selectedTeamId);
+      setPendingInvitations(invitations);
+    } catch (error) {
+      console.error('Erreur chargement invitations:', error);
+    }
+  };
+
+  const handleInvitePlayer = async (userId, message) => {
+    try {
+      setInviting(true);
+      
+      // Envoyer l'invitation
+      await sendTeamInvitation(selectedTeamId, userId, session.user.id, message);
+      
+      // Récupérer les infos de l'équipe et de l'utilisateur invitant
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', session.user.id)
+        .single();
+      
+      // Envoyer la notification
+      await notifyTeamInvitation(
+        userId,
+        selectedTeamId,
+        currentTeam.name,
+        profileData?.username || session.user.email
+      );
+      
+      toast.success('✅ Invitation envoyée avec succès !');
+      setShowInviteModal(false);
+      
+      // Recharger les invitations
+      await loadPendingInvitations();
+    } catch (error) {
+      console.error('Erreur envoi invitation:', error);
+      toast.error('Erreur lors de l\'envoi de l\'invitation');
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const handleTeamSwitch = (teamId) => {
     setSelectedTeamId(teamId);
   };
+
+  // Mettre à jour le rôle de l'utilisateur actuel quand les membres changent
+  useEffect(() => {
+    if (currentTeam && members.length > 0 && session?.user?.id) {
+      const myMember = members.find(m => m.user_id === session.user.id);
+      if (myMember) {
+        // Si on est le capitaine
+        if (currentTeam.captain_id === session.user.id) {
+          setCurrentUserRole('captain');
+        } else {
+          setCurrentUserRole(myMember.role || 'player');
+        }
+      }
+    }
+  }, [members, currentTeam, session]);
 
   const uploadLogo = async (event) => {
     if (!currentTeam || !isCaptain) return;
@@ -138,6 +217,41 @@ export default function MyTeam() {
       toast.error('Erreur : ' + error.message);
     } else {
       toast.success('Joueur exclu avec succès');
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    const { error } = await updateMemberRole(userId, newRole);
+    if (error) {
+      toast.error('Erreur : ' + error.message);
+    } else {
+      toast.success('Rôle mis à jour avec succès');
+    }
+  };
+
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'captain':
+        return 'bg-fluky-accent-orange text-white';
+      case 'manager':
+        return 'bg-blue-500 text-white';
+      case 'coach':
+        return 'bg-green-500 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  };
+
+  const getRoleLabel = (role) => {
+    switch (role) {
+      case 'captain':
+        return 'CAPITAINE';
+      case 'manager':
+        return 'MANAGER';
+      case 'coach':
+        return 'COACH';
+      default:
+        return 'JOUEUR';
     }
   };
 
@@ -229,48 +343,120 @@ export default function MyTeam() {
             <span className="text-lg text-fluky-secondary font-bold font-body">[{currentTeam.tag}]</span>
           </div>
 
-          <button 
-            type="button"
-            onClick={copyInviteLink} 
-            className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
-          >
-            🔗 Inviter
-          </button>
+          <div className="flex gap-2">
+            <button 
+              type="button"
+              onClick={copyInviteLink} 
+              className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+            >
+              🔗 Lien
+            </button>
+            {canManage && (
+              <button 
+                type="button"
+                onClick={() => setShowInviteModal(true)} 
+                className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+              >
+                👥 Inviter Joueur
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* INVITATIONS EN ATTENTE */}
+        {canManage && pendingInvitations.length > 0 && (
+          <div className="mb-6">
+            <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-xl text-fluky-secondary mb-4" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+              Invitations envoyées ({pendingInvitations.length})
+            </h3>
+            <div className="space-y-2">
+              {pendingInvitations.map((inv) => (
+                <div key={inv.id} className="bg-black/30 border border-fluky-primary/30 rounded-lg p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={inv.invited_user?.avatar_url || `https://ui-avatars.com/api/?name=${inv.invited_user?.username || 'User'}`} 
+                      className="w-6 h-6 rounded-full object-cover border border-fluky-secondary" 
+                      alt="" 
+                    />
+                    <span className="text-sm font-body text-fluky-text">
+                      {inv.invited_user?.username || 'Joueur'}
+                    </span>
+                  </div>
+                  <Badge variant="warning" size="sm">En attente</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LISTE DES MEMBRES */}
         <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-2xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>Roster ({members.length})</h3>
         <ul className="list-none p-0">
-          {members.map(m => (
-            <li key={m.id} className="flex justify-between items-center py-4 border-b border-white/5">
-              <div className="flex items-center gap-3">
-                <img 
-                  src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`} 
-                  className="w-8 h-8 rounded-full object-cover border-2 border-fluky-secondary" 
-                  alt="" 
-                />
-                <span className={`font-body ${m.user_id === session.user.id ? 'text-fluky-secondary' : 'text-fluky-text'}`}>
-                  {m.profiles?.username || 'Joueur sans pseudo'} 
-                  {m.role === 'captain' && (
-                    <span className="ml-2 text-xs bg-fluky-accent-orange text-white px-2 py-1 rounded font-body">CAPTAIN</span>
-                  )}
-                </span>
-              </div>
-              
-              {isCaptain && m.user_id !== session?.user?.id && (
-                <button 
-                  type="button"
-                  onClick={() => handleKickMember(m.user_id)} 
-                  className="px-3 py-1 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
-                >
-                  Exclure
-                </button>
-              )}
-            </li>
-          ))}
+          {members.map(m => {
+            const isCurrentUser = m.user_id === session.user.id;
+            const memberRole = m.user_id === currentTeam.captain_id ? 'captain' : (m.role || 'player');
+            
+            return (
+              <li key={m.id} className="flex justify-between items-center py-4 border-b border-white/5">
+                <div className="flex items-center gap-3 flex-1">
+                  <img 
+                    src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`} 
+                    className="w-8 h-8 rounded-full object-cover border-2 border-fluky-secondary" 
+                    alt="" 
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-body ${isCurrentUser ? 'text-fluky-secondary' : 'text-fluky-text'}`}>
+                        {m.profiles?.username || 'Joueur sans pseudo'}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded font-body ${getRoleBadgeColor(memberRole)}`}>
+                        {getRoleLabel(memberRole)}
+                      </span>
+                    </div>
+                    {/* Dropdown pour changer le rôle (uniquement capitaine et non pour lui-même) */}
+                    {isCaptain && !isCurrentUser && memberRole !== 'captain' && (
+                      <div className="mt-1">
+                        <select
+                          value={memberRole}
+                          onChange={(e) => handleChangeRole(m.user_id, e.target.value)}
+                          className="px-2 py-1 text-xs bg-black/50 border border-fluky-primary/50 text-fluky-text rounded font-body transition-all duration-200 hover:border-fluky-secondary focus:outline-none focus:border-fluky-secondary"
+                        >
+                          <option value="player">Joueur</option>
+                          <option value="coach">Coach</option>
+                          <option value="manager">Manager</option>
+                        </select>
+                        <span className="ml-2 text-xs text-fluky-text/50 font-body">
+                          {canManageMembers(memberRole) && '🔑 Peut inviter/exclure'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {canManage && !isCurrentUser && (
+                  <button 
+                    type="button"
+                    onClick={() => handleKickMember(m.user_id)} 
+                    className="px-3 py-1 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+                  >
+                    Exclure
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
       </div>
+      
+      {/* MODAL D'INVITATION */}
+      <InvitePlayerModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onInvite={handleInvitePlayer}
+        excludedUserIds={members.map(m => m.user_id)}
+        loading={inviting}
+      />
     </DashboardLayout>
   );
 }
