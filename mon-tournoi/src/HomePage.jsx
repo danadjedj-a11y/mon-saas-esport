@@ -6,6 +6,7 @@ import { toast } from './utils/toast';
 import TournamentCard from './components/TournamentCard';
 import { TournamentCardSkeleton } from './components/Skeleton';
 import { EmptyTournaments } from './components/EmptyState';
+import NewsSection from './components/NewsSection';
 import DashboardLayout from './layouts/DashboardLayout';
 
 // Temporairement revenir à l'ancien système jusqu'à ce que useAuth soit stable
@@ -305,6 +306,9 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* NEWS SECTION */}
+      <NewsSection />
 
       {/* CONTENU PRINCIPAL */}
       <div className="w-full max-w-7xl mx-auto">

@@ -614,16 +614,18 @@ export default function Tournament({ session }) {
   // ==============================================================================
 
   const handleMatchClick = (match) => {
-    // Règles de clic : Admin ouvre modal, Joueur ouvre Lobby
+    // Règles de clic : Admin ouvre modal, tout le monde else voit les détails
     if (tournoi.format !== 'double_elimination' && (!match.player1_id || !match.player2_id)) return;
     if (tournoi.format === 'double_elimination' && !match.player1_id && !match.player2_id) return;
 
-    if (isOwner) {
+    if (shouldShowAdminFeatures) {
+      // Admin opens modal to update scores
       setCurrentMatch(match);
       setScoreA(match.score_p1 || 0);
       setScoreB(match.score_p2 || 0);
       setIsModalOpen(true);
     } else {
+      // Everyone else navigates to match details page
       navigate(`/match/${match.id}`);
     }
   };
@@ -1314,7 +1316,7 @@ function MatchCard({ match, onClick, isOwner }) {
             background: hasDisqualified ? '#3a1a1a' : (match.bracket_type === 'losers' ? '#1a1a1a' : '#252525'), 
             border: hasDisqualified ? '1px solid #e74c3c' : (isCompleted ? '1px solid #4ade80' : (isScheduled ? '1px solid #3498db' : '1px solid #444')), 
             borderRadius:'8px', 
-            cursor: isOwner ? 'pointer' : 'default', 
+            cursor: 'pointer', 
             position:'relative',
             opacity: hasDisqualified ? 0.7 : 1
         }}>

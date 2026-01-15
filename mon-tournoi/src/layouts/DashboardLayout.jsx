@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getUserRole } from '../utils/userRole';
+import ActiveMatchWidget from '../components/ActiveMatchWidget';
 
 export default function DashboardLayout({ children, session = null }) {
   const location = useLocation();
@@ -200,6 +201,9 @@ export default function DashboardLayout({ children, session = null }) {
           {children}
         </div>
       </main>
+
+      {/* Active Match Widget - Shown across all pages */}
+      <ActiveMatchWidget session={session} />
     </div>
   );
 }
