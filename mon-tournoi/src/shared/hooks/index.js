@@ -8,6 +8,7 @@ export { useSupabaseQuery } from './useSupabaseQuery';
 export { useSupabaseSubscription } from './useSupabaseSubscription';
 export { useDebounce } from './useDebounce';
 export { useOnlineStatus } from './useOnlineStatus';
+export { default as useActiveMatch } from './useActiveMatch';
 
 // Hooks features
 export { useTournament } from '../../features/tournaments/hooks/useTournament';
