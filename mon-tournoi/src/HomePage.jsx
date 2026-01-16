@@ -184,11 +184,13 @@ export default function HomePage() {
         </div>
         
         <div className="max-w-4xl mx-auto relative z-10 px-6">
-          {/* Icon */}
+          {/* Logo */}
           <div className="mb-8">
-            <span className="inline-flex items-center justify-center w-20 h-20 text-5xl bg-gradient-to-br from-violet to-cyan rounded-2xl shadow-glow-md float">
-              🎮
-            </span>
+            <img 
+              src="/Logo.png" 
+              alt="Fluky Boys" 
+              className="w-32 h-32 md:w-40 md:h-40 object-contain mx-auto drop-shadow-2xl float"
+            />
           </div>
           
           {/* Title */}

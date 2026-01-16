@@ -58,9 +58,11 @@ export default function DashboardLayout({ children, session = null }) {
         {/* Logo/Header */}
         <div className="p-6 border-b border-glass-border">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 bg-gradient-to-br from-violet to-cyan rounded-xl flex items-center justify-center text-2xl shadow-glow-sm group-hover:shadow-glow-md transition-shadow duration-300">
-              🎮
-            </div>
+            <img 
+              src="/Logo.png" 
+              alt="Fluky Boys" 
+              className="w-12 h-12 object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-300"
+            />
             <div>
               <h1 className="font-display text-xl font-semibold text-text gradient-text">
                 Fluky Boys
@@ -154,9 +156,11 @@ export default function DashboardLayout({ children, session = null }) {
             {/* Mobile Header */}
             <div className="p-6 border-b border-glass-border flex items-center justify-between">
               <Link to="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-                <div className="w-10 h-10 bg-gradient-to-br from-violet to-cyan rounded-xl flex items-center justify-center text-xl shadow-glow-sm">
-                  🎮
-                </div>
+                <img 
+                  src="/Logo.png" 
+                  alt="Fluky Boys" 
+                  className="w-10 h-10 object-contain drop-shadow-lg"
+                />
                 <h1 className="font-display text-lg font-semibold gradient-text">
                   Fluky Boys
                 </h1>
