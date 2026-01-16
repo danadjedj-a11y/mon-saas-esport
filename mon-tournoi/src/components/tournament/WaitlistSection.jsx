@@ -31,16 +31,16 @@ export default function WaitlistSection({
               <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-xs font-bold text-black">
                 {w.position}
               </div>
-              <div className="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-fluky-text">
+              <div className="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-white">
                 {w.teams?.tag || '?'}
               </div>
-              <span className="text-sm text-fluky-text/70 font-body">
+              <span className="text-sm text-gray-300 font-body">
                 {w.teams?.name || 'Inconnu'}
               </span>
             </div>
             
             <div className="flex gap-3 items-center">
-              <span className="text-xs text-fluky-text/50 font-body">
+              <span className="text-xs text-gray-500 font-body">
                 Position #{w.position}
               </span>
               {canPromote && onPromote && (
@@ -56,7 +56,7 @@ export default function WaitlistSection({
                 </button>
               )}
               {!canPromote && (
-                <span className="text-xs text-fluky-text/50 italic font-body">
+                <span className="text-xs text-gray-500 italic font-body">
                   Complet
                 </span>
               )}

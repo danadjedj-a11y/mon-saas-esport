@@ -1,6 +1,6 @@
 export default function TournamentTabs({ tabs, activeTab, setActiveTab }) {
   return (
-    <div className="flex gap-3 mb-8 border-b-4 border-fluky-secondary overflow-x-auto pb-3">
+    <div className="flex gap-3 mb-8 border-b-4 border-cyan-500 overflow-x-auto pb-3">
       {tabs.map(tab => (
         <button
           key={tab.id}
@@ -8,8 +8,8 @@ export default function TournamentTabs({ tabs, activeTab, setActiveTab }) {
           onClick={() => setActiveTab(tab.id)}
           className={`px-6 py-4 cursor-pointer text-base font-display transition-all duration-300 whitespace-nowrap rounded-t-lg uppercase tracking-wide ${
             activeTab === tab.id
-              ? 'bg-fluky-primary text-white border-2 border-fluky-secondary border-b-4 border-b-fluky-secondary font-bold'
-              : 'bg-transparent text-fluky-text border-2 border-transparent hover:bg-fluky-primary/30 hover:border-fluky-secondary'
+              ? 'bg-violet-600 text-white border-2 border-cyan-500 border-b-4 border-b-cyan-500 font-bold'
+              : 'bg-transparent text-white border-2 border-transparent hover:bg-violet-500/30 hover:border-cyan-500'
           }`}
         >
           {tab.label}

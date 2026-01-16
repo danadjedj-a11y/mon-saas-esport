@@ -297,7 +297,7 @@ export default function Profile({ session }) {
       <DashboardLayout session={session}>
         <div className="text-center py-20">
           <div className="text-6xl mb-4 animate-pulse">⏳</div>
-          <p className="font-body text-fluky-text">Chargement du profil...</p>
+          <p className="text-gray-400">Chargement du profil...</p>
         </div>
       </DashboardLayout>
     );
@@ -313,7 +313,7 @@ export default function Profile({ session }) {
         <div className="space-y-6">
           {/* Informations personnelles */}
           <Card variant="glass" padding="lg">
-            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               Informations Personnelles
             </h3>
             
@@ -326,7 +326,7 @@ export default function Profile({ session }) {
                   placeholder="Votre pseudo..."
                 />
                 <div>
-                  <label className="block text-sm font-medium text-fluky-text mb-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
                     Bio
                   </label>
                   <textarea
@@ -334,7 +334,7 @@ export default function Profile({ session }) {
                     onChange={(e) => setBio(e.target.value)}
                     placeholder="Parlez de vous..."
                     rows={4}
-                    className="w-full px-4 py-2 rounded-lg border-2 border-white/10 bg-background/50 text-fluky-text placeholder:text-fluky-text/50 focus:outline-none focus:ring-2 focus:ring-fluky-primary focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-2 rounded-lg border-2 border-violet-500/30 bg-dark-800/50 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -349,17 +349,17 @@ export default function Profile({ session }) {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-fluky-text/60 font-body">Nom d'utilisateur</label>
-                  <p className="text-lg text-fluky-text font-body">{username || 'Non défini'}</p>
+                  <label className="text-sm text-gray-500">Nom d'utilisateur</label>
+                  <p className="text-lg text-white">{username || 'Non défini'}</p>
                 </div>
                 <div>
-                  <label className="text-sm text-fluky-text/60 font-body">Email</label>
-                  <p className="text-lg text-fluky-text font-body">{session.user.email}</p>
+                  <label className="text-sm text-gray-500">Email</label>
+                  <p className="text-lg text-white">{session.user.email}</p>
                 </div>
                 {bio && (
                   <div>
-                    <label className="text-sm text-fluky-text/60 font-body">Bio</label>
-                    <p className="text-fluky-text font-body">{bio}</p>
+                    <label className="text-sm text-gray-500">Bio</label>
+                    <p className="text-gray-300">{bio}</p>
                   </div>
                 )}
                 <Button variant="outline" onClick={() => setEditing(true)}>
@@ -371,7 +371,7 @@ export default function Profile({ session }) {
 
           {/* Avatar */}
           <Card variant="glass" padding="lg">
-            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               Avatar
             </h3>
             <ImageUploader
@@ -383,7 +383,7 @@ export default function Profile({ session }) {
 
           {/* Banner */}
           <Card variant="glass" padding="lg">
-            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               Bannière du Profil Public
             </h3>
             {bannerUrl && (
@@ -434,16 +434,16 @@ export default function Profile({ session }) {
 
           {/* Public Profile Settings */}
           <Card variant="glass" padding="lg">
-            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               Profil Public
             </h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="font-body text-fluky-text font-semibold">
+                  <label className="text-white font-semibold">
                     Rendre mon profil public
                   </label>
-                  <p className="text-sm text-fluky-text/60 mt-1">
+                  <p className="text-sm text-gray-500 mt-1">
                     Les autres joueurs pourront voir votre profil, statistiques et équipes
                   </p>
                 </div>
@@ -463,7 +463,7 @@ export default function Profile({ session }) {
                     }}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-fluky-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fluky-primary"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-500"></div>
                 </label>
               </div>
               {isPublic && (
@@ -489,10 +489,10 @@ export default function Profile({ session }) {
               <Card variant="glass" padding="lg">
                 <div className="text-center">
                   <div className="text-4xl mb-2">⚔️</div>
-                  <div className="text-3xl font-display text-fluky-secondary">
+                  <div className="text-3xl font-display text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
                     {playerStats.totalMatches}
                   </div>
-                  <div className="text-sm font-body text-fluky-text/70">
+                  <div className="text-sm text-gray-400">
                     Matchs Joués
                   </div>
                 </div>
@@ -504,7 +504,7 @@ export default function Profile({ session }) {
                   <div className="text-3xl font-display text-green-500">
                     {playerStats.wins}
                   </div>
-                  <div className="text-sm font-body text-fluky-text/70">
+                  <div className="text-sm text-gray-400">
                     Victoires
                   </div>
                 </div>
@@ -513,10 +513,10 @@ export default function Profile({ session }) {
               <Card variant="glass" padding="lg">
                 <div className="text-center">
                   <div className="text-4xl mb-2">📈</div>
-                  <div className="text-3xl font-display text-fluky-secondary">
+                  <div className="text-3xl font-display text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
                     {playerStats.winRate}%
                   </div>
-                  <div className="text-sm font-body text-fluky-text/70">
+                  <div className="text-sm text-gray-400">
                     Taux de Victoire
                   </div>
                 </div>
@@ -525,10 +525,10 @@ export default function Profile({ session }) {
               <Card variant="glass" padding="lg">
                 <div className="text-center">
                   <div className="text-4xl mb-2">🏆</div>
-                  <div className="text-3xl font-display text-fluky-secondary">
+                  <div className="text-3xl font-display text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400">
                     {playerStats.tournamentsCount}
                   </div>
-                  <div className="text-sm font-body text-fluky-text/70">
+                  <div className="text-sm text-gray-400">
                     Tournois
                   </div>
                 </div>
@@ -538,7 +538,7 @@ export default function Profile({ session }) {
 
           {/* Matchs récents */}
           <Card variant="glass" padding="lg">
-            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               📜 Historique des Matchs
             </h3>
             {recentMatches.length > 0 ? (
@@ -546,15 +546,15 @@ export default function Profile({ session }) {
                 {recentMatches.map((match) => (
                   <div
                     key={match.id}
-                    className="bg-black/30 border border-fluky-primary/30 rounded-lg p-4 hover:border-fluky-secondary transition-all cursor-pointer"
+                    className="bg-dark-800/50 border border-violet-500/30 rounded-lg p-4 hover:border-violet-400 transition-all cursor-pointer"
                     onClick={() => navigate(`/match/${match.id}`)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="font-body text-fluky-text text-sm mb-1">
+                        <div className="text-white text-sm mb-1">
                           {match.tournaments?.name}
                         </div>
-                        <div className="text-xs text-fluky-text/60">
+                        <div className="text-xs text-gray-500">
                           {new Date(match.created_at).toLocaleDateString('fr-FR')}
                         </div>
                       </div>
@@ -566,7 +566,7 @@ export default function Profile({ session }) {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-fluky-text/60 font-body py-8">
+              <p className="text-center text-gray-500 py-8">
                 Aucun match joué pour le moment
               </p>
             )}
@@ -590,7 +590,7 @@ export default function Profile({ session }) {
                   hover
                   clickable
                   onClick={() => navigate('/my-team')}
-                  className="border-fluky-primary/30"
+                  className="border-violet-500/30"
                 >
                   <div className="flex items-center gap-4 mb-4">
                     <Avatar
@@ -599,10 +599,10 @@ export default function Profile({ session }) {
                       size="lg"
                     />
                     <div className="flex-1">
-                      <h4 className="font-display text-lg text-fluky-secondary">
+                      <h4 className="font-display text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
                         {team.name}
                       </h4>
-                      <p className="text-sm text-fluky-text/60 font-body">
+                      <p className="text-sm text-gray-500">
                         [{team.tag}]
                       </p>
                     </div>
@@ -619,10 +619,10 @@ export default function Profile({ session }) {
           ) : (
             <Card variant="outlined" padding="xl" className="text-center">
               <div className="text-6xl mb-4">👥</div>
-              <h3 className="font-display text-2xl text-fluky-secondary mb-2">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
                 Aucune Équipe
               </h3>
-              <p className="font-body text-fluky-text/70 mb-6">
+              <p className="text-gray-400 mb-6">
                 Créez ou rejoignez une équipe pour participer aux tournois
               </p>
               <div className="flex gap-4 justify-center">
@@ -644,12 +644,12 @@ export default function Profile({ session }) {
       icon: '🏅',
       content: (
         <Card variant="glass" padding="lg">
-          <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+          <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400 mb-4">
             🏅 Badges & Succès
           </h3>
           <BadgeDisplay userId={session.user.id} />
           <div className="mt-6 text-center">
-            <p className="font-body text-fluky-text/60 text-sm">
+            <p className="text-gray-500 text-sm">
               Continuez à jouer pour débloquer plus de badges !
             </p>
           </div>
@@ -669,17 +669,17 @@ export default function Profile({ session }) {
       content: (
         <div className="space-y-6">
           <Card variant="glass" padding="lg">
-            <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               ⚙️ Paramètres du Compte
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-fluky-text/60 font-body">ID Utilisateur</label>
-                <p className="text-fluky-text font-mono text-sm">{session.user.id}</p>
+                <label className="text-sm text-gray-500">ID Utilisateur</label>
+                <p className="text-white font-mono text-sm">{session.user.id}</p>
               </div>
               <div>
-                <label className="text-sm text-fluky-text/60 font-body">Inscrit le</label>
-                <p className="text-fluky-text font-body">
+                <label className="text-sm text-gray-500">Inscrit le</label>
+                <p className="text-white">
                   {new Date(session.user.created_at).toLocaleDateString('fr-FR', { dateStyle: 'long' })}
                 </p>
               </div>
@@ -690,7 +690,7 @@ export default function Profile({ session }) {
             <h3 className="font-display text-xl text-red-500 mb-4">
               ⚠️ Zone Danger
             </h3>
-            <p className="text-sm text-fluky-text/70 font-body mb-4">
+            <p className="text-sm text-gray-500 mb-4">
               Les actions suivantes sont irréversibles
             </p>
             <Button
@@ -709,7 +709,7 @@ export default function Profile({ session }) {
   return (
     <DashboardLayout session={session}>
       {/* HEADER PROFILE */}
-      <Card variant="glass" padding="lg" className="mb-8 border-fluky-primary/30">
+      <Card variant="glass" padding="lg" className="mb-8 border-violet-500/30">
         <div className="flex flex-col md:flex-row items-center gap-6">
           <Avatar
             src={avatarUrl}
@@ -718,11 +718,11 @@ export default function Profile({ session }) {
             status="online"
           />
           <div className="flex-1 text-center md:text-left">
-            <h1 className="font-display text-3xl text-fluky-secondary mb-1">
+            <h1 className="font-display text-3xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-1">
               {username || session.user.email}
             </h1>
             {bio && (
-              <p className="font-body text-fluky-text/70 text-sm mb-3">
+              <p className="text-gray-400 text-sm mb-3">
                 {bio}
               </p>
             )}

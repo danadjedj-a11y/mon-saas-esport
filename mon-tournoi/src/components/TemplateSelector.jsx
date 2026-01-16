@@ -73,7 +73,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
       <div style={{ 
         padding: '20px', 
         textAlign: 'center',
-        color: '#F8F6F2',
+        color: '#FFFFFF',
         fontFamily: "'Protest Riot', sans-serif"
       }}>
         Chargement des templates...
@@ -86,7 +86,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
       <div style={{ 
         padding: '20px', 
         textAlign: 'center',
-        color: '#F8F6F2',
+        color: '#FFFFFF',
         fontFamily: "'Protest Riot', sans-serif"
       }}>
         Aucun template disponible
@@ -99,12 +99,12 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
       background: 'rgba(3, 9, 19, 0.8)',
       padding: '20px',
       borderRadius: '12px',
-      border: '2px solid #C10468',
+      border: '2px solid #8B5CF6',
       marginBottom: '20px'
     }}>
       <h3 style={{
         margin: '0 0 15px 0',
-        color: '#FF36A3',
+        color: '#06B6D4',
         fontFamily: "'Shadows Into Light', cursive",
         fontSize: '1.3rem'
       }}>
@@ -112,7 +112,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
       </h3>
       <p style={{
         margin: '0 0 15px 0',
-        color: '#F8F6F2',
+        color: '#FFFFFF',
         fontSize: '0.9rem',
         fontFamily: "'Protest Riot', sans-serif"
       }}>
@@ -126,25 +126,25 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
             onClick={() => handleSelectTemplate(template)}
             style={{
               background: selectedTemplateId === template.id 
-                ? 'rgba(193, 4, 104, 0.3)' 
+                ? 'rgba(139, 92, 246, 0.3)' 
                 : 'rgba(3, 9, 19, 0.9)',
               padding: '15px',
               borderRadius: '10px',
               border: selectedTemplateId === template.id 
-                ? '2px solid #FF36A3' 
-                : '2px solid #C10468',
+                ? '2px solid #06B6D4' 
+                : '2px solid #8B5CF6',
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
               if (selectedTemplateId !== template.id) {
-                e.currentTarget.style.borderColor = '#FF36A3';
+                e.currentTarget.style.borderColor = '#06B6D4';
                 e.currentTarget.style.transform = 'translateY(-3px)';
               }
             }}
             onMouseLeave={(e) => {
               if (selectedTemplateId !== template.id) {
-                e.currentTarget.style.borderColor = '#C10468';
+                e.currentTarget.style.borderColor = '#8B5CF6';
                 e.currentTarget.style.transform = 'translateY(0)';
               }
             }}
@@ -157,7 +157,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
             }}>
               <h4 style={{
                 margin: 0,
-                color: '#F8F6F2',
+                color: '#FFFFFF',
                 fontFamily: "'Shadows Into Light', cursive",
                 fontSize: '1.1rem',
                 flex: 1
@@ -167,7 +167,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
               {template.is_public && (
                 <span style={{
                   fontSize: '0.7rem',
-                  color: '#FF36A3',
+                  color: '#06B6D4',
                   marginLeft: '10px'
                 }}>
                   🌐
@@ -178,7 +178,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
             {template.description && (
               <p style={{
                 margin: '0 0 10px 0',
-                color: '#F8F6F2',
+                color: '#FFFFFF',
                 fontSize: '0.85rem',
                 fontFamily: "'Protest Riot', sans-serif",
                 opacity: 0.8
@@ -192,7 +192,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
               gap: '10px',
               flexWrap: 'wrap',
               fontSize: '0.75rem',
-              color: '#FF36A3',
+              color: '#06B6D4',
               fontFamily: "'Protest Riot', sans-serif"
             }}>
               {template.game && <span>🎮 {template.game}</span>}
@@ -205,7 +205,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
               <div style={{
                 marginTop: '10px',
                 fontSize: '0.7rem',
-                color: '#F8F6F2',
+                color: '#FFFFFF',
                 fontFamily: "'Protest Riot', sans-serif",
                 opacity: 0.6
               }}>

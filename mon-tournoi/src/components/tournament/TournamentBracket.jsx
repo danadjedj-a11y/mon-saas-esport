@@ -78,7 +78,7 @@ export default function TournamentBracket({
 }) {
   if (!matches || matches.length === 0) {
     return (
-      <div className="text-center py-12 border-2 border-dashed border-white/20 rounded-lg text-fluky-text/60">
+      <div className="text-center py-12 border-2 border-dashed border-white/20 rounded-lg text-gray-400">
         Les brackets apparaîtront une fois le tournoi lancé.
       </div>
     );
@@ -198,7 +198,7 @@ export default function TournamentBracket({
         .sort((a, b) => a - b)
         .map(round => (
           <div key={round} className="flex flex-col justify-around gap-5">
-            <h4 className="text-center text-fluky-text/60 font-body">Round {round}</h4>
+            <h4 className="text-center text-gray-400 font-body">Round {round}</h4>
             {matches.filter(m => m.round_number === round).map(m => (
               <BracketMatchCard 
                 key={m.id} 

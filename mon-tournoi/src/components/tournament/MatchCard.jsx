@@ -30,77 +30,77 @@ export default function MatchCard({ match, tournoi, matchGames }) {
   return (
     <div className={`
       w-[${isBestOf ? '300px' : '260px'}] 
-      bg-fluky-bg/95 
-      border-2 ${isCompleted ? 'border-fluky-primary' : (isScheduled ? 'border-fluky-accent' : 'border-fluky-primary')}
+      bg-gray-900/95 
+      border-2 ${isCompleted ? 'border-violet-500' : (isScheduled ? 'border-cyan-400' : 'border-violet-500')}
       rounded-xl 
       relative 
-      shadow-lg shadow-fluky-primary/40 
+      shadow-lg shadow-violet-500/40 
       overflow-hidden
     `}>
       {/* Badge Best-of-X */}
       {isBestOf && (
-        <div className="absolute top-1.5 left-1.5 bg-gradient-to-br from-fluky-primary to-fluky-accent text-fluky-text px-2.5 py-1 rounded-md text-xs font-bold z-10 shadow-md font-display">
+        <div className="absolute top-1.5 left-1.5 bg-gradient-to-br from-violet-600 to-cyan-500 text-white px-2.5 py-1 rounded-md text-xs font-bold z-10 shadow-md font-display">
           🎮 Bo{tournoi.best_of}
         </div>
       )}
       
       {/* Badge Date planifiée */}
       {isScheduled && (
-        <div className="absolute top-1.5 right-1.5 bg-fluky-accent text-fluky-text px-2 py-1 rounded-md text-xs font-bold z-10 font-display">
+        <div className="absolute top-1.5 right-1.5 bg-cyan-500 text-white px-2 py-1 rounded-md text-xs font-bold z-10 font-display">
           📅 {new Date(match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
         </div>
       )}
       
       {/* JOUEUR 1 */}
-      <div className={`p-4 flex justify-between items-center ${isTeam1Winning ? 'bg-fluky-primary/20' : ''} rounded-t-xl ${isBestOf ? 'pt-7' : ''}`}>
+      <div className={`p-4 flex justify-between items-center ${isTeam1Winning ? 'bg-violet-500/20' : ''} rounded-t-xl ${isBestOf ? 'pt-7' : ''}`}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {match.player1_id && (
             <img 
               loading="lazy"
               src={match.p1_avatar} 
-              className="w-7 h-7 rounded-full object-cover border-2 border-fluky-accent flex-shrink-0"
+              className="w-7 h-7 rounded-full object-cover border-2 border-cyan-400 flex-shrink-0"
               alt="" 
             />
           )}
-          <span className={`${match.player1_id ? 'text-fluky-text' : 'text-fluky-accent'} ${isTeam1Winning ? 'font-bold' : ''} text-sm overflow-hidden text-ellipsis whitespace-nowrap font-display`}>
+          <span className={`${match.player1_id ? 'text-white' : 'text-cyan-400'} ${isTeam1Winning ? 'font-bold' : ''} text-sm overflow-hidden text-ellipsis whitespace-nowrap font-display`}>
             {match.p1_name?.split(' [')[0] || 'En attente'}
           </span>
         </div>
         <div className="flex flex-col items-end ml-2.5">
-          <span className="font-bold text-xl text-fluky-accent font-handwriting">
+          <span className="font-bold text-xl text-cyan-400 font-handwriting">
             {displayScore1 || '-'}
           </span>
           {isBestOf && bestOfScore && (
-            <span className="text-[0.65rem] text-fluky-text mt-0.5 font-display">
+            <span className="text-[0.65rem] text-white mt-0.5 font-display">
               {bestOfScore.completedGames}/{bestOfScore.totalGames}
             </span>
           )}
         </div>
       </div>
       
-      <div className="h-0.5 bg-fluky-accent"></div>
+      <div className="h-0.5 bg-cyan-500"></div>
       
       {/* JOUEUR 2 */}
-      <div className={`p-4 flex justify-between items-center ${isTeam2Winning ? 'bg-fluky-primary/20' : ''} rounded-b-xl`}>
+      <div className={`p-4 flex justify-between items-center ${isTeam2Winning ? 'bg-violet-500/20' : ''} rounded-b-xl`}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {match.player2_id && (
             <img 
               loading="lazy"
               src={match.p2_avatar} 
-              className="w-7 h-7 rounded-full object-cover border-2 border-fluky-accent flex-shrink-0"
+              className="w-7 h-7 rounded-full object-cover border-2 border-cyan-400 flex-shrink-0"
               alt="" 
             />
           )}
-          <span className={`${match.player2_id ? 'text-fluky-text' : 'text-fluky-accent'} ${isTeam2Winning ? 'font-bold' : ''} text-sm overflow-hidden text-ellipsis whitespace-nowrap font-display`}>
+          <span className={`${match.player2_id ? 'text-white' : 'text-cyan-400'} ${isTeam2Winning ? 'font-bold' : ''} text-sm overflow-hidden text-ellipsis whitespace-nowrap font-display`}>
             {match.p2_name?.split(' [')[0] || 'En attente'}
           </span>
         </div>
         <div className="flex flex-col items-end ml-2.5">
-          <span className="font-bold text-xl text-fluky-accent font-handwriting">
+          <span className="font-bold text-xl text-cyan-400 font-handwriting">
             {displayScore2 || '-'}
           </span>
           {isBestOf && bestOfScore && (
-            <span className="text-[0.65rem] text-fluky-text mt-0.5 font-display">
+            <span className="text-[0.65rem] text-white mt-0.5 font-display">
               {bestOfScore.completedGames}/{bestOfScore.totalGames}
             </span>
           )}

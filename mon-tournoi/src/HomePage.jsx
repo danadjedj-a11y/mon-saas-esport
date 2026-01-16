@@ -153,9 +153,9 @@ export default function HomePage() {
 
   const getStatusStyle = useCallback((status) => {
     switch (status) {
-      case 'draft': return { bg: '#E7632C', text: 'Inscriptions ouvertes', icon: '📝' };
-      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
-      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+      case 'draft': return { bg: 'bg-gradient-to-r from-orange-500 to-amber-500', text: 'Inscriptions ouvertes', icon: '📝' };
+      case 'completed': return { bg: 'bg-gradient-to-r from-pink-500 to-rose-500', text: 'Terminé', icon: '🏁' };
+      default: return { bg: 'bg-gradient-to-r from-violet-600 to-cyan-500', text: 'En cours', icon: '⚔️' };
     }
   }, []);
 
@@ -172,58 +172,70 @@ export default function HomePage() {
   return (
     <DashboardLayout session={session}>
       {/* HERO SECTION */}
-      <div className="bg-gradient-to-br from-fluky-primary/20 via-fluky-secondary/10 to-fluky-primary/20 py-20 text-center border-4 border-fluky-secondary mb-12 relative overflow-hidden rounded-2xl shadow-2xl shadow-fluky-primary/30">
-        {/* Effet de fond animé */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 left-0 w-72 h-72 bg-fluky-secondary rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-fluky-primary rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      <div className="relative py-16 md:py-24 text-center mb-12 overflow-hidden rounded-3xl">
+        {/* Background with glassmorphism */}
+        <div className="absolute inset-0 bg-dark-50/50 backdrop-blur-sm border border-glass-border rounded-3xl" />
+        
+        {/* Animated gradient orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -left-20 w-72 h-72 bg-violet/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-cyan/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
         
-        <div className="max-w-4xl mx-auto relative z-10 px-4">
-          <div className="mb-6">
-            <span className="inline-block text-6xl mb-4 animate-bounce">🎮</span>
+        <div className="max-w-4xl mx-auto relative z-10 px-6">
+          {/* Icon */}
+          <div className="mb-8">
+            <span className="inline-flex items-center justify-center w-20 h-20 text-5xl bg-gradient-to-br from-violet to-cyan rounded-2xl shadow-glow-md float">
+              🎮
+            </span>
           </div>
-          <h1 className="font-display text-6xl md:text-7xl mb-6 text-fluky-secondary" style={{ textShadow: '0 0 30px rgba(193, 4, 104, 0.6)' }}>
+          
+          {/* Title */}
+          <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6 gradient-text">
             {t('homepage.title')}
           </h1>
-          <p className="font-body text-xl md:text-2xl text-fluky-text mb-4 max-w-2xl mx-auto leading-relaxed">
+          
+          {/* Subtitle */}
+          <p className="font-body text-lg md:text-xl text-text-secondary mb-3 max-w-2xl mx-auto leading-relaxed">
             {t('homepage.subtitle')}
           </p>
-          <p className="font-body text-lg text-fluky-text/80 mb-10 max-w-xl mx-auto">
+          <p className="font-body text-base text-text-muted mb-10 max-w-xl mx-auto">
             Rejoignez des tournois compétitifs, créez vos équipes et défiez les meilleurs joueurs !
           </p>
           
+          {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             {!session ? (
               <>
                 <button
                   type="button"
                   onClick={() => navigate('/auth')}
-                  className="px-12 py-5 bg-gradient-to-r from-fluky-primary via-fluky-secondary to-fluky-primary text-white border-4 border-fluky-secondary rounded-xl font-display text-xl uppercase tracking-wider transition-all duration-300 shadow-2xl shadow-fluky-primary/50 hover:scale-110 hover:shadow-fluky-secondary/60 hover:border-fluky-primary transform"
+                  className="btn-lg px-10 py-4 bg-gradient-to-r from-violet via-violet-dark to-violet text-white rounded-xl font-display font-semibold text-lg transition-all duration-300 shadow-glow-md hover:shadow-glow-lg hover:scale-105"
                 >
                   🔐 Se Connecter
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('/auth')}
-                  className="px-12 py-5 bg-transparent border-4 border-fluky-primary text-fluky-secondary rounded-xl font-display text-xl uppercase tracking-wider transition-all duration-300 hover:bg-fluky-primary/20 hover:border-fluky-secondary hover:scale-105"
+                  className="btn-secondary btn-lg px-10 py-4 border-2 border-glass-border text-text rounded-xl font-display font-semibold text-lg transition-all duration-300 hover:border-violet hover:text-violet-light hover:scale-105"
                 >
                   ✨ Créer un Compte
                 </button>
               </>
             ) : (
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   type="button"
                   onClick={() => navigate('/player/dashboard')}
-                  className="px-10 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white border-2 border-fluky-secondary rounded-lg font-display text-lg uppercase tracking-wide transition-all duration-300 shadow-lg shadow-fluky-primary/40 hover:scale-105"
+                  className="px-8 py-3.5 bg-gradient-to-r from-violet to-violet-dark text-white rounded-xl font-display font-medium transition-all duration-300 shadow-glow-sm hover:shadow-glow-md hover:scale-105"
                 >
                   📊 Mon Tableau de Bord
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('/create-team')}
-                  className="px-10 py-4 bg-transparent border-2 border-fluky-primary text-fluky-secondary rounded-lg font-display text-lg uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary/20 hover:scale-105"
+                  className="btn-secondary px-8 py-3.5 border border-glass-border text-text rounded-xl font-display font-medium transition-all duration-300 hover:border-cyan hover:text-cyan hover:scale-105"
                 >
                   👥 Créer une Équipe
                 </button>
@@ -235,74 +247,94 @@ export default function HomePage() {
 
       {/* STATISTIQUES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-primary rounded-xl p-6 text-center shadow-xl hover:border-fluky-secondary transition-all duration-300 hover:scale-105">
-          <div className="text-4xl mb-3">🏆</div>
-          <div className="font-display text-3xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+        <div className="glass-card text-center group hover:scale-[1.02]">
+          <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-violet/20 to-violet/5 rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+            🏆
+          </div>
+          <div className="font-display text-4xl font-bold text-violet-light mb-1">
             {allTournaments.length}
           </div>
-          <div className="font-body text-fluky-text">Tournois Actifs</div>
+          <div className="font-body text-text-secondary text-sm">Tournois Actifs</div>
         </div>
-        <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-primary rounded-xl p-6 text-center shadow-xl hover:border-fluky-secondary transition-all duration-300 hover:scale-105">
-          <div className="text-4xl mb-3">⚔️</div>
-          <div className="font-display text-3xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+        <div className="glass-card text-center group hover:scale-[1.02]">
+          <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-cyan/20 to-cyan/5 rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+            ⚔️
+          </div>
+          <div className="font-display text-4xl font-bold text-cyan mb-1">
             {availableGames.length}
           </div>
-          <div className="font-body text-fluky-text">Jeux Disponibles</div>
+          <div className="font-body text-text-secondary text-sm">Jeux Disponibles</div>
         </div>
-        <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-primary rounded-xl p-6 text-center shadow-xl hover:border-fluky-secondary transition-all duration-300 hover:scale-105">
-          <div className="text-4xl mb-3">🎯</div>
-          <div className="font-display text-3xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
-            Multiple
+        <div className="glass-card text-center group hover:scale-[1.02]">
+          <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-pink/20 to-pink/5 rounded-xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+            🎯
           </div>
-          <div className="font-body text-fluky-text">Formats de Tournois</div>
+          <div className="font-display text-4xl font-bold text-pink mb-1">
+            4+
+          </div>
+          <div className="font-body text-text-secondary text-sm">Formats de Tournois</div>
         </div>
       </div>
 
       {/* FONCTIONNALITÉS */}
-      <div className="bg-[#030913]/60 backdrop-blur-md border-2 border-fluky-secondary rounded-xl p-8 mb-12 shadow-xl">
-        <h2 className="font-display text-4xl text-fluky-secondary text-center mb-8" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+      <div className="glass-card mb-12 p-8">
+        <h2 className="font-display text-3xl font-semibold text-center mb-2 gradient-text">
           ✨ Pourquoi Choisir Fluky Boys ?
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
-            <div className="text-3xl mb-3">🚀</div>
-            <h3 className="font-display text-xl text-fluky-secondary mb-2">Gestion Simple</h3>
-            <p className="font-body text-fluky-text/80 text-sm">
+        <p className="text-center text-text-muted mb-8 font-body">Tout ce dont vous avez besoin pour organiser et participer à des tournois</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="group p-5 bg-dark-50/50 border border-glass-border rounded-xl hover:border-violet/50 transition-all duration-300 hover:bg-dark-50">
+            <div className="w-12 h-12 bg-violet/10 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+              🚀
+            </div>
+            <h3 className="font-display text-lg font-medium text-text mb-2">Gestion Simple</h3>
+            <p className="font-body text-text-muted text-sm leading-relaxed">
               Créez et gérez vos tournois en quelques clics avec une interface intuitive et moderne.
             </p>
           </div>
-          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
-            <div className="text-3xl mb-3">⚡</div>
-            <h3 className="font-display text-xl text-fluky-secondary mb-2">Temps Réel</h3>
-            <p className="font-body text-fluky-text/80 text-sm">
+          <div className="group p-5 bg-dark-50/50 border border-glass-border rounded-xl hover:border-cyan/50 transition-all duration-300 hover:bg-dark-50">
+            <div className="w-12 h-12 bg-cyan/10 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+              ⚡
+            </div>
+            <h3 className="font-display text-lg font-medium text-text mb-2">Temps Réel</h3>
+            <p className="font-body text-text-muted text-sm leading-relaxed">
               Suivez vos matchs en direct avec des mises à jour en temps réel et des notifications instantanées.
             </p>
           </div>
-          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
-            <div className="text-3xl mb-3">🎮</div>
-            <h3 className="font-display text-xl text-fluky-secondary mb-2">Multi-Formats</h3>
-            <p className="font-body text-fluky-text/80 text-sm">
+          <div className="group p-5 bg-dark-50/50 border border-glass-border rounded-xl hover:border-pink/50 transition-all duration-300 hover:bg-dark-50">
+            <div className="w-12 h-12 bg-pink/10 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+              🎮
+            </div>
+            <h3 className="font-display text-lg font-medium text-text mb-2">Multi-Formats</h3>
+            <p className="font-body text-text-muted text-sm leading-relaxed">
               Élimination simple, double élimination, round-robin, système suisse... Choisissez votre format !
             </p>
           </div>
-          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
-            <div className="text-3xl mb-3">👥</div>
-            <h3 className="font-display text-xl text-fluky-secondary mb-2">Gestion d'Équipes</h3>
-            <p className="font-body text-fluky-text/80 text-sm">
+          <div className="group p-5 bg-dark-50/50 border border-glass-border rounded-xl hover:border-success/50 transition-all duration-300 hover:bg-dark-50">
+            <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+              👥
+            </div>
+            <h3 className="font-display text-lg font-medium text-text mb-2">Gestion d'Équipes</h3>
+            <p className="font-body text-text-muted text-sm leading-relaxed">
               Créez vos équipes, invitez vos amis et participez ensemble aux tournois.
             </p>
           </div>
-          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
-            <div className="text-3xl mb-3">📊</div>
-            <h3 className="font-display text-xl text-fluky-secondary mb-2">Statistiques</h3>
-            <p className="font-body text-fluky-text/80 text-sm">
+          <div className="group p-5 bg-dark-50/50 border border-glass-border rounded-xl hover:border-warning/50 transition-all duration-300 hover:bg-dark-50">
+            <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+              📊
+            </div>
+            <h3 className="font-display text-lg font-medium text-text mb-2">Statistiques</h3>
+            <p className="font-body text-text-muted text-sm leading-relaxed">
               Analysez vos performances avec des statistiques détaillées et des classements.
             </p>
           </div>
-          <div className="bg-[#030913]/80 border-2 border-fluky-primary/50 rounded-lg p-6 hover:border-fluky-secondary transition-all duration-300">
-            <div className="text-3xl mb-3">🏅</div>
-            <h3 className="font-display text-xl text-fluky-secondary mb-2">Compétitif</h3>
-            <p className="font-body text-fluky-text/80 text-sm">
+          <div className="group p-5 bg-dark-50/50 border border-glass-border rounded-xl hover:border-violet/50 transition-all duration-300 hover:bg-dark-50">
+            <div className="w-12 h-12 bg-violet/10 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
+              🏅
+            </div>
+            <h3 className="font-display text-lg font-medium text-text mb-2">Compétitif</h3>
+            <p className="font-body text-text-muted text-sm leading-relaxed">
               Affrontez les meilleurs joueurs et montez dans les classements pour devenir le champion !
             </p>
           </div>
@@ -313,9 +345,9 @@ export default function HomePage() {
       <NewsSection />
 
       {/* CONTENU PRINCIPAL */}
-      <div className="w-full max-w-7xl mx-auto">
+      <div className="w-full">
         {/* BARRE DE RECHERCHE ET FILTRES */}
-        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-6 mb-8">
+        <div className="glass-card p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
             {/* Recherche */}
             <input
@@ -323,14 +355,14 @@ export default function HomePage() {
               placeholder={`🔍 ${t('homepage.searchPlaceholder')}`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="col-span-1 md:col-span-2 lg:col-span-2 px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              className="col-span-1 md:col-span-2 lg:col-span-2 px-4 py-3 bg-dark-50 border border-glass-border text-text rounded-xl font-body text-sm transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted"
             />
             
             {/* Filtre Jeu */}
             <select
               value={gameFilter}
               onChange={(e) => setGameFilter(e.target.value)}
-              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              className="px-4 py-3 bg-dark-50 border border-glass-border text-text rounded-xl font-body text-sm cursor-pointer transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20"
             >
               <option value="all">🎮 {t('common.all')}</option>
               {availableGames.map(game => (
@@ -342,7 +374,7 @@ export default function HomePage() {
             <select
               value={formatFilter}
               onChange={(e) => setFormatFilter(e.target.value)}
-              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              className="px-4 py-3 bg-dark-50 border border-glass-border text-text rounded-xl font-body text-sm cursor-pointer transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20"
             >
               <option value="all">📊 {t('common.all')}</option>
               <option value="elimination">{t('tournament.elimination')}</option>
@@ -355,7 +387,7 @@ export default function HomePage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              className="px-4 py-3 bg-dark-50 border border-glass-border text-text rounded-xl font-body text-sm cursor-pointer transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20"
             >
               <option value="all">📝 {t('common.all')}</option>
               <option value="draft">{t('tournament.draft')}</option>
@@ -367,7 +399,7 @@ export default function HomePage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-3 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-sm cursor-pointer transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+              className="px-4 py-3 bg-dark-50 border border-glass-border text-text rounded-xl font-body text-sm cursor-pointer transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20"
             >
               <option value="date">📅 Par date</option>
               <option value="name">🔤 Par nom</option>
@@ -376,8 +408,8 @@ export default function HomePage() {
 
           {/* Compteur de résultats */}
           <div className="flex justify-between items-center">
-            <div className="text-sm text-fluky-text font-body">
-              {filteredAndSortedTournaments.length} tournoi{filteredAndSortedTournaments.length > 1 ? 's' : ''} trouvé{filteredAndSortedTournaments.length > 1 ? 's' : ''}
+            <div className="text-sm text-text-secondary font-body">
+              <span className="text-violet-light font-medium">{filteredAndSortedTournaments.length}</span> tournoi{filteredAndSortedTournaments.length > 1 ? 's' : ''} trouvé{filteredAndSortedTournaments.length > 1 ? 's' : ''}
               {searchQuery || gameFilter !== 'all' || formatFilter !== 'all' || statusFilter !== 'all' ? ' (filtré)' : ''}
             </div>
             {(searchQuery || gameFilter !== 'all' || formatFilter !== 'all' || statusFilter !== 'all') && (
@@ -390,16 +422,18 @@ export default function HomePage() {
                   setStatusFilter('all');
                   setSortBy('date');
                 }}
-                className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+                className="btn-ghost px-4 py-2 text-sm hover:text-danger"
               >
-                Réinitialiser
+                ✕ Réinitialiser
               </button>
             )}
           </div>
         </div>
 
         <div className="flex justify-between items-center mb-8">
-          <h2 className="font-display text-4xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🏆 {t('homepage.availableTournaments')}</h2>
+          <h2 className="font-display text-2xl md:text-3xl font-semibold text-text">
+            <span className="gradient-text">🏆 {t('homepage.availableTournaments')}</span>
+          </h2>
         </div>
 
         {loading ? (
@@ -428,16 +462,16 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className={`px-5 py-2 border-2 border-fluky-secondary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 ${
+                  className={`px-5 py-2.5 rounded-xl font-display text-sm transition-all duration-200 flex items-center gap-2 ${
                     currentPage === 1 
-                      ? 'bg-fluky-primary/30 opacity-50 cursor-not-allowed' 
-                      : 'bg-fluky-primary hover:bg-fluky-secondary hover:border-fluky-primary'
+                      ? 'bg-dark-50 text-text-muted cursor-not-allowed opacity-50' 
+                      : 'bg-dark-50 border border-glass-border text-text hover:border-violet hover:text-violet-light'
                   }`}
                 >
                   ← Précédent
                 </button>
 
-                <div className="flex gap-2 items-center font-body text-fluky-text">
+                <div className="flex gap-2 items-center font-body">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) {
@@ -455,10 +489,10 @@ export default function HomePage() {
                         key={pageNum}
                         type="button"
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`px-4 py-2 border-2 rounded-lg font-body text-sm transition-all duration-300 min-w-[40px] ${
+                        className={`w-10 h-10 rounded-xl font-body text-sm transition-all duration-200 ${
                           currentPage === pageNum
-                            ? 'bg-fluky-secondary border-fluky-primary text-white font-bold'
-                            : 'bg-[#030913]/80 border-fluky-secondary text-fluky-text hover:bg-fluky-secondary/50 hover:border-fluky-primary'
+                            ? 'bg-gradient-to-r from-violet to-violet-dark text-white shadow-glow-sm'
+                            : 'bg-dark-50 border border-glass-border text-text-secondary hover:border-violet hover:text-text'
                         }`}
                       >
                         {pageNum}
@@ -471,10 +505,10 @@ export default function HomePage() {
                   type="button"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className={`px-5 py-2 border-2 border-fluky-secondary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 ${
+                  className={`px-5 py-2.5 rounded-xl font-display text-sm transition-all duration-200 flex items-center gap-2 ${
                     currentPage === totalPages 
-                      ? 'bg-fluky-primary/30 opacity-50 cursor-not-allowed' 
-                      : 'bg-fluky-primary hover:bg-fluky-secondary hover:border-fluky-primary'
+                      ? 'bg-dark-50 text-text-muted cursor-not-allowed opacity-50' 
+                      : 'bg-dark-50 border border-glass-border text-text hover:border-violet hover:text-violet-light'
                   }`}
                 >
                   Suivant →

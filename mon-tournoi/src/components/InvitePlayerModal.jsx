@@ -69,7 +69,7 @@ const InvitePlayerModal = ({
       <div className="space-y-6">
         {/* Recherche de joueur */}
         <div>
-          <label className="block text-sm font-medium text-fluky-text mb-2">
+          <label className="block text-sm font-medium text-white mb-2">
             Rechercher un joueur <span className="text-red-500">*</span>
           </label>
           <PlayerSearch
@@ -81,8 +81,8 @@ const InvitePlayerModal = ({
 
         {/* Joueur sélectionné */}
         {selectedPlayer && (
-          <div className="bg-fluky-primary/10 border border-fluky-primary/30 rounded-lg p-4">
-            <p className="text-sm text-fluky-text/60 font-body mb-2">
+          <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-4">
+            <p className="text-sm text-gray-400 font-body mb-2">
               Joueur sélectionné :
             </p>
             <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ const InvitePlayerModal = ({
                 size="md"
               />
               <div className="flex-1">
-                <p className="font-body text-fluky-text text-lg">
+                <p className="font-body text-white text-lg">
                   {selectedPlayer.username || 'Joueur sans pseudo'}
                 </p>
               </div>
@@ -109,7 +109,7 @@ const InvitePlayerModal = ({
 
         {/* Message d'invitation */}
         <div>
-          <label className="block text-sm font-medium text-fluky-text mb-2">
+          <label className="block text-sm font-medium text-white mb-2">
             Message personnel (optionnel)
           </label>
           <Textarea
@@ -119,7 +119,7 @@ const InvitePlayerModal = ({
             rows={4}
             disabled={loading}
           />
-          <p className="text-xs text-fluky-text/50 font-body mt-1">
+          <p className="text-xs text-gray-500 font-body mt-1">
             Le joueur recevra une notification et un email avec ton invitation
           </p>
         </div>

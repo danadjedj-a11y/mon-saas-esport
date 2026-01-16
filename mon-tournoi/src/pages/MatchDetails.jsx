@@ -67,9 +67,9 @@ const TwitterFeed = ({ hashtag, teamNames }) => {
     <div className="bg-black/30 rounded-lg p-4 border border-white/10">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">𝕏</span>
-        <h4 className="font-display text-lg text-fluky-text">Réactions sur X</h4>
+        <h4 className="font-display text-lg text-white">Réactions sur X</h4>
       </div>
-      <p className="text-fluky-text/70 text-sm mb-4 font-body">
+      <p className="text-gray-400 text-sm mb-4 font-body">
         Suivez les réactions en temps réel avec #{hashtag || 'le hashtag du match'}
       </p>
       <a
@@ -173,7 +173,7 @@ export default function MatchDetails({ session }) {
         <div className="max-w-6xl mx-auto p-8">
           <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 rounded-lg p-12 text-center">
             <div className="animate-spin text-6xl mb-4">⏳</div>
-            <p className="text-fluky-text font-body">Chargement du match...</p>
+            <p className="text-white font-body">Chargement du match...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -185,7 +185,7 @@ export default function MatchDetails({ session }) {
       <DashboardLayout session={session}>
         <div className="max-w-6xl mx-auto p-8">
           <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 rounded-lg p-12 text-center">
-            <p className="text-xl text-fluky-text mb-4 font-body">❌ Match introuvable</p>
+            <p className="text-xl text-white mb-4 font-body">❌ Match introuvable</p>
             <Button onClick={() => navigate(-1)}>
               Retour
             </Button>
@@ -206,7 +206,7 @@ export default function MatchDetails({ session }) {
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="mb-6 text-fluky-secondary hover:text-fluky-primary transition-colors flex items-center gap-2 font-body"
+          className="mb-6 text-cyan-400 hover:text-violet-400 transition-colors flex items-center gap-2 font-body"
         >
           ← Retour
         </button>
@@ -214,27 +214,27 @@ export default function MatchDetails({ session }) {
         {/* Tournament Header */}
         {tournament && (
           <div className="mb-6 text-center">
-            <h2 className="text-sm text-fluky-text/70 font-body mb-1">Tournoi</h2>
+            <h2 className="text-sm text-gray-400 font-body mb-1">Tournoi</h2>
             <h1 
-              className="font-display text-3xl text-fluky-text cursor-pointer hover:text-fluky-secondary transition-colors"
+              className="font-display text-3xl text-white cursor-pointer hover:text-cyan-400 transition-colors"
               onClick={() => navigate(`/tournament/${tournament.id}`)}
             >
               {tournament.name}
             </h1>
-            <p className="text-fluky-text/70 text-sm font-body mt-1">{tournament.game}</p>
+            <p className="text-gray-400 text-sm font-body mt-1">{tournament.game}</p>
           </div>
         )}
 
         {/* Match Card */}
         <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 mb-6">
           {/* Header with Status */}
-          <div className="bg-gradient-to-r from-fluky-primary/20 to-fluky-secondary/20 p-6 border-b border-white/5">
+          <div className="bg-gradient-to-r from-violet-600/20 to-cyan-500/20 p-6 border-b border-white/5">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="font-display text-2xl text-fluky-text mb-2">
+                <h2 className="font-display text-2xl text-white mb-2">
                   Match #{match.match_number}
                 </h2>
-                <p className="text-sm text-fluky-text/70 font-body">
+                <p className="text-sm text-gray-400 font-body">
                   Round {match.round_number}
                   {match.bracket_type && (
                     <span className="ml-2">
@@ -266,8 +266,8 @@ export default function MatchDetails({ session }) {
                         e.target.src = `https://ui-avatars.com/api/?name=${team1.tag || 'T'}&background=random&size=128`;
                       }}
                     />
-                    <h3 className="font-display text-xl text-fluky-text mb-1">{team1.name}</h3>
-                    <p className="text-fluky-text/70 text-sm font-body">{team1.tag}</p>
+                    <h3 className="font-display text-xl text-white mb-1">{team1.name}</h3>
+                    <p className="text-gray-400 text-sm font-body">{team1.tag}</p>
                     {winner?.id === team1.id && (
                       <div className="mt-3">
                         <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 font-body">
@@ -277,23 +277,23 @@ export default function MatchDetails({ session }) {
                     )}
                   </>
                 ) : (
-                  <p className="text-fluky-text/50 font-body">En attente</p>
+                  <p className="text-gray-500 font-body">En attente</p>
                 )}
               </div>
 
               {/* Score */}
               <div className="text-center">
-                <div className="text-6xl font-display text-fluky-text mb-4">
+                <div className="text-6xl font-display text-white mb-4">
                   <span className={winner?.id === team1?.id ? 'text-green-400' : ''}>
                     {match.score_p1 || 0}
                   </span>
-                  <span className="text-fluky-text/30 mx-4">-</span>
+                  <span className="text-gray-600 mx-4">-</span>
                   <span className={winner?.id === team2?.id ? 'text-green-400' : ''}>
                     {match.score_p2 || 0}
                   </span>
                 </div>
                 {match.scheduled_at && (
-                  <p className="text-sm text-fluky-text/70 font-body">
+                  <p className="text-sm text-gray-400 font-body">
                     📅 {new Date(match.scheduled_at).toLocaleString('fr-FR', {
                       day: 'numeric',
                       month: 'long',
@@ -321,8 +321,8 @@ export default function MatchDetails({ session }) {
                         e.target.src = `https://ui-avatars.com/api/?name=${team2.tag || 'T'}&background=random&size=128`;
                       }}
                     />
-                    <h3 className="font-display text-xl text-fluky-text mb-1">{team2.name}</h3>
-                    <p className="text-fluky-text/70 text-sm font-body">{team2.tag}</p>
+                    <h3 className="font-display text-xl text-white mb-1">{team2.name}</h3>
+                    <p className="text-gray-400 text-sm font-body">{team2.tag}</p>
                     {winner?.id === team2.id && (
                       <div className="mt-3">
                         <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 font-body">
@@ -332,7 +332,7 @@ export default function MatchDetails({ session }) {
                     )}
                   </>
                 ) : (
-                  <p className="text-fluky-text/50 font-body">En attente</p>
+                  <p className="text-gray-500 font-body">En attente</p>
                 )}
               </div>
             </div>
@@ -343,34 +343,34 @@ export default function MatchDetails({ session }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Match Information */}
           <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
-            <h3 className="font-display text-xl text-fluky-text mb-4">📋 Informations</h3>
+            <h3 className="font-display text-xl text-white mb-4">📋 Informations</h3>
             <div className="space-y-3 font-body">
               <div className="flex justify-between">
-                <span className="text-fluky-text/70">Statut:</span>
-                <span className="text-fluky-text">{getStatusBadge(match.status)}</span>
+                <span className="text-gray-400">Statut:</span>
+                <span className="text-white">{getStatusBadge(match.status)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-fluky-text/70">Round:</span>
-                <span className="text-fluky-text">#{match.round_number}</span>
+                <span className="text-gray-400">Round:</span>
+                <span className="text-white">#{match.round_number}</span>
               </div>
               {match.bracket_type && (
                 <div className="flex justify-between">
-                  <span className="text-fluky-text/70">Bracket:</span>
-                  <span className="text-fluky-text">
+                  <span className="text-gray-400">Bracket:</span>
+                  <span className="text-white">
                     {match.bracket_type === 'winners' ? '🏆 Winners' : '🎯 Losers'}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-fluky-text/70">Match ID:</span>
-                <span className="text-fluky-text/50 text-xs">{match.id}</span>
+                <span className="text-gray-400">Match ID:</span>
+                <span className="text-gray-500 text-xs">{match.id}</span>
               </div>
             </div>
           </Card>
 
           {/* Actions */}
           <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
-            <h3 className="font-display text-xl text-fluky-text mb-4">⚡ Actions</h3>
+            <h3 className="font-display text-xl text-white mb-4">⚡ Actions</h3>
             <div className="space-y-3">
               <Button
                 onClick={() => navigate(`/tournament/${tournament?.id}`)}
@@ -394,11 +394,11 @@ export default function MatchDetails({ session }) {
         {/* Stream Section */}
         {tournament?.stream_urls && (tournament.stream_urls.twitch || tournament.stream_urls.youtube) && (
           <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6 mb-6">
-            <h3 className="font-display text-xl text-fluky-text mb-4">📺 Stream en Direct</h3>
+            <h3 className="font-display text-xl text-white mb-4">📺 Stream en Direct</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {tournament.stream_urls.twitch && (
                 <div>
-                  <p className="text-sm text-fluky-text/70 mb-2 font-body flex items-center gap-2">
+                  <p className="text-sm text-gray-400 mb-2 font-body flex items-center gap-2">
                     <span className="text-purple-400">●</span> Twitch
                   </p>
                   <TwitchEmbed channel={tournament.stream_urls.twitch} />
@@ -406,7 +406,7 @@ export default function MatchDetails({ session }) {
               )}
               {tournament.stream_urls.youtube && (
                 <div>
-                  <p className="text-sm text-fluky-text/70 mb-2 font-body flex items-center gap-2">
+                  <p className="text-sm text-gray-400 mb-2 font-body flex items-center gap-2">
                     <span className="text-red-500">●</span> YouTube
                   </p>
                   <YouTubeEmbed url={tournament.stream_urls.youtube} />
@@ -427,9 +427,9 @@ export default function MatchDetails({ session }) {
           <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">🎬</span>
-              <h4 className="font-display text-lg text-fluky-text">Temps Forts</h4>
+              <h4 className="font-display text-lg text-white">Temps Forts</h4>
             </div>
-            <p className="text-fluky-text/70 text-sm font-body">
+            <p className="text-gray-400 text-sm font-body">
               Les clips et moments marquants du match apparaîtront ici.
             </p>
             {tournament?.name && (

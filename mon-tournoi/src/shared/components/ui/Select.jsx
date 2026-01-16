@@ -21,11 +21,11 @@ const Select = ({
   className = '',
   ...props
 }) => {
-  const baseStyles = 'rounded-lg border bg-background/50 text-fluky-text focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer';
+  const baseStyles = 'rounded-lg border bg-white/5 text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer';
   
   const errorStyles = error 
     ? 'border-red-500 focus:ring-red-500' 
-    : 'border-white/10 focus:ring-fluky-primary';
+    : 'border-white/10 focus:ring-violet-500';
   
   const sizeStyles = {
     sm: 'px-3 py-1.5 text-sm',
@@ -38,7 +38,7 @@ const Select = ({
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label className="block text-sm font-medium text-fluky-text mb-2">
+        <label className="block text-sm font-medium text-white mb-2">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>

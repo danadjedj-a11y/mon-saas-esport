@@ -44,7 +44,7 @@ export default function RatingDisplay({ tournamentId }) {
   if (!rating || rating.total_ratings === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ color: '#FF36A3', fontFamily: "'Protest Riot', sans-serif", fontSize: '0.9rem' }}>
+        <span style={{ color: '#8B5CF6', fontFamily: "'Protest Riot', sans-serif", fontSize: '0.9rem' }}>
           Aucune note
         </span>
       </div>
@@ -72,7 +72,7 @@ export default function RatingDisplay({ tournamentId }) {
             );
           } else {
             return (
-              <span key={star} style={{ color: '#FF36A3', fontSize: '1.2rem', opacity: 0.3 }}>
+              <span key={star} style={{ color: '#8B5CF6', fontSize: '1.2rem', opacity: 0.3 }}>
                 ⭐
               </span>
             );
@@ -88,7 +88,7 @@ export default function RatingDisplay({ tournamentId }) {
         {rating.average_rating.toFixed(1)}
       </span>
       <span style={{
-        color: '#FF36A3',
+        color: '#8B5CF6',
         fontFamily: "'Protest Riot', sans-serif",
         fontSize: '0.85rem',
         opacity: 0.8

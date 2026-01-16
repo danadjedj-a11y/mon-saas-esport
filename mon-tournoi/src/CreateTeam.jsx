@@ -118,11 +118,11 @@ export default function CreateTeam() {
     <DashboardLayout session={session}>
       <div className="w-full max-w-2xl mx-auto">
         <Card variant="glass" padding="xl" className="shadow-xl">
-          <h2 className="font-display text-4xl text-fluky-secondary mb-4 text-center" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+          <h2 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4 text-center drop-shadow-glow">
             Créer mon Équipe
           </h2>
-          <p className="text-fluky-text text-sm mb-8 font-body text-center">
-            Tu deviendras le <b>Capitaine</b> de cette équipe. C'est toi qui géreras les inscriptions aux tournois.
+          <p className="text-gray-400 text-sm mb-8 text-center">
+            Tu deviendras le <b className="text-violet-400">Capitaine</b> de cette équipe. C'est toi qui géreras les inscriptions aux tournois.
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -138,7 +138,7 @@ export default function CreateTeam() {
               maxLength={MAX_NAME_LENGTH}
             />
             {formData.name && (
-              <div className="text-xs text-fluky-text mt-1 font-body -mt-4">
+              <div className="text-xs text-gray-500 mt-1 -mt-4">
                 {formData.name.length}/{MAX_NAME_LENGTH} caractères
               </div>
             )}
@@ -155,7 +155,7 @@ export default function CreateTeam() {
               maxLength={MAX_TAG_LENGTH}
               className="uppercase"
             />
-            <div className="text-xs text-fluky-text mt-1 font-body -mt-4">
+            <div className="text-xs text-gray-500 mt-1 -mt-4">
               {formData.tag.length}/{MAX_TAG_LENGTH} caractères (lettres et chiffres uniquement, automatiquement en majuscules)
             </div>
 

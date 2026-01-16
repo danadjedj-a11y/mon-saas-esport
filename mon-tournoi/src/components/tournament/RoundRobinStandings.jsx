@@ -52,7 +52,7 @@ export default function RoundRobinStandings({ participants, matches }) {
 
   return (
     <div className="mb-10 bg-[#1a1a1a] rounded-2xl p-5 border border-white/20">
-      <h2 className="border-b border-white/20 pb-2.5 mt-0 text-fluky-text font-display text-xl">
+      <h2 className="border-b border-white/20 pb-2.5 mt-0 text-white font-display text-xl">
         🏆 Classement
       </h2>
       

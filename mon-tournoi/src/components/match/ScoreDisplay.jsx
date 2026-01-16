@@ -13,11 +13,11 @@ export default function ScoreDisplay({
   if (isConfirmed) {
     return (
       <div className="flex gap-4 items-center">
-        <span className={`text-5xl font-bold font-handwriting ${scoreP1 > scoreP2 ? 'text-fluky-primary' : 'text-fluky-secondary'}`}>
+        <span className={`text-5xl font-bold font-handwriting ${scoreP1 > scoreP2 ? 'text-violet-400' : 'text-cyan-400'}`}>
           {scoreP1}
         </span>
-        <span className="text-3xl font-bold text-fluky-text">:</span>
-        <span className={`text-5xl font-bold font-handwriting ${scoreP2 > scoreP1 ? 'text-fluky-primary' : 'text-fluky-secondary'}`}>
+        <span className="text-3xl font-bold text-white">:</span>
+        <span className={`text-5xl font-bold font-handwriting ${scoreP2 > scoreP1 ? 'text-violet-400' : 'text-cyan-400'}`}>
           {scoreP2}
         </span>
       </div>
@@ -26,11 +26,11 @@ export default function ScoreDisplay({
 
   return (
     <div className="flex gap-4 items-center">
-      <span className="text-4xl font-bold text-fluky-text font-handwriting">
+      <span className="text-4xl font-bold text-white font-handwriting">
         {scoreP1Reported ?? '-'}
       </span>
-      <span className="text-3xl text-fluky-text">:</span>
-      <span className="text-4xl font-bold text-fluky-text font-handwriting">
+      <span className="text-3xl text-white">:</span>
+      <span className="text-4xl font-bold text-white font-handwriting">
         {scoreP2Reported ?? '-'}
       </span>
     </div>

@@ -120,48 +120,27 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div className="flex items-center gap-3">
       <button
         type="button"
         onClick={handleToggleFollow}
         disabled={loading}
-        style={{
-          padding: '10px 20px',
-          background: isFollowing ? '#C10468' : 'transparent',
-          border: `2px solid ${isFollowing ? '#FF36A3' : '#C10468'}`,
-          color: '#F8F6F2',
-          borderRadius: '8px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          fontFamily: "'Shadows Into Light', cursive",
-          fontSize: '0.9rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          transition: 'all 0.3s ease',
-          opacity: loading ? 0.6 : 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
-        onMouseEnter={(e) => {
-          if (!loading) {
-            e.currentTarget.style.background = isFollowing ? '#FF36A3' : '#C10468';
-            e.currentTarget.style.borderColor = isFollowing ? '#C10468' : '#FF36A3';
-            e.currentTarget.style.transform = 'translateY(-2px)';
+        className={`
+          px-5 py-2.5 rounded-lg font-medium text-sm uppercase tracking-wide
+          transition-all duration-300 flex items-center gap-2
+          disabled:opacity-60 disabled:cursor-not-allowed
+          ${isFollowing 
+            ? 'bg-gradient-to-r from-violet-600 to-violet-700 border-2 border-violet-400 text-white shadow-glow-violet hover:from-violet-500 hover:to-violet-600' 
+            : 'bg-transparent border-2 border-violet-500/50 text-violet-400 hover:bg-violet-500/20 hover:border-violet-400'
           }
-        }}
-        onMouseLeave={(e) => {
-          if (!loading) {
-            e.currentTarget.style.background = isFollowing ? '#C10468' : 'transparent';
-            e.currentTarget.style.borderColor = isFollowing ? '#FF36A3' : '#C10468';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }
-        }}
+          hover:-translate-y-0.5
+        `}
       >
         {loading ? (
-          '⏳'
+          <span className="animate-spin">⏳</span>
         ) : isFollowing ? (
           <>
-            <span>✓</span> Suivi
+            <span className="text-cyan-400">✓</span> Suivi
           </>
         ) : (
           <>
@@ -170,11 +149,7 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
         )}
       </button>
       {followersCount > 0 && (
-        <span style={{
-          color: '#FF36A3',
-          fontSize: '0.85rem',
-          fontFamily: "'Protest Riot', sans-serif"
-        }}>
+        <span className="text-violet-400 text-sm">
           {followersCount} {followersCount === 1 ? 'follower' : 'followers'}
         </span>
       )}

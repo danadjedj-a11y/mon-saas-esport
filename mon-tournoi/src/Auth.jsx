@@ -174,14 +174,26 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-fluky-bg text-fluky-text">
-      <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-10 w-full max-w-md text-center">
-        <h1 className="font-display text-4xl mb-5 text-fluky-secondary" style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>
-          Fluky Boys
-        </h1>
-        <p className="font-body text-lg mb-8 text-fluky-text">
-          {mode === 'login' ? 'Connexion' : 'Créer un compte'}
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-dark p-4">
+      {/* Background effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan/15 rounded-full blur-3xl" />
+      </div>
+      
+      <div className="relative z-10 glass-card w-full max-w-md p-8">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-3xl shadow-glow-md">
+            🎮
+          </div>
+          <h1 className="font-display text-3xl font-bold gradient-text mb-2">
+            Fluky Boys
+          </h1>
+          <p className="font-body text-text-secondary">
+            {mode === 'login' ? 'Content de vous revoir !' : 'Rejoignez la communauté'}
+          </p>
+        </div>
         
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
           <div>
@@ -193,29 +205,31 @@ export default function Auth() {
                 setEmail(e.target.value)
                 if (errors.email) setErrors(prev => ({ ...prev, email: undefined }))
               }}
-              className={`w-full px-4 py-3 bg-black/50 border-2 ${
-                errors.email ? 'border-red-500' : 'border-fluky-primary'
-              } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+              className={`w-full px-4 py-3.5 bg-dark-50 border ${
+                errors.email ? 'border-danger' : 'border-glass-border'
+              } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
               required
             />
             {errors.email && (
-              <p className="text-red-400 text-sm mt-1 font-body">{errors.email}</p>
+              <p className="text-danger text-sm mt-2 font-body flex items-center gap-1">
+                <span>⚠</span> {errors.email}
+              </p>
             )}
           </div>
           
           {mode === 'signup' && (
             <>
               {/* Avatar Upload */}
-              <div className="flex flex-col items-center gap-3">
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full border-2 border-fluky-primary overflow-hidden bg-black/30 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3 py-2">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-2xl border-2 border-glass-border overflow-hidden bg-dark-50 flex items-center justify-center group-hover:border-violet transition-colors">
                     {avatarPreview ? (
                       <img loading="lazy" src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-4xl">👤</span>
                     )}
                   </div>
-                  <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-fluky-secondary rounded-full flex items-center justify-center cursor-pointer hover:bg-fluky-primary transition-colors">
+                  <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-r from-violet to-violet-dark rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-glow-sm">
                     <span className="text-white text-sm">📷</span>
                     <input
                       type="file"
@@ -225,7 +239,7 @@ export default function Auth() {
                     />
                   </label>
                 </div>
-                <p className="text-fluky-text/60 text-xs font-body">
+                <p className="text-text-muted text-xs font-body">
                   Photo de profil (optionnel, max 2 Mo)
                 </p>
               </div>
@@ -239,16 +253,18 @@ export default function Auth() {
                     setUsername(e.target.value)
                     if (errors.username) setErrors(prev => ({ ...prev, username: undefined }))
                   }}
-                  className={`w-full px-4 py-3 bg-black/50 border-2 ${
-                    errors.username ? 'border-red-500' : 'border-fluky-primary'
-                  } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+                  className={`w-full px-4 py-3.5 bg-dark-50 border ${
+                    errors.username ? 'border-danger' : 'border-glass-border'
+                  } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
                   required
                 />
                 {errors.username && (
-                  <p className="text-red-400 text-sm mt-1 font-body">{errors.username}</p>
+                  <p className="text-danger text-sm mt-2 font-body flex items-center gap-1">
+                    <span>⚠</span> {errors.username}
+                  </p>
                 )}
                 {!errors.username && (
-                  <p className="text-fluky-text/60 text-xs mt-1 font-body">
+                  <p className="text-text-muted text-xs mt-2 font-body">
                     3-20 caractères (lettres, chiffres, - et _)
                   </p>
                 )}
@@ -263,16 +279,18 @@ export default function Auth() {
                     setDateOfBirth(e.target.value)
                     if (errors.dateOfBirth) setErrors(prev => ({ ...prev, dateOfBirth: undefined }))
                   }}
-                  className={`w-full px-4 py-3 bg-black/50 border-2 ${
-                    errors.dateOfBirth ? 'border-red-500' : 'border-fluky-primary'
-                  } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+                  className={`w-full px-4 py-3.5 bg-dark-50 border ${
+                    errors.dateOfBirth ? 'border-danger' : 'border-glass-border'
+                  } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20`}
                   required
                 />
                 {errors.dateOfBirth && (
-                  <p className="text-red-400 text-sm mt-1 font-body">{errors.dateOfBirth}</p>
+                  <p className="text-danger text-sm mt-2 font-body flex items-center gap-1">
+                    <span>⚠</span> {errors.dateOfBirth}
+                  </p>
                 )}
                 {!errors.dateOfBirth && (
-                  <p className="text-fluky-text/60 text-xs mt-1 font-body">
+                  <p className="text-text-muted text-xs mt-2 font-body">
                     Vous devez avoir au moins 13 ans
                   </p>
                 )}
@@ -289,38 +307,56 @@ export default function Auth() {
                 setPassword(e.target.value)
                 if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
               }}
-              className={`w-full px-4 py-3 bg-black/50 border-2 ${
-                errors.password ? 'border-red-500' : 'border-fluky-primary'
-              } text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20`}
+              className={`w-full px-4 py-3.5 bg-dark-50 border ${
+                errors.password ? 'border-danger' : 'border-glass-border'
+              } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
               required
             />
             {errors.password && (
-              <p className="text-red-400 text-sm mt-1 font-body">{errors.password}</p>
+              <p className="text-danger text-sm mt-2 font-body flex items-center gap-1">
+                <span>⚠</span> {errors.password}
+              </p>
             )}
             {mode === 'signup' && !errors.password && (
-              <p className="text-fluky-text/60 text-xs mt-1 font-body">
+              <p className="text-text-muted text-xs mt-2 font-body">
                 Minimum 6 caractères
               </p>
             )}
           </div>
+          
           <button 
             type="submit"
             disabled={loading} 
-            className={`px-4 py-3 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 ${
+            className={`w-full mt-2 px-6 py-3.5 bg-gradient-to-r from-violet to-violet-dark text-white rounded-xl font-display font-semibold transition-all duration-200 ${
               loading 
                 ? 'opacity-60 cursor-not-allowed' 
-                : 'hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50'
+                : 'hover:shadow-glow-md hover:scale-[1.02] active:scale-[0.98]'
             }`}
           >
-            {loading ? 'Chargement...' : (mode === 'login' ? 'Se connecter' : "S'inscrire")}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Chargement...
+              </span>
+            ) : (
+              mode === 'login' ? '🔐 Se connecter' : '✨ S\'inscrire'
+            )}
           </button>
         </form>
 
+        {/* Divider */}
+        <div className="divider-gradient my-6" />
+
+        {/* Switch mode */}
         <p 
-          className="mt-5 text-sm text-fluky-text cursor-pointer font-body transition-colors duration-300 hover:text-fluky-secondary"
+          className="text-center text-sm text-text-secondary cursor-pointer font-body transition-colors duration-200 hover:text-violet-light"
           onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
         >
-          {mode === 'login' ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
+          {mode === 'login' ? (
+            <>Pas encore de compte ? <span className="text-violet-light font-medium">S'inscrire</span></>
+          ) : (
+            <>Déjà un compte ? <span className="text-violet-light font-medium">Se connecter</span></>
+          )}
         </p>
       </div>
     </div>

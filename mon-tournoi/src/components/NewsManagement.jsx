@@ -161,7 +161,7 @@ export default function NewsManagement({ session }) {
     return (
       <div className="text-center py-12">
         <div className="animate-spin text-6xl mb-4">⏳</div>
-        <p className="text-fluky-text font-body">Chargement des articles...</p>
+        <p className="text-white font-body">Chargement des articles...</p>
       </div>
     );
   }
@@ -169,7 +169,7 @@ export default function NewsManagement({ session }) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="font-display text-3xl text-fluky-text">
+        <h2 className="font-display text-3xl text-white">
           📰 Gestion des Actualités
         </h2>
         <Button onClick={openNewArticleModal} variant="primary">
@@ -179,7 +179,7 @@ export default function NewsManagement({ session }) {
 
       {articles.length === 0 ? (
         <Card className="text-center py-12">
-          <p className="text-fluky-text/50 font-body">Aucun article pour le moment</p>
+          <p className="text-gray-500 font-body">Aucun article pour le moment</p>
           <Button onClick={openNewArticleModal} variant="secondary" className="mt-4">
             Créer votre premier article
           </Button>
@@ -207,10 +207,10 @@ export default function NewsManagement({ session }) {
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="font-display text-xl text-fluky-text">
+                      <h3 className="font-display text-xl text-white">
                         {article.title}
                       </h3>
-                      <p className="text-xs text-fluky-text/50 mt-1 font-body">
+                      <p className="text-xs text-gray-500 mt-1 font-body">
                         Créé le {new Date(article.created_at).toLocaleDateString('fr-FR')}
                         {article.published_at && ` • Publié le ${new Date(article.published_at).toLocaleDateString('fr-FR')}`}
                       </p>
@@ -274,7 +274,7 @@ export default function NewsManagement({ session }) {
           />
 
           <div>
-            <label className="block mb-2 text-fluky-text font-body">Contenu de l'article</label>
+            <label className="block mb-2 text-white font-body">Contenu de l'article</label>
             <WYSIWYGEditor
               value={formData.content}
               onChange={(value) => setFormData({ ...formData, content: value })}
@@ -292,7 +292,7 @@ export default function NewsManagement({ session }) {
               onChange={e => setFormData({ ...formData, published: e.target.checked })}
               className="w-5 h-5"
             />
-            <label htmlFor="published" className="text-fluky-text font-body cursor-pointer">
+            <label htmlFor="published" className="text-white font-body cursor-pointer">
               Publier immédiatement
             </label>
           </div>

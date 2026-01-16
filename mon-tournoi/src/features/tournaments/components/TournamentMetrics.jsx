@@ -11,22 +11,22 @@ const TournamentMetrics = ({ tournaments }) => {
   const totalCount = tournaments.length;
 
   const metrics = [
-    { label: 'Total', value: totalCount, icon: '🏆', color: 'bg-fluky-primary' },
+    { label: 'Total', value: totalCount, icon: '🏆', color: 'bg-violet-600' },
     { label: 'Brouillons', value: draftCount, icon: '📝', color: 'bg-yellow-500' },
     { label: 'En cours', value: ongoingCount, icon: '⚔️', color: 'bg-green-500' },
-    { label: 'Terminés', value: completedCount, icon: '🏁', color: 'bg-fluky-secondary' },
+    { label: 'Terminés', value: completedCount, icon: '🏁', color: 'bg-cyan-600' },
   ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {metrics.map((metric) => (
-        <Card key={metric.label} variant="glass" padding="lg" className="border-fluky-primary/30">
+        <Card key={metric.label} variant="glass" padding="lg" className="border-violet-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-body text-fluky-text/70 mb-1">
+              <div className="text-sm font-body text-gray-400 mb-1">
                 {metric.label}
               </div>
-              <div className="text-3xl font-display text-fluky-secondary">
+              <div className="text-3xl font-display text-cyan-400">
                 {metric.value}
               </div>
             </div>

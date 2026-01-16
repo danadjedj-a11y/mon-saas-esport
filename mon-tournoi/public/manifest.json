@@ -4,8 +4,8 @@
   "description": "Plateforme complète de gestion de tournois e-sport",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#030913",
-  "theme_color": "#C10468",
+  "background_color": "#0A0A0F",
+  "theme_color": "#8B5CF6",
   "orientation": "portrait-primary",
   "icons": [
     {

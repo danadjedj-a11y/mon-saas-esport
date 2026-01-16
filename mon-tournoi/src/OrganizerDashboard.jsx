@@ -92,9 +92,9 @@ export default function OrganizerDashboard({ session }) {
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'draft': return { bg: '#E7632C', text: 'Brouillon', icon: '📝' };
-      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
-      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+      case 'draft': return { bg: 'bg-amber-500', text: 'Brouillon', icon: '📝' };
+      case 'completed': return { bg: 'bg-gradient-to-r from-pink-500 to-rose-500', text: 'Terminé', icon: '🏁' };
+      default: return { bg: 'bg-gradient-to-r from-violet-600 to-cyan-500', text: 'En cours', icon: '⚔️' };
     }
   };
 
@@ -133,7 +133,7 @@ export default function OrganizerDashboard({ session }) {
   if (loading) {
     return (
       <DashboardLayout session={session}>
-        <div className="text-fluky-text font-body text-center py-20">
+        <div className="text-white font-body text-center py-20">
           <div className="text-6xl mb-4 animate-pulse">⏳</div>
           <p>Chargement...</p>
         </div>
@@ -146,10 +146,10 @@ export default function OrganizerDashboard({ session }) {
       {/* HEADER */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="font-display text-4xl text-fluky-secondary mb-2" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+          <h1 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
             🎯 Dashboard Organisateur
           </h1>
-          <p className="font-body text-fluky-text/70">
+          <p className="font-body text-gray-400">
             Gérez vos tournois et suivez leurs performances
           </p>
         </div>
@@ -185,8 +185,8 @@ export default function OrganizerDashboard({ session }) {
               onClick={() => setActiveFilter(filter.id)}
               className={`px-6 py-4 font-body text-base transition-all duration-200 border-b-2 ${
                 activeFilter === filter.id
-                  ? 'border-fluky-primary text-fluky-secondary'
-                  : 'border-transparent text-fluky-text/60 hover:text-fluky-text hover:border-fluky-primary/50'
+                  ? 'border-violet-500 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-white hover:border-violet-500/50'
               }`}
             >
               {filter.label}
@@ -213,11 +213,11 @@ export default function OrganizerDashboard({ session }) {
                 hover
                 clickable
                 onClick={() => navigate(`/organizer/tournament/${tournament.id}`)}
-                className="border-fluky-primary/30"
+                className="border-violet-500/30"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="font-display text-xl text-fluky-secondary line-clamp-2">
+                  <h3 className="font-display text-xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 line-clamp-2">
                     {tournament.name}
                   </h3>
                   <Badge 
@@ -233,7 +233,7 @@ export default function OrganizerDashboard({ session }) {
                 </div>
 
                 {/* Infos */}
-                <div className="space-y-2 text-sm font-body text-fluky-text/70 mb-4">
+                <div className="space-y-2 text-sm font-body text-gray-400 mb-4">
                   <div>🎮 {tournament.game || 'Non spécifié'}</div>
                   <div>📊 {getFormatLabel(tournament.format)}</div>
                   {tournament.start_date && (
@@ -288,7 +288,7 @@ export default function OrganizerDashboard({ session }) {
                 onPageChange={setCurrentPage}
                 isLoading={loading}
               />
-              <div className="text-center text-fluky-text/70 text-sm font-body">
+              <div className="text-center text-gray-400 text-sm font-body">
                 Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, filteredTournaments.length)} sur {filteredTournaments.length} tournoi{filteredTournaments.length > 1 ? 's' : ''}
               </div>
             </div>
@@ -297,10 +297,10 @@ export default function OrganizerDashboard({ session }) {
       ) : (
         <Card variant="outlined" padding="xl" className="text-center">
           <div className="text-6xl mb-4">🎯</div>
-          <h3 className="font-display text-2xl text-fluky-secondary mb-2">
+          <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
             {activeFilter === 'all' ? 'Aucun Tournoi' : 'Aucun tournoi dans cette catégorie'}
           </h3>
-          <p className="font-body text-fluky-text/70 mb-6">
+          <p className="font-body text-gray-400 mb-6">
             {activeFilter === 'all' 
               ? 'Créez votre premier tournoi pour commencer !'
               : 'Changez de filtre pour voir d\'autres tournois.'
@@ -320,11 +320,11 @@ export default function OrganizerDashboard({ session }) {
 
       {/* QUICK TIPS */}
       {tournaments.length > 0 && (
-        <Card variant="glass" padding="lg" className="mt-8 border-fluky-secondary/30">
-          <h3 className="font-display text-xl text-fluky-secondary mb-4">
+        <Card variant="glass" padding="lg" className="mt-8 border-violet-500/30">
+          <h3 className="font-display text-xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
             💡 Astuces Organisateur
           </h3>
-          <div className="space-y-2 text-sm font-body text-fluky-text/70">
+          <div className="space-y-2 text-sm font-body text-gray-400">
             <p>• Utilisez les templates pour créer rapidement des tournois similaires</p>
             <p>• Dupliquez un tournoi existant pour gagner du temps</p>
             <p>• Vérifiez régulièrement les conflits de scores dans le panel admin</p>

@@ -131,7 +131,7 @@ export default function GamingAccountsSection({ session }) {
     const isEditing = editingPlatform === platform;
 
     return (
-      <Card key={platform} variant="glass" padding="md" className="hover:border-fluky-primary/50 transition-all">
+      <Card key={platform} variant="glass" padding="md" className="hover:border-violet-500/50 transition-all">
         <div className="flex items-start justify-between gap-4">
           {/* Platform Info */}
           <div className="flex items-center gap-3 flex-1">
@@ -141,17 +141,17 @@ export default function GamingAccountsSection({ session }) {
               className="w-10 h-10 rounded-lg bg-white/10 p-2"
             />
             <div className="flex-1">
-              <h4 className="font-body text-fluky-text font-semibold">
+              <h4 className="font-body text-white font-semibold">
                 {PLATFORM_NAMES[platform]}
               </h4>
-              <p className="text-xs text-fluky-text/60">
+              <p className="text-xs text-gray-400">
                 {PLATFORM_GAMES[platform]?.join(', ')}
               </p>
               
               {/* Display existing account */}
               {account && !isEditing && (
                 <div className="mt-2">
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-fluky-primary/20 text-fluky-secondary text-sm font-medium">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-cyan-400 text-sm font-medium">
                     <span className="w-2 h-2 rounded-full bg-green-500"></span>
                     {formatGamertag(account.game_username, account.game_tag, platform)}
                   </span>
@@ -229,7 +229,7 @@ export default function GamingAccountsSection({ session }) {
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-2 animate-pulse">🎮</div>
-        <p className="text-fluky-text/60">Chargement des comptes gaming...</p>
+        <p className="text-gray-400">Chargement des comptes gaming...</p>
       </div>
     );
   }
@@ -238,19 +238,19 @@ export default function GamingAccountsSection({ session }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="mb-6">
-        <h3 className="font-display text-2xl text-fluky-secondary mb-2">
+        <h3 className="font-display text-2xl text-cyan-400 mb-2">
           Comptes Gaming
         </h3>
-        <p className="text-fluky-text/70 text-sm">
+        <p className="text-gray-300 text-sm">
           Liez vos comptes de jeu pour participer aux tournois. Ces informations seront affichées dans les lobbies de match.
         </p>
       </div>
 
       {/* Info banner */}
-      <Card variant="glass" padding="md" className="bg-fluky-primary/10 border-fluky-primary/30">
+      <Card variant="glass" padding="md" className="bg-violet-500/10 border-violet-500/30">
         <div className="flex items-start gap-3">
           <span className="text-2xl">ℹ️</span>
-          <div className="flex-1 text-sm text-fluky-text/80">
+          <div className="flex-1 text-sm text-gray-200">
             <p className="font-semibold mb-1">Pourquoi lier mes comptes ?</p>
             <p>
               Pour rejoindre un tournoi VALORANT, vous devez avoir lié votre compte Riot Games. 

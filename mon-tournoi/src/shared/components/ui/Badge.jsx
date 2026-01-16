@@ -15,13 +15,13 @@ const Badge = ({
   const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200';
   
   const variantStyles = {
-    primary: 'bg-fluky-primary text-white',
-    secondary: 'bg-fluky-secondary text-white',
+    primary: 'bg-violet-600 text-white',
+    secondary: 'bg-cyan-600 text-white',
     success: 'bg-green-500 text-white',
     error: 'bg-red-500 text-white',
     warning: 'bg-yellow-500 text-gray-900',
     info: 'bg-blue-500 text-white',
-    outline: 'border-2 border-fluky-primary text-fluky-primary bg-transparent',
+    outline: 'border-2 border-violet-500 text-violet-400 bg-transparent',
   };
   
   const sizeStyles = {

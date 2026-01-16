@@ -89,7 +89,7 @@ export default function WYSIWYGEditor({
               key={button.command}
               type="button"
               onClick={() => button.onClick ? button.onClick() : execCommand(button.command)}
-              className="px-3 py-1 bg-white/5 hover:bg-white/10 text-fluky-text rounded transition-colors duration-200 text-sm font-body border border-white/5 hover:border-white/20"
+              className="px-3 py-1 bg-white/5 hover:bg-white/10 text-white rounded transition-colors duration-200 text-sm font-body border border-white/5 hover:border-white/20"
               title={button.title}
             >
               {button.icon}
@@ -107,11 +107,11 @@ export default function WYSIWYGEditor({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         className={`
-          editor-content bg-[#030913] text-fluky-text p-4 
+          editor-content bg-[#0A0A0F] text-white p-4 
           border border-white/10 border-t-0 rounded-b-lg
-          focus:outline-none focus:border-fluky-primary/50
+          focus:outline-none focus:border-violet-500/50
           overflow-y-auto font-body
-          ${isFocused ? 'border-fluky-primary/50' : ''}
+          ${isFocused ? 'border-violet-500/50' : ''}
         `}
         style={{
           minHeight,
@@ -123,12 +123,12 @@ export default function WYSIWYGEditor({
       <style>{`
         .wysiwyg-editor .editor-content:empty:before {
           content: attr(data-placeholder);
-          color: rgba(248, 246, 242, 0.3);
+          color: rgba(156, 163, 175, 0.5);
           pointer-events: none;
         }
         
         .wysiwyg-editor .editor-content a {
-          color: #FF36A3;
+          color: #8B5CF6;
           text-decoration: underline;
         }
         

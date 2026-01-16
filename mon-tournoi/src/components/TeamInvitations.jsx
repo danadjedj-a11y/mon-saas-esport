@@ -75,8 +75,8 @@ const TeamInvitations = ({ userId, onUpdate }) => {
     return (
       <Card variant="glass" padding="lg">
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-fluky-secondary border-t-transparent mx-auto mb-3" />
-          <p className="text-fluky-text/60 font-body">Chargement des invitations...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent mx-auto mb-3" />
+          <p className="text-gray-400 font-body">Chargement des invitations...</p>
         </div>
       </Card>
     );
@@ -87,10 +87,10 @@ const TeamInvitations = ({ userId, onUpdate }) => {
       <Card variant="outlined" padding="lg">
         <div className="text-center py-8">
           <div className="text-6xl mb-4">📬</div>
-          <h3 className="font-display text-xl text-fluky-text/70 mb-2">
+          <h3 className="font-display text-xl text-gray-300 mb-2">
             Aucune invitation
           </h3>
-          <p className="text-fluky-text/60 font-body text-sm">
+          <p className="text-gray-400 font-body text-sm">
             Vous n'avez pas d'invitation d'équipe en attente
           </p>
         </div>
@@ -105,7 +105,7 @@ const TeamInvitations = ({ userId, onUpdate }) => {
           key={invitation.id}
           variant="glass"
           padding="lg"
-          className="border-fluky-primary/30"
+          className="border-violet-500/30"
         >
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             {/* Informations de l'équipe */}
@@ -116,10 +116,10 @@ const TeamInvitations = ({ userId, onUpdate }) => {
                 size="lg"
               />
               <div className="flex-1">
-                <h4 className="font-display text-lg text-fluky-secondary mb-1">
+                <h4 className="font-display text-lg text-cyan-400 mb-1">
                   {invitation.team?.name}
                 </h4>
-                <p className="text-sm text-fluky-text/60 font-body mb-2">
+                <p className="text-sm text-gray-400 font-body mb-2">
                   [{invitation.team?.tag}]
                 </p>
                 <div className="flex items-center gap-2 mb-2">
@@ -128,18 +128,18 @@ const TeamInvitations = ({ userId, onUpdate }) => {
                     name={invitation.invited_by_user?.username || 'Joueur'}
                     size="xs"
                   />
-                  <p className="text-xs text-fluky-text/70 font-body">
-                    Invité par <span className="text-fluky-secondary">{invitation.invited_by_user?.username}</span>
+                  <p className="text-xs text-gray-300 font-body">
+                    Invité par <span className="text-cyan-400">{invitation.invited_by_user?.username}</span>
                   </p>
                 </div>
                 {invitation.message && (
                   <div className="bg-black/30 rounded p-2 mt-2">
-                    <p className="text-sm text-fluky-text/80 font-body italic">
+                    <p className="text-sm text-gray-200 font-body italic">
                       "{invitation.message}"
                     </p>
                   </div>
                 )}
-                <p className="text-xs text-fluky-text/50 font-body mt-2">
+                <p className="text-xs text-gray-500 font-body mt-2">
                   {new Date(invitation.created_at).toLocaleDateString('fr-FR', {
                     day: 'numeric',
                     month: 'long',

@@ -172,43 +172,15 @@ export default function NotificationCenter({ session }) {
   if (!session?.user) return null;
 
   return (
-    <div style={{ position: 'relative' }} ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       {/* Bouton avec badge */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          position: 'relative',
-          background: 'transparent',
-          border: '1px solid #444',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          color: 'white',
-          cursor: 'pointer',
-          fontSize: '1.2rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
+        className="relative bg-transparent border border-violet-500/30 rounded-lg px-3 py-2 text-white cursor-pointer text-xl flex items-center gap-2 hover:border-violet-400 hover:bg-violet-500/10 transition-all duration-300"
       >
         🔔
         {unreadCount > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: '-5px',
-              right: '-5px',
-              background: '#e74c3c',
-              color: 'white',
-              borderRadius: '50%',
-              width: '20px',
-              height: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.7rem',
-              fontWeight: 'bold'
-            }}
-          >
+          <span className="absolute -top-1.5 -right-1.5 bg-pink-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -216,44 +188,16 @@ export default function NotificationCenter({ session }) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            marginTop: '10px',
-            background: '#1a1a1a',
-            border: '1px solid #333',
-            borderRadius: '8px',
-            width: '400px',
-            maxHeight: '500px',
-            overflowY: 'auto',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            zIndex: 1000
-          }}
-        >
+        <div className="absolute top-full right-0 mt-3 glass-card border-violet-500/30 w-96 max-h-[500px] overflow-y-auto shadow-glow-violet z-50 animate-fadeIn">
           {/* Header */}
-          <div
-            style={{
-              padding: '15px',
-              borderBottom: '1px solid #333',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>🔔 Notifications</h3>
+          <div className="p-4 border-b border-violet-500/20 flex justify-between items-center">
+            <h3 className="font-display text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
+              🔔 Notifications
+            </h3>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#3498db',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  padding: '5px 10px'
-                }}
+                className="bg-transparent border-none text-cyan-400 cursor-pointer text-sm px-2 py-1 hover:text-cyan-300 transition-colors"
               >
                 Tout marquer comme lu
               </button>
@@ -263,17 +207,17 @@ export default function NotificationCenter({ session }) {
           {/* Liste des notifications */}
           <div>
             {loading ? (
-              <div style={{ padding: '20px' }}>
+              <div className="p-5">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} style={{ marginBottom: '15px' }}>
-                    <Skeleton variant="text" height="20px" width="60%" style={{ marginBottom: '8px' }} />
-                    <Skeleton variant="text" height="14px" width="80%" style={{ marginBottom: '5px' }} />
-                    <Skeleton variant="text" height="12px" width="40%" />
+                  <div key={i} className="mb-4">
+                    <Skeleton variant="text" className="h-5 w-3/5 mb-2" />
+                    <Skeleton variant="text" className="h-4 w-4/5 mb-1.5" />
+                    <Skeleton variant="text" className="h-3 w-2/5" />
                   </div>
                 ))}
               </div>
             ) : notifications.length === 0 ? (
-              <div style={{ padding: '20px' }}>
+              <div className="p-5">
                 <EmptyNotifications />
               </div>
             ) : (
@@ -281,84 +225,31 @@ export default function NotificationCenter({ session }) {
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
-                  style={{
-                    padding: '15px',
-                    borderBottom: '1px solid #2a2a2a',
-                    cursor: 'pointer',
-                    background: notification.is_read ? 'transparent' : '#2a2a2a',
-                    position: 'relative',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (notification.is_read) {
-                      e.currentTarget.style.background = '#222';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (notification.is_read) {
-                      e.currentTarget.style.background = 'transparent';
-                    }
-                  }}
+                  className={`p-4 border-b border-violet-500/10 cursor-pointer relative transition-all duration-200 hover:bg-violet-500/10 ${
+                    notification.is_read ? 'bg-transparent' : 'bg-violet-500/5'
+                  }`}
                 >
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>
+                  <div className="flex gap-3 items-start">
+                    <div className="text-2xl flex-shrink-0">
                       {getIcon(notification.type)}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: notification.is_read ? 'normal' : 'bold',
-                          fontSize: '0.95rem',
-                          marginBottom: '5px',
-                          color: 'white'
-                        }}
-                      >
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm mb-1 text-white ${notification.is_read ? 'font-normal' : 'font-bold'}`}>
                         {notification.title}
                       </div>
-                      <div
-                        style={{
-                          fontSize: '0.85rem',
-                          color: '#aaa',
-                          marginBottom: '5px',
-                          lineHeight: '1.4'
-                        }}
-                      >
+                      <div className="text-sm text-gray-400 mb-1.5 leading-relaxed">
                         {notification.message}
                       </div>
-                      <div
-                        style={{
-                          fontSize: '0.75rem',
-                          color: '#666'
-                        }}
-                      >
+                      <div className="text-xs text-gray-500">
                         {formatTime(notification.created_at)}
                       </div>
                     </div>
                     {!notification.is_read && (
-                      <div
-                        style={{
-                          width: '8px',
-                          height: '8px',
-                          background: '#3498db',
-                          borderRadius: '50%',
-                          flexShrink: 0,
-                          marginTop: '5px'
-                        }}
-                      />
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full flex-shrink-0 mt-1.5 animate-pulse" />
                     )}
                     <button
                       onClick={(e) => deleteNotification(notification.id, e)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#666',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        padding: '5px',
-                        flexShrink: 0
-                      }}
-                      onMouseEnter={(e) => e.target.style.color = '#e74c3c'}
-                      onMouseLeave={(e) => e.target.style.color = '#666'}
+                      className="bg-transparent border-none text-gray-600 cursor-pointer text-base p-1 flex-shrink-0 hover:text-pink-500 transition-colors"
                     >
                       ✕
                     </button>

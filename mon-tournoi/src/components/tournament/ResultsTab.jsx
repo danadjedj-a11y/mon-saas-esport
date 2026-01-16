@@ -9,8 +9,8 @@ export default function ResultsTab({ matches }) {
     });
 
   return (
-    <div className="bg-fluky-bg/95 p-8 rounded-xl border-2 border-fluky-accent shadow-lg shadow-fluky-primary/30">
-      <h2 className="mt-0 text-fluky-accent font-handwriting text-3xl mb-6">
+    <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">
+      <h2 className="mt-0 text-cyan-400 font-handwriting text-3xl mb-6">
         📊 Résultats des matchs
       </h2>
       
@@ -21,7 +21,7 @@ export default function ResultsTab({ matches }) {
           ))}
         </div>
       ) : (
-        <p className="text-center text-fluky-text mt-12 font-display">
+        <p className="text-center text-white mt-12 font-display">
           Aucun résultat pour le moment.
         </p>
       )}

@@ -41,30 +41,30 @@ export default function JoinTeam({ session, supabase }) {
 
   if (loading) return (
     <DashboardLayout session={session}>
-      <div className="text-fluky-text font-body text-center py-20">Chargement de l'invitation...</div>
+      <div className="text-gray-400 text-center py-20">Chargement de l'invitation...</div>
     </DashboardLayout>
   );
   
   if (!team) return (
     <DashboardLayout session={session}>
-      <div className="text-fluky-text font-body text-center py-20">Invitation invalide.</div>
+      <div className="text-gray-400 text-center py-20">Invitation invalide.</div>
     </DashboardLayout>
   );
 
   return (
     <DashboardLayout session={session}>
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-12 text-center max-w-md w-full">
-          <h1 className="font-display text-5xl text-fluky-secondary mb-4" style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>{team.tag}</h1>
-          <h2 className="font-display text-2xl text-fluky-text mb-6">Tu as été invité à rejoindre<br/>{team.name}</h2>
+        <div className="glass-card border-violet-500/30 p-12 text-center max-w-md w-full shadow-glow-violet">
+          <h1 className="font-display text-5xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4 drop-shadow-glow">{team.tag}</h1>
+          <h2 className="font-display text-2xl text-white mb-6">Tu as été invité à rejoindre<br/><span className="text-violet-400">{team.name}</span></h2>
           
-          <div className="mb-8 text-fluky-text/70 font-body">
+          <div className="mb-8 text-gray-400">
             Connecte-toi et clique ci-dessous pour intégrer le roster.
           </div>
 
           <button 
             onClick={handleJoin} 
-            className="w-full px-6 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-lg uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+            className="w-full btn-primary px-6 py-4 rounded-lg font-display text-lg uppercase tracking-wide"
           >
             Accepter l'invitation
           </button>

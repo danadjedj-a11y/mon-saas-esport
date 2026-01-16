@@ -55,14 +55,14 @@ const Avatar = ({
           src={src}
           alt={alt || name}
           className={clsx(
-            'rounded-full object-cover border-2 border-fluky-primary',
+            'rounded-full object-cover border-2 border-violet-500',
             sizeStyles[size]
           )}
         />
       ) : (
         <div
           className={clsx(
-            'rounded-full bg-gradient-to-br from-fluky-primary to-fluky-secondary flex items-center justify-center text-white font-semibold border-2 border-fluky-primary',
+            'rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-semibold border-2 border-violet-500',
             sizeStyles[size]
           )}
         >
@@ -74,7 +74,7 @@ const Avatar = ({
       {status && (
         <span
           className={clsx(
-            'absolute bottom-0 right-0 rounded-full border-2 border-fluky-bg',
+            'absolute bottom-0 right-0 rounded-full border-2 border-gray-900',
             statusIndicatorSizes[size],
             statusColors[status]
           )}

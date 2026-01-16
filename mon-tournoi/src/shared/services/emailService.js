@@ -161,7 +161,7 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
   <div style="max-width:600px;margin:0 auto;padding:0;">
     
     <!-- Header avec gradient -->
-    <div style="background:linear-gradient(135deg,#1E0B4E 0%,#C10468 100%);padding:40px 30px;text-align:center;border-radius:12px 12px 0 0;">
+    <div style="background:linear-gradient(135deg,#0A0A0F 0%,#8B5CF6 100%);padding:40px 30px;text-align:center;border-radius:12px 12px 0 0;">
       <h1 style="color:#ffffff;font-size:36px;margin:0;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
         FLUKY BOYS
       </h1>
@@ -171,11 +171,11 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
     </div>
     
     <!-- Contenu principal -->
-    <div style="background:#12121a;padding:40px 30px;border-left:1px solid rgba(193,4,104,0.3);border-right:1px solid rgba(193,4,104,0.3);">
+    <div style="background:#12121a;padding:40px 30px;border-left:1px solid rgba(139,92,246,0.3);border-right:1px solid rgba(139,92,246,0.3);">
       
       <!-- Icône -->
       <div style="text-align:center;margin-bottom:25px;">
-        <div style="display:inline-block;background:linear-gradient(135deg,#C10468,#1E0B4E);width:70px;height:70px;border-radius:50%;line-height:70px;font-size:32px;">
+        <div style="display:inline-block;background:linear-gradient(135deg,#8B5CF6,#0A0A0F);width:70px;height:70px;border-radius:50%;line-height:70px;font-size:32px;">
           🎮
         </div>
       </div>
@@ -192,12 +192,12 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
         </p>
         
         <p style="color:#e0e0e0;font-size:16px;line-height:1.7;margin:0;">
-          <strong style="color:#C10468;">${inviterName || 'Un capitaine'}</strong> t'invite à rejoindre son équipe
+          <strong style="color:#8B5CF6;">${inviterName || 'Un capitaine'}</strong> t'invite à rejoindre son équipe
         </p>
         
         <!-- Nom de l'équipe mis en avant -->
         <div style="text-align:center;margin:20px 0;">
-          <span style="display:inline-block;background:linear-gradient(135deg,#1E0B4E,#C10468);color:#ffffff;font-size:22px;font-weight:700;padding:15px 30px;border-radius:8px;letter-spacing:1px;">
+          <span style="display:inline-block;background:linear-gradient(135deg,#0A0A0F,#8B5CF6);color:#ffffff;font-size:22px;font-weight:700;padding:15px 30px;border-radius:8px;letter-spacing:1px;">
             ${teamName || 'Une équipe'}
           </span>
         </div>
@@ -205,7 +205,7 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
       
       ${message ? `
       <!-- Message personnalisé -->
-      <div style="background:rgba(193,4,104,0.1);border-left:4px solid #C10468;padding:20px;margin-bottom:25px;border-radius:0 8px 8px 0;">
+      <div style="background:rgba(139,92,246,0.1);border-left:4px solid #8B5CF6;padding:20px;margin-bottom:25px;border-radius:0 8px 8px 0;">
         <p style="color:#aaa;font-size:13px;margin:0 0 8px 0;text-transform:uppercase;letter-spacing:1px;">
           💬 Message de ${inviterName || 'l\'inviteur'}
         </p>
@@ -218,7 +218,7 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
       <!-- Bouton CTA -->
       <div style="text-align:center;margin:30px 0;">
         <a href="${invitationUrl || 'https://flukyboys.com'}" 
-           style="display:inline-block;background:linear-gradient(135deg,#C10468,#ff1493);color:#ffffff;padding:18px 50px;text-decoration:none;border-radius:50px;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(193,4,104,0.4);">
+           style="display:inline-block;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#ffffff;padding:18px 50px;text-decoration:none;border-radius:50px;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(139,92,246,0.4);">
           ✨ Voir l'invitation
         </a>
       </div>
@@ -229,7 +229,7 @@ function generateTeamInvitationHTML({ recipientName, teamName, inviterName, mess
     </div>
     
     <!-- Footer -->
-    <div style="background:#0a0a0f;padding:30px;text-align:center;border-radius:0 0 12px 12px;border:1px solid rgba(193,4,104,0.2);border-top:none;">
+    <div style="background:#0a0a0f;padding:30px;text-align:center;border-radius:0 0 12px 12px;border:1px solid rgba(139,92,246,0.2);border-top:none;">
       <p style="color:#666;font-size:12px;margin:0 0 10px 0;">
         © ${new Date().getFullYear()} Fluky Boys - Tous droits réservés
       </p>
@@ -276,17 +276,17 @@ function generateMatchNotificationHTML({ recipientName, _matchInfo, tournamentNa
   <div style="max-width:600px;margin:0 auto;padding:0;">
     
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#1E0B4E 0%,#C10468 100%);padding:40px 30px;text-align:center;border-radius:12px 12px 0 0;">
+    <div style="background:linear-gradient(135deg,#0A0A0F 0%,#8B5CF6 100%);padding:40px 30px;text-align:center;border-radius:12px 12px 0 0;">
       <h1 style="color:#ffffff;font-size:36px;margin:0;font-weight:800;letter-spacing:2px;text-transform:uppercase;">
         FLUKY BOYS
       </h1>
     </div>
     
     <!-- Contenu -->
-    <div style="background:#12121a;padding:40px 30px;border-left:1px solid rgba(193,4,104,0.3);border-right:1px solid rgba(193,4,104,0.3);">
+    <div style="background:#12121a;padding:40px 30px;border-left:1px solid rgba(139,92,246,0.3);border-right:1px solid rgba(139,92,246,0.3);">
       
       <div style="text-align:center;margin-bottom:25px;">
-        <div style="display:inline-block;background:linear-gradient(135deg,#C10468,#1E0B4E);width:70px;height:70px;border-radius:50%;line-height:70px;font-size:32px;">
+        <div style="display:inline-block;background:linear-gradient(135deg,#8B5CF6,#0A0A0F);width:70px;height:70px;border-radius:50%;line-height:70px;font-size:32px;">
           ⚔️
         </div>
       </div>
@@ -305,7 +305,7 @@ function generateMatchNotificationHTML({ recipientName, _matchInfo, tournamentNa
         </p>
         
         <div style="text-align:center;margin:20px 0;">
-          <span style="display:inline-block;background:linear-gradient(135deg,#1E0B4E,#C10468);color:#ffffff;font-size:20px;font-weight:700;padding:15px 30px;border-radius:8px;">
+          <span style="display:inline-block;background:linear-gradient(135deg,#0A0A0F,#8B5CF6);color:#ffffff;font-size:20px;font-weight:700;padding:15px 30px;border-radius:8px;">
             🏆 ${tournamentName || 'Tournoi'}
           </span>
         </div>
@@ -313,14 +313,14 @@ function generateMatchNotificationHTML({ recipientName, _matchInfo, tournamentNa
       
       <div style="text-align:center;margin:30px 0;">
         <a href="https://flukyboys.com" 
-           style="display:inline-block;background:linear-gradient(135deg,#C10468,#ff1493);color:#ffffff;padding:18px 50px;text-decoration:none;border-radius:50px;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(193,4,104,0.4);">
+           style="display:inline-block;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#ffffff;padding:18px 50px;text-decoration:none;border-radius:50px;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(139,92,246,0.4);">
           🎮 Rejoindre le lobby
         </a>
       </div>
     </div>
     
     <!-- Footer -->
-    <div style="background:#0a0a0f;padding:30px;text-align:center;border-radius:0 0 12px 12px;border:1px solid rgba(193,4,104,0.2);border-top:none;">
+    <div style="background:#0a0a0f;padding:30px;text-align:center;border-radius:0 0 12px 12px;border:1px solid rgba(139,92,246,0.2);border-top:none;">
       <p style="color:#666;font-size:12px;margin:0;">
         © ${new Date().getFullYear()} Fluky Boys - Tous droits réservés
       </p>

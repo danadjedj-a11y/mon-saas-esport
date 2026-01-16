@@ -65,7 +65,7 @@ const Modal = ({
     >
       <div
         className={clsx(
-          'bg-[#030913] border-2 border-fluky-primary rounded-xl shadow-2xl shadow-fluky-primary/50 w-full overflow-hidden animate-scaleIn',
+          'glass-card border-violet-500/30 shadow-2xl shadow-violet-500/20 w-full overflow-hidden animate-scaleIn',
           sizeStyles[size],
           className
         )}
@@ -74,14 +74,14 @@ const Modal = ({
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between p-6 border-b border-white/10">
             {title && (
-              <h3 className="text-2xl font-display text-fluky-secondary">
+              <h3 className="text-2xl font-display text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
                 {title}
               </h3>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-fluky-text hover:text-fluky-secondary transition-colors text-2xl leading-none p-2"
+                className="text-gray-400 hover:text-cyan-400 transition-colors text-2xl leading-none p-2"
                 aria-label="Fermer"
               >
                 ✕

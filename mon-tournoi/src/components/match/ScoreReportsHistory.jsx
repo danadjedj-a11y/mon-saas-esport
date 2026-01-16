@@ -8,7 +8,7 @@ export default function ScoreReportsHistory({ reports, isAdmin }) {
 
   return (
     <div className={`mt-5 ${isAdmin ? 'bg-[#1a1a1a]' : 'bg-[#1a1a1a]'} p-5 rounded-2xl border border-white/20`}>
-      <h3 className="font-display text-fluky-text mt-0">📋 Historique des déclarations</h3>
+      <h3 className="font-display text-white mt-0">📋 Historique des déclarations</h3>
       
       <div className="flex flex-col gap-2.5 mt-4">
         {reports.map((report) => (
@@ -21,7 +21,7 @@ export default function ScoreReportsHistory({ reports, isAdmin }) {
             }`}
           >
             <div className="flex justify-between items-center">
-              <div className="font-body text-fluky-text">
+              <div className="font-body text-white">
                 <strong>{report.teams?.name || 'Équipe'}</strong> a déclaré : 
                 <span className="ml-2.5 text-xl font-bold">
                   {report.score_team} - {report.score_opponent}

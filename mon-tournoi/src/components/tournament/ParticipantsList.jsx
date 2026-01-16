@@ -2,13 +2,13 @@ import ParticipantCard from './ParticipantCard';
 
 export default function ParticipantsList({ participants, tournamentId }) {
   return (
-    <div className="bg-fluky-bg/95 p-8 rounded-xl border-2 border-fluky-accent shadow-lg shadow-fluky-primary/30">
-      <h2 className="mt-0 text-fluky-accent mb-5 font-handwriting text-3xl">
+    <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">
+      <h2 className="mt-0 text-cyan-400 mb-5 font-handwriting text-3xl">
         Participants ({participants.length})
       </h2>
       
       {participants.length === 0 ? (
-        <div className="text-center py-10 text-fluky-text/60 font-display">
+        <div className="text-center py-10 text-gray-400 font-display">
           Aucun participant inscrit pour le moment
         </div>
       ) : (

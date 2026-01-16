@@ -24,13 +24,13 @@ describe('AdminStatCard', () => {
       <AdminStatCard 
         title="Gradient" 
         value={50} 
-        gradient="linear-gradient(135deg, #ff36a3, #c10468)" 
+        gradient="linear-gradient(135deg, #8B5CF6, #06B6D4)" 
       />
     );
     
     // Check that the gradient style is applied to the card
     const card = container.firstChild;
-    expect(card).toHaveStyle({ background: 'linear-gradient(135deg, #ff36a3, #c10468)' });
+    expect(card).toHaveStyle({ background: 'linear-gradient(135deg, #8B5CF6, #06B6D4)' });
   });
 
   it('renders in alert mode', () => {

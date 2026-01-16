@@ -20,7 +20,7 @@ const Card = ({
   const variantStyles = {
     default: 'bg-[#1a1a1a] border border-white/5',
     elevated: 'bg-[#1a1a1a] shadow-xl',
-    outlined: 'bg-transparent border-2 border-fluky-primary/30',
+    outlined: 'bg-transparent border-2 border-violet-500/30',
     glass: 'bg-white/5 backdrop-blur-md border border-white/10',
   };
   
@@ -32,7 +32,7 @@ const Card = ({
     xl: 'p-8',
   };
   
-  const hoverStyles = hover ? 'hover:shadow-xl hover:shadow-fluky-primary/20 hover:border-fluky-primary/50 hover:-translate-y-1' : '';
+  const hoverStyles = hover ? 'hover:shadow-xl hover:shadow-violet-500/20 hover:border-violet-500/50 hover:-translate-y-1' : '';
   
   const clickableStyles = clickable || onClick ? 'cursor-pointer' : '';
 

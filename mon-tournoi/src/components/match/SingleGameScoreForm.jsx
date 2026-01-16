@@ -17,7 +17,7 @@ export default function SingleGameScoreForm({ onSubmit }) {
       
       <div className="flex gap-4 items-center justify-center">
         <div className="text-center">
-          <label className="block mb-1 text-sm text-fluky-text font-body">Mon score</label>
+          <label className="block mb-1 text-sm text-white font-body">Mon score</label>
           <input 
             type="number" 
             value={myScore} 
@@ -26,9 +26,9 @@ export default function SingleGameScoreForm({ onSubmit }) {
             className="text-2xl w-20 text-center bg-[#111] text-white border-2 border-yellow-500 rounded-lg p-2.5"
           />
         </div>
-        <span className="text-3xl mt-6 text-fluky-text">:</span>
+        <span className="text-3xl mt-6 text-white">:</span>
         <div className="text-center">
-          <label className="block mb-1 text-sm text-fluky-text font-body">Score adverse</label>
+          <label className="block mb-1 text-sm text-white font-body">Score adverse</label>
           <input 
             type="number" 
             value={opponentScore} 

@@ -56,14 +56,14 @@ export default function NewsSection() {
     return (
       <div className="py-12">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="font-display text-4xl text-fluky-text mb-8 text-center">
+          <h2 className="font-display text-4xl text-white mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
             📰 Actualités
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div 
                 key={i} 
-                className="bg-[#030913]/60 backdrop-blur-md border border-white/5 rounded-lg p-6 animate-pulse"
+                className="glass-card border-violet-500/30 p-6 animate-pulse"
               >
                 <div className="h-48 bg-white/5 rounded-lg mb-4"></div>
                 <div className="h-6 bg-white/5 rounded mb-2"></div>
@@ -80,12 +80,12 @@ export default function NewsSection() {
     return (
       <div className="py-12">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="font-display text-4xl text-fluky-text mb-8 text-center">
+          <h2 className="font-display text-4xl mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
             📰 Actualités
           </h2>
-          <div className="text-center text-fluky-text/50 py-12">
-            <p className="text-xl font-body">Aucune actualité pour le moment</p>
-            <p className="text-sm mt-2 font-body">Revenez bientôt pour découvrir les dernières nouvelles !</p>
+          <div className="text-center text-gray-400 py-12">
+            <p className="text-xl">Aucune actualité pour le moment</p>
+            <p className="text-sm mt-2 text-gray-500">Revenez bientôt pour découvrir les dernières nouvelles !</p>
           </div>
         </div>
       </div>
@@ -94,10 +94,9 @@ export default function NewsSection() {
 
   return (
     <>
-      <div className="py-12 bg-gradient-to-b from-transparent to-[#030913]/30">
+      <div className="py-12 bg-gradient-to-b from-transparent to-dark-900/50">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="font-display text-4xl text-fluky-text mb-8 text-center"
-              style={{ textShadow: '0 0 20px rgba(193, 4, 104, 0.5)' }}>
+          <h2 className="font-display text-4xl mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 drop-shadow-glow">
             📰 Actualités
           </h2>
           
@@ -105,7 +104,7 @@ export default function NewsSection() {
             {articles.map((article) => (
               <Card 
                 key={article.id}
-                className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-fluky-primary/20 bg-[#030913]/60 backdrop-blur-md border border-white/5 overflow-hidden"
+                className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-glow-violet glass-card border-violet-500/20 overflow-hidden"
                 onClick={() => openArticle(article)}
               >
                 {/* Image */}
@@ -116,7 +115,7 @@ export default function NewsSection() {
                       alt={article.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                       onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/400x300/1a1a1a/FF36A3?text=News';
+                        e.target.src = 'https://via.placeholder.com/400x300/1a1a1a/8B5CF6?text=News';
                       }}
                     />
                   </div>
@@ -124,16 +123,16 @@ export default function NewsSection() {
                 
                 {/* Content */}
                 <div className="p-6">
-                  <h3 className="font-display text-xl text-fluky-text mb-3 group-hover:text-fluky-secondary transition-colors">
+                  <h3 className="font-display text-xl text-white mb-3 group-hover:text-violet-400 transition-colors">
                     {article.title}
                   </h3>
                   
-                  <p className="text-fluky-text/70 text-sm mb-4 font-body line-clamp-3">
+                  <p className="text-gray-400 text-sm mb-4 line-clamp-3">
                     {getExcerpt(article.content)}
                   </p>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-fluky-text/50 font-body">
+                    <span className="text-xs text-gray-500">
                       {new Date(article.published_at || article.created_at).toLocaleDateString('fr-FR', {
                         day: 'numeric',
                         month: 'long',
@@ -141,7 +140,7 @@ export default function NewsSection() {
                       })}
                     </span>
                     
-                    <button className="text-fluky-secondary text-sm font-body hover:text-fluky-primary transition-colors flex items-center gap-2">
+                    <button className="text-cyan-400 text-sm hover:text-violet-400 transition-colors flex items-center gap-2">
                       Lire plus
                       <span className="group-hover:translate-x-1 transition-transform">→</span>
                     </button>
@@ -170,15 +169,15 @@ export default function NewsSection() {
                   alt={selectedArticle.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/800x400/1a1a1a/FF36A3?text=News';
+                    e.target.src = 'https://via.placeholder.com/800x400/1a1a1a/8B5CF6?text=News';
                   }}
                 />
               </div>
             )}
             
             {/* Metadata */}
-            <div className="flex items-center gap-4 text-sm text-fluky-text/70 border-b border-white/10 pb-4">
-              <span className="font-body">
+            <div className="flex items-center gap-4 text-sm text-gray-400 border-b border-violet-500/20 pb-4">
+              <span>
                 📅 {new Date(selectedArticle.published_at || selectedArticle.created_at).toLocaleDateString('fr-FR', {
                   day: 'numeric',
                   month: 'long',
@@ -189,11 +188,8 @@ export default function NewsSection() {
             
             {/* Content */}
             <div 
-              className="prose prose-invert max-w-none text-fluky-text font-body"
+              className="prose prose-invert max-w-none text-gray-300 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedArticle.content) }}
-              style={{
-                lineHeight: '1.8',
-              }}
             />
           </div>
         </Modal>

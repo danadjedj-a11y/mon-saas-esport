@@ -24,7 +24,7 @@ export default function LanguageSelector() {
         onClick={() => setIsOpen(!isOpen)}
         style={{
           background: 'transparent',
-          border: '2px solid #FF36A3',
+          border: '2px solid #06B6D4',
           color: '#F8F6F2',
           padding: '8px 15px',
           borderRadius: '8px',
@@ -37,12 +37,12 @@ export default function LanguageSelector() {
           transition: 'all 0.3s ease'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(193, 4, 104, 0.3)';
-          e.currentTarget.style.borderColor = '#C10468';
+          e.currentTarget.style.background = 'rgba(139, 92, 246, 0.3)';
+          e.currentTarget.style.borderColor = '#8B5CF6';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.borderColor = '#FF36A3';
+          e.currentTarget.style.borderColor = '#06B6D4';
         }}
       >
         <span>{currentLanguage.flag}</span>
@@ -58,11 +58,11 @@ export default function LanguageSelector() {
             right: 0,
             marginTop: '10px',
             background: 'rgba(3, 9, 19, 0.95)',
-            border: '2px solid #FF36A3',
+            border: '2px solid #06B6D4',
             borderRadius: '8px',
             padding: '10px 0',
             minWidth: '150px',
-            boxShadow: '0 8px 24px rgba(193, 4, 104, 0.4)',
+            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
             zIndex: 1000
           }}
         >
@@ -73,7 +73,7 @@ export default function LanguageSelector() {
               onClick={() => changeLanguage(lang.code)}
               style={{
                 width: '100%',
-                background: i18n.language === lang.code ? 'rgba(193, 4, 104, 0.3)' : 'transparent',
+                background: i18n.language === lang.code ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
                 border: 'none',
                 color: '#F8F6F2',
                 padding: '10px 20px',
@@ -88,7 +88,7 @@ export default function LanguageSelector() {
               }}
               onMouseEnter={(e) => {
                 if (i18n.language !== lang.code) {
-                  e.currentTarget.style.background = 'rgba(255, 54, 163, 0.2)';
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
                 }
               }}
               onMouseLeave={(e) => {
@@ -100,7 +100,7 @@ export default function LanguageSelector() {
               <span>{lang.flag}</span>
               <span>{lang.name}</span>
               {i18n.language === lang.code && (
-                <span style={{ marginLeft: 'auto', color: '#FF36A3' }}>✓</span>
+                <span style={{ marginLeft: 'auto', color: '#06B6D4' }}>✓</span>
               )}
             </button>
           ))}

@@ -21,82 +21,71 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
 
   const statusStyle = getStatusStyle(tournament.status);
 
+  // Map status to new badge classes
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'draft': return 'badge-warning';
+      case 'completed': return 'badge-success';
+      case 'ongoing': return 'badge-live';
+      default: return 'badge-violet';
+    }
+  };
+
   return (
     <div
       onClick={() => navigate(`/tournament/${tournament.id}/public`)}
-      style={{
-        background: 'rgba(3, 9, 19, 0.9)',
-        padding: '25px',
-        borderRadius: '12px',
-        border: '2px solid #FF36A3',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        position: 'relative'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = '#C10468';
-        e.currentTarget.style.transform = 'translateY(-5px)';
-        e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = '#FF36A3';
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
+      className="group relative bg-dark-50 border border-glass-border rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-violet hover:shadow-glow-md hover:-translate-y-1 overflow-hidden"
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '1.3rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
-            {tournament.name}
-          </h3>
-          <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', flexWrap: 'wrap', fontFamily: "'Protest Riot', sans-serif" }}>
-            <span>🎮 {tournament.game}</span>
-            <span>📊 {getFormatLabel(tournament.format)}</span>
-          </div>
-        </div>
-        <span style={{
-          background: statusStyle.bg === '#f39c12' ? '#E7632C' : statusStyle.bg === '#27ae60' ? '#C10468' : '#FF36A3',
-          padding: '6px 14px',
-          borderRadius: '6px',
-          fontSize: '0.85rem',
-          fontWeight: 'bold',
-          whiteSpace: 'nowrap',
-          color: '#F8F6F2',
-          fontFamily: "'Protest Riot', sans-serif"
-        }}>
-          {statusStyle.icon} {statusStyle.text}
-        </span>
-      </div>
-
-      <div style={{ 
-        marginTop: '15px', 
-        paddingTop: '15px', 
-        borderTop: '2px solid #FF36A3',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '10px'
-      }}>
-        <div style={{ fontSize: '0.85rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
-          Créé le {new Date(tournament.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {session && (
-            <div onClick={(e) => e.stopPropagation()}>
-              <FollowButton session={session} tournamentId={tournament.id} type="tournament" />
+      {/* Subtle gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet/5 to-cyan/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex justify-between items-start gap-4 mb-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-lg font-semibold text-text mb-2 truncate group-hover:text-violet-light transition-colors">
+              {tournament.name}
+            </h3>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary font-body">
+              <span className="flex items-center gap-1.5">
+                <span className="text-base">🎮</span>
+                {tournament.game}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-glass-border" />
+              <span className="flex items-center gap-1.5">
+                <span className="text-base">📊</span>
+                {getFormatLabel(tournament.format)}
+              </span>
             </div>
-          )}
-          <div style={{
-            padding: '6px 12px',
-            background: '#C10468',
-            borderRadius: '5px',
-            fontSize: '0.85rem',
-            color: '#F8F6F2',
-            fontWeight: 'bold',
-            fontFamily: "'Protest Riot', sans-serif"
-          }}>
-            Voir le tournoi →
+          </div>
+          
+          {/* Status Badge */}
+          <span className={`badge ${getStatusBadgeClass(tournament.status)} shrink-0`}>
+            {statusStyle.icon} {statusStyle.text}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-glass-border to-transparent my-4" />
+
+        {/* Footer */}
+        <div className="flex justify-between items-center flex-wrap gap-3">
+          <span className="text-sm text-text-muted font-body">
+            Créé le {new Date(tournament.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+          
+          <div className="flex items-center gap-3">
+            {session && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <FollowButton session={session} tournamentId={tournament.id} type="tournament" />
+              </div>
+            )}
+            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet to-violet-dark text-white text-sm font-display font-medium rounded-lg shadow-glow-sm group-hover:shadow-glow-md transition-all">
+              Voir le tournoi
+              <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
           </div>
         </div>
       </div>

@@ -222,7 +222,7 @@ export default function PublicTeam({ session }) {
       <DashboardLayout session={session}>
         <div className="text-center py-20">
           <div className="text-6xl mb-4 animate-pulse">⏳</div>
-          <p className="font-body text-fluky-text">Chargement de l'équipe...</p>
+          <p className="font-body text-white">Chargement de l'équipe...</p>
         </div>
       </DashboardLayout>
     );
@@ -233,10 +233,10 @@ export default function PublicTeam({ session }) {
       <DashboardLayout session={session}>
         <Card variant="glass" padding="xl" className="text-center max-w-2xl mx-auto mt-20">
           <div className="text-6xl mb-4">🔍</div>
-          <h2 className="font-display text-3xl text-fluky-secondary mb-2">
+          <h2 className="font-display text-3xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
             Équipe non trouvée
           </h2>
-          <p className="font-body text-fluky-text/70 mb-6">
+          <p className="font-body text-gray-400 mb-6">
             Cette équipe n'existe pas.
           </p>
           <Button variant="primary" onClick={() => navigate('/')}>
@@ -264,10 +264,10 @@ export default function PublicTeam({ session }) {
               size="2xl"
             />
             <div className="flex-1 text-center md:text-left">
-              <h1 className="font-display text-4xl text-fluky-secondary mb-2">
+              <h1 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
                 {team?.name}
               </h1>
-              <p className="font-body text-fluky-text/70 text-xl mb-4">
+              <p className="font-body text-gray-400 text-xl mb-4">
                 [{team?.tag}]
               </p>
               
@@ -315,38 +315,38 @@ export default function PublicTeam({ session }) {
           <div className="lg:col-span-2 space-y-6">
             {/* Stats */}
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 📊 Statistiques
               </h3>
               {stats && stats.totalMatches > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-black/30 rounded-lg">
-                    <div className="text-3xl font-display text-fluky-secondary">
+                    <div className="text-3xl font-display text-cyan-400">
                       {stats.totalMatches}
                     </div>
-                    <div className="text-sm text-fluky-text/70">Matchs</div>
+                    <div className="text-sm text-gray-400">Matchs</div>
                   </div>
                   <div className="text-center p-4 bg-black/30 rounded-lg">
                     <div className="text-3xl font-display text-green-500">
                       {stats.wins}
                     </div>
-                    <div className="text-sm text-fluky-text/70">Victoires</div>
+                    <div className="text-sm text-gray-400">Victoires</div>
                   </div>
                   <div className="text-center p-4 bg-black/30 rounded-lg">
                     <div className="text-3xl font-display text-red-500">
                       {stats.losses}
                     </div>
-                    <div className="text-sm text-fluky-text/70">Défaites</div>
+                    <div className="text-sm text-gray-400">Défaites</div>
                   </div>
                   <div className="text-center p-4 bg-black/30 rounded-lg">
-                    <div className="text-3xl font-display text-fluky-secondary">
+                    <div className="text-3xl font-display text-cyan-400">
                       {stats.winRate}%
                     </div>
-                    <div className="text-sm text-fluky-text/70">Winrate</div>
+                    <div className="text-sm text-gray-400">Winrate</div>
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-fluky-text/60 py-8">
+                <p className="text-center text-gray-500 py-8">
                   Aucune statistique disponible
                 </p>
               )}
@@ -354,7 +354,7 @@ export default function PublicTeam({ session }) {
 
             {/* Recent Matches */}
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 📜 Matchs Récents
               </h3>
               {recentMatches.length > 0 ? (
@@ -368,15 +368,15 @@ export default function PublicTeam({ session }) {
                     return (
                       <div
                         key={match.id}
-                        className="bg-black/30 border border-fluky-primary/30 rounded-lg p-4 hover:border-fluky-secondary transition-all cursor-pointer"
+                        className="bg-black/30 border border-violet-500/30 rounded-lg p-4 hover:border-cyan-500 transition-all cursor-pointer"
                         onClick={() => navigate(`/match/${match.id}`)}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <div className="font-body text-fluky-text text-sm mb-1">
+                            <div className="font-body text-white text-sm mb-1">
                               {match.tournaments?.name}
                             </div>
-                            <div className="text-xs text-fluky-text/60">
+                            <div className="text-xs text-gray-500">
                               {match.tournaments?.game} • {new Date(match.created_at).toLocaleDateString('fr-FR')}
                             </div>
                           </div>
@@ -389,7 +389,7 @@ export default function PublicTeam({ session }) {
                   })}
                 </div>
               ) : (
-                <p className="text-center text-fluky-text/60 py-8">
+                <p className="text-center text-gray-500 py-8">
                   Aucun match récent
                 </p>
               )}
@@ -397,7 +397,7 @@ export default function PublicTeam({ session }) {
 
             {/* Tournaments */}
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 🏆 Tournois
               </h3>
               {tournaments.length > 0 ? (
@@ -405,15 +405,15 @@ export default function PublicTeam({ session }) {
                   {tournaments.map((tournament) => (
                     <div
                       key={tournament.id}
-                      className="bg-black/30 border border-fluky-primary/30 rounded-lg p-4 hover:border-fluky-secondary transition-all cursor-pointer"
+                      className="bg-black/30 border border-violet-500/30 rounded-lg p-4 hover:border-cyan-500 transition-all cursor-pointer"
                       onClick={() => navigate(`/tournament/${tournament.id}`)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-body text-fluky-text text-sm mb-1">
+                          <div className="font-body text-white text-sm mb-1">
                             {tournament.name}
                           </div>
-                          <div className="text-xs text-fluky-text/60">
+                          <div className="text-xs text-gray-500">
                             {tournament.game}
                           </div>
                         </div>
@@ -434,7 +434,7 @@ export default function PublicTeam({ session }) {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-fluky-text/60 py-8">
+                <p className="text-center text-gray-500 py-8">
                   Aucun tournoi
                 </p>
               )}
@@ -444,7 +444,7 @@ export default function PublicTeam({ session }) {
           {/* Sidebar - Roster */}
           <div className="space-y-6">
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 👥 Roster ({members.length})
               </h3>
               <div className="space-y-3">
@@ -452,7 +452,7 @@ export default function PublicTeam({ session }) {
                   <Link
                     key={member.user_id}
                     to={`/player/${member.user_id}`}
-                    className="block bg-black/30 border border-fluky-primary/30 rounded-lg p-3 hover:border-fluky-secondary transition-all"
+                    className="block bg-black/30 border border-violet-500/30 rounded-lg p-3 hover:border-cyan-500 transition-all"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -461,10 +461,10 @@ export default function PublicTeam({ session }) {
                         size="md"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="font-body text-fluky-text text-sm truncate">
+                        <div className="font-body text-white text-sm truncate">
                           {member.profiles?.username || 'Joueur'}
                         </div>
-                        <div className="text-xs text-fluky-text/60">
+                        <div className="text-xs text-gray-500">
                           {member.role === 'captain' ? '👑 Capitaine' :
                            member.role === 'manager' ? '📋 Manager' :
                            member.role === 'coach' ? '🎓 Coach' :

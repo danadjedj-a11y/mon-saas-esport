@@ -91,7 +91,7 @@ export const cardHover = {
   transition: transitions.hover,
   '&:hover': {
     transform: 'translateY(-5px)',
-    boxShadow: '0 8px 24px rgba(255, 54, 163, 0.4)'
+    boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)'
   }
 };
 
@@ -101,8 +101,8 @@ export const cardHover = {
 export const inputFocus = {
   transition: transitions.default,
   '&:focus': {
-    borderColor: '#FF36A3',
-    boxShadow: '0 0 0 3px rgba(255, 54, 163, 0.2)',
+    borderColor: '#8B5CF6',
+    boxShadow: '0 0 0 3px rgba(139, 92, 246, 0.2)',
     outline: 'none'
   }
 };

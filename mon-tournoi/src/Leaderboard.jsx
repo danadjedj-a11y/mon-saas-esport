@@ -226,17 +226,17 @@ export default function Leaderboard({ session, supabase }) {
     <DashboardLayout session={session}>
       <div className="w-full max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="font-display text-4xl text-fluky-secondary m-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🏆 Classement Global</h1>
+          <h1 className="font-display text-4xl text-cyan-400 m-0" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>🏆 Classement Global</h1>
         
         {/* Onglets */}
           <div className="flex gap-3">
           <button
             type="button"
             onClick={() => setActiveTab('teams')}
-              className={`px-5 py-2 border-2 border-fluky-secondary rounded-lg cursor-pointer font-body transition-all duration-300 ${
+              className={`px-5 py-2 border-2 border-cyan-500 rounded-lg cursor-pointer font-body transition-all duration-300 ${
                 activeTab === 'teams'
-                  ? 'bg-fluky-primary text-white'
-                  : 'bg-transparent text-fluky-text hover:bg-fluky-primary/30'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-transparent text-white hover:bg-violet-600/30'
               }`}
           >
             Équipes
@@ -244,10 +244,10 @@ export default function Leaderboard({ session, supabase }) {
           <button
             type="button"
             onClick={() => setActiveTab('levels')}
-              className={`px-5 py-2 border-2 border-fluky-secondary rounded-lg cursor-pointer font-body transition-all duration-300 ${
+              className={`px-5 py-2 border-2 border-cyan-500 rounded-lg cursor-pointer font-body transition-all duration-300 ${
                 activeTab === 'levels'
-                  ? 'bg-fluky-primary text-white'
-                  : 'bg-transparent text-fluky-text hover:bg-fluky-primary/30'
+                  ? 'bg-violet-600 text-white'
+                  : 'bg-transparent text-white hover:bg-violet-600/30'
               }`}
           >
             Niveaux & XP
@@ -258,26 +258,26 @@ export default function Leaderboard({ session, supabase }) {
       {/* Filtres */}
         <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 mb-8 flex gap-5 flex-wrap items-center">
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Trier par :</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#FFFFFF', fontFamily: "'Protest Riot', sans-serif" }}>Trier par :</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             style={{
               padding: '10px',
               background: 'rgba(3, 9, 19, 0.8)',
-              border: '2px solid #C10468',
-              color: '#F8F6F2',
+              border: '2px solid #8B5CF6',
+              color: '#FFFFFF',
               borderRadius: '8px',
               cursor: 'pointer',
               fontFamily: "'Protest Riot', sans-serif",
               transition: 'all 0.3s ease'
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              e.currentTarget.style.borderColor = '#06B6D4';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.2)';
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.borderColor = '#8B5CF6';
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
@@ -288,26 +288,26 @@ export default function Leaderboard({ session, supabase }) {
         </div>
 
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>Jeu :</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#FFFFFF', fontFamily: "'Protest Riot', sans-serif" }}>Jeu :</label>
           <select
             value={gameFilter}
             onChange={(e) => setGameFilter(e.target.value)}
             style={{
               padding: '10px',
               background: 'rgba(3, 9, 19, 0.8)',
-              border: '2px solid #C10468',
-              color: '#F8F6F2',
+              border: '2px solid #8B5CF6',
+              color: '#FFFFFF',
               borderRadius: '8px',
               cursor: 'pointer',
               fontFamily: "'Protest Riot', sans-serif",
               transition: 'all 0.3s ease'
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#FF36A3';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255, 54, 163, 0.2)';
+              e.currentTarget.style.borderColor = '#06B6D4';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.2)';
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#C10468';
+              e.currentTarget.style.borderColor = '#8B5CF6';
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
@@ -323,35 +323,35 @@ export default function Leaderboard({ session, supabase }) {
         <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 overflow-x-auto">
         {activeTab === 'levels' ? (
           levelLeaderboard.length === 0 ? (
-              <div className="text-center py-10 text-fluky-text font-body">
+              <div className="text-center py-10 text-white font-body">
               Aucun classement disponible pour le moment.
             </div>
           ) : (
               <table className="w-full border-collapse">
               <thead>
-                  <tr className="border-b-2 border-fluky-secondary">
-                    <th className="p-4 text-left text-fluky-secondary font-normal font-body">Rang</th>
-                    <th className="p-4 text-left text-fluky-secondary font-normal font-body">Joueur</th>
-                    <th className="p-4 text-center text-fluky-secondary font-normal font-body">Niveau</th>
-                    <th className="p-4 text-center text-fluky-secondary font-normal font-body">XP Total</th>
-                    <th className="p-4 text-center text-fluky-secondary font-normal font-body">Badges</th>
+                  <tr className="border-b-2 border-cyan-500">
+                    <th className="p-4 text-left text-cyan-400 font-normal font-body">Rang</th>
+                    <th className="p-4 text-left text-cyan-400 font-normal font-body">Joueur</th>
+                    <th className="p-4 text-center text-cyan-400 font-normal font-body">Niveau</th>
+                    <th className="p-4 text-center text-cyan-400 font-normal font-body">XP Total</th>
+                    <th className="p-4 text-center text-cyan-400 font-normal font-body">Badges</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedLevelLeaderboard.map((userLevel, index) => {
                   const rank = (currentLevelPage - 1) * itemsPerPage + index + 1;
                   const isTop3 = rank <= 3;
-                  const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
+                  const rankColors = { 1: '#FFD700', 2: '#06B6D4', 3: '#EC4899' };
                   const profile = userLevel.profiles || {};
 
                   return (
                     <tr
                       key={userLevel.user_id}
                         className={`border-b border-white/5 transition-colors duration-300 ${
-                          isTop3 ? 'bg-fluky-primary/20' : 'bg-transparent'
-                        } hover:bg-fluky-secondary/20`}
+                          isTop3 ? 'bg-violet-600/20' : 'bg-transparent'
+                        } hover:bg-cyan-500/20`}
                       >
-                        <td className={`p-4 text-xl font-bold font-display ${isTop3 ? '' : 'text-fluky-secondary'}`} style={{ color: isTop3 ? rankColors[rank] : undefined }}>
+                        <td className={`p-4 text-xl font-bold font-display ${isTop3 ? '' : 'text-cyan-400'}`} style={{ color: isTop3 ? rankColors[rank] : undefined }}>
                         #{rank}
                       </td>
                         <td className="p-4">
@@ -360,18 +360,18 @@ export default function Leaderboard({ session, supabase }) {
                             <img 
                               src={profile.avatar_url} 
                               alt="" 
-                                className="w-10 h-10 rounded-full object-cover border-2 border-fluky-secondary"
+                                className="w-10 h-10 rounded-full object-cover border-2 border-cyan-500"
                             />
                           )}
-                            <div className="font-display text-lg font-bold text-fluky-text">
+                            <div className="font-display text-lg font-bold text-white">
                             {profile.username || 'Joueur anonyme'}
                           </div>
                         </div>
                       </td>
-                        <td className="p-4 text-center text-fluky-secondary font-bold text-xl font-body">
+                        <td className="p-4 text-center text-cyan-400 font-bold text-xl font-body">
                         {userLevel.level}
                       </td>
-                        <td className="p-4 text-center text-fluky-accent-orange font-bold font-body">
+                        <td className="p-4 text-center text-amber-400 font-bold font-body">
                         {userLevel.total_xp}
                       </td>
                         <td className="p-4 text-center">
@@ -379,7 +379,7 @@ export default function Leaderboard({ session, supabase }) {
                           {userLevel.badges.slice(0, 3).map((badge, idx) => (
                             <span key={idx} title={badge.name}>{badge.icon}</span>
                           ))}
-                            {userLevel.badges.length === 0 && <span className="text-fluky-text text-sm font-body">-</span>}
+                            {userLevel.badges.length === 0 && <span className="text-white text-sm font-body">-</span>}
                         </div>
                       </td>
                     </tr>
@@ -389,37 +389,37 @@ export default function Leaderboard({ session, supabase }) {
             </table>
           )
         ) : leaderboard.length === 0 ? (
-            <div className="text-center py-10 text-fluky-text font-body">
+            <div className="text-center py-10 text-white font-body">
             Aucune statistique disponible pour le moment.
           </div>
         ) : (
             <table className="w-full border-collapse">
             <thead>
-                <tr className="border-b-2 border-fluky-secondary">
-                  <th className="p-4 text-left text-fluky-secondary font-normal font-body">Rang</th>
-                  <th className="p-4 text-left text-fluky-secondary font-normal font-body">Équipe</th>
-                  <th className="p-4 text-center text-fluky-secondary font-normal font-body">Matchs</th>
-                  <th className="p-4 text-center text-fluky-secondary font-normal font-body">Victoires</th>
-                  <th className="p-4 text-center text-fluky-secondary font-normal font-body">Défaites</th>
-                  <th className="p-4 text-center text-fluky-secondary font-normal font-body">Win Rate</th>
-                  <th className="p-4 text-center text-fluky-secondary font-normal font-body">Diff. Scores</th>
-                  <th className="p-4 text-center text-fluky-secondary font-normal font-body">Tournois</th>
+                <tr className="border-b-2 border-cyan-500">
+                  <th className="p-4 text-left text-cyan-400 font-normal font-body">Rang</th>
+                  <th className="p-4 text-left text-cyan-400 font-normal font-body">Équipe</th>
+                  <th className="p-4 text-center text-cyan-400 font-normal font-body">Matchs</th>
+                  <th className="p-4 text-center text-cyan-400 font-normal font-body">Victoires</th>
+                  <th className="p-4 text-center text-cyan-400 font-normal font-body">Défaites</th>
+                  <th className="p-4 text-center text-cyan-400 font-normal font-body">Win Rate</th>
+                  <th className="p-4 text-center text-cyan-400 font-normal font-body">Diff. Scores</th>
+                  <th className="p-4 text-center text-cyan-400 font-normal font-body">Tournois</th>
               </tr>
             </thead>
             <tbody>
               {paginatedLeaderboard.map((stat, index) => {
                 const rank = (currentPage - 1) * itemsPerPage + index + 1;
                 const isTop3 = rank <= 3;
-                const rankColors = { 1: '#F8EC54', 2: '#FF36A3', 3: '#E7632C' };
+                const rankColors = { 1: '#FFD700', 2: '#06B6D4', 3: '#EC4899' };
 
                 return (
                   <tr
                     key={stat.team.id}
                       className={`border-b border-white/5 transition-colors duration-300 ${
-                        isTop3 ? 'bg-fluky-primary/20' : 'bg-transparent'
-                      } hover:bg-fluky-secondary/20`}
+                        isTop3 ? 'bg-violet-600/20' : 'bg-transparent'
+                      } hover:bg-cyan-500/20`}
                     >
-                      <td className={`p-4 text-xl font-bold font-display ${isTop3 ? '' : 'text-fluky-secondary'}`} style={{ color: isTop3 ? rankColors[rank] : undefined }}>
+                      <td className={`p-4 text-xl font-bold font-display ${isTop3 ? '' : 'text-cyan-400'}`} style={{ color: isTop3 ? rankColors[rank] : undefined }}>
                       #{rank}
                     </td>
                       <td className="p-4">
@@ -431,33 +431,33 @@ export default function Leaderboard({ session, supabase }) {
                           <img 
                             src={stat.team.logo_url} 
                             alt="" 
-                              className="w-10 h-10 rounded-lg object-cover border-2 border-fluky-secondary"
+                              className="w-10 h-10 rounded-lg object-cover border-2 border-cyan-500"
                           />
                         )}
                         <div>
-                            <div className="font-display text-lg font-bold text-fluky-text">{stat.team.name}</div>
-                            <div className="text-sm text-fluky-secondary font-body">[{stat.team.tag}]</div>
+                            <div className="font-display text-lg font-bold text-white">{stat.team.name}</div>
+                            <div className="text-sm text-cyan-400 font-body">[{stat.team.tag}]</div>
                         </div>
                       </div>
                     </td>
-                      <td className="p-4 text-center text-fluky-secondary font-bold font-body">
+                      <td className="p-4 text-center text-cyan-400 font-bold font-body">
                       {stat.totalMatches}
                     </td>
-                      <td className="p-4 text-center text-fluky-primary font-bold font-body">
+                      <td className="p-4 text-center text-violet-400 font-bold font-body">
                       {stat.wins}
                     </td>
-                      <td className="p-4 text-center text-fluky-secondary font-bold font-body">
+                      <td className="p-4 text-center text-cyan-400 font-bold font-body">
                       {stat.losses}
                     </td>
-                      <td className="p-4 text-center text-fluky-accent-orange font-bold text-lg font-body">
+                      <td className="p-4 text-center text-amber-400 font-bold text-lg font-body">
                       {stat.winRate}%
                     </td>
                       <td className={`p-4 text-center font-bold font-body ${
-                        stat.scoreDifference >= 0 ? 'text-fluky-primary' : 'text-fluky-secondary'
+                        stat.scoreDifference >= 0 ? 'text-violet-400' : 'text-cyan-400'
                       }`}>
                       {stat.scoreDifference >= 0 ? '+' : ''}{stat.scoreDifference}
                     </td>
-                      <td className="p-4 text-center text-fluky-secondary font-bold font-body">
+                      <td className="p-4 text-center text-cyan-400 font-bold font-body">
                       {stat.tournamentsCount}
                     </td>
                   </tr>
@@ -477,7 +477,7 @@ export default function Leaderboard({ session, supabase }) {
             onPageChange={setCurrentPage}
             isLoading={loading}
           />
-          <div className="text-center text-fluky-text/70 text-sm font-body">
+          <div className="text-center text-white/70 text-sm font-body">
             Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, leaderboard.length)} sur {leaderboard.length} équipe{leaderboard.length > 1 ? 's' : ''}
           </div>
         </div>
@@ -490,7 +490,7 @@ export default function Leaderboard({ session, supabase }) {
             onPageChange={setCurrentLevelPage}
             isLoading={loading}
           />
-          <div className="text-center text-fluky-text/70 text-sm font-body">
+          <div className="text-center text-white/70 text-sm font-body">
             Affichage de {(currentLevelPage - 1) * itemsPerPage + 1} à {Math.min(currentLevelPage * itemsPerPage, levelLeaderboard.length)} sur {levelLeaderboard.length} joueur{levelLeaderboard.length > 1 ? 's' : ''}
           </div>
         </div>

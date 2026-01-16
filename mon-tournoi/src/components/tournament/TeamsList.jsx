@@ -13,11 +13,11 @@ export default function TeamsList({
   return (
     <>
       <div className="p-4 border-b border-white/5">
-        <h3 className="font-display text-xl text-fluky-text m-0 mb-2">
+        <h3 className="font-display text-xl text-white m-0 mb-2">
           Équipes ({participants.length})
         </h3>
         {isOwner && tournamentStatus === 'draft' && (
-          <div className="text-xs text-fluky-text/70 flex gap-4 flex-wrap font-body">
+          <div className="text-xs text-gray-300 flex gap-4 flex-wrap font-body">
             <span className="text-green-400">
               ✅ Check-in: {participants.filter(p => p.checked_in).length}
             </span>
@@ -42,11 +42,11 @@ export default function TeamsList({
             }`}
           >
             <div className="flex gap-3 items-center flex-1">
-              <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-fluky-text">
+              <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-white">
                 {p.teams?.tag || '?'}
               </div>
               <span className={`font-body ${
-                p.disqualified ? 'text-red-400' : (p.checked_in ? 'text-green-400' : 'text-fluky-text/70')
+                p.disqualified ? 'text-red-400' : (p.checked_in ? 'text-green-400' : 'text-gray-300')
               }`}>
                 {p.teams?.name || 'Inconnu'}
               </span>

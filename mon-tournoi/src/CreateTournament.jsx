@@ -255,10 +255,10 @@ export default function CreateTournament() {
               w-10 h-10 rounded-full flex items-center justify-center font-bold
               transition-all duration-300
               ${step === currentStep 
-                ? 'bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white scale-110' 
+                ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white scale-110' 
                 : step < currentStep
                   ? 'bg-green-500 text-white'
-                  : 'bg-white/10 text-fluky-text/50'
+                  : 'bg-white/10 text-gray-500'
               }
             `}
           >
@@ -278,7 +278,7 @@ export default function CreateTournament() {
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
         📋 Détails du Tournoi
       </h3>
       
@@ -301,14 +301,14 @@ export default function CreateTournament() {
         options={gameOptions}
       />
 
-      <Card variant="outlined" padding="md" className="border-fluky-secondary">
+      <Card variant="outlined" padding="md" className="border-violet-500/30">
         <Select
           label="Format de la compétition"
           value={formData.format}
           onChange={e => updateField('format', e.target.value)}
           options={formatOptions}
         />
-        <p className="text-sm text-fluky-text mt-2 italic font-body">
+        <p className="text-sm text-white mt-2 italic font-body">
           {getFormatDescription(formData.format)}
         </p>
       </Card>
@@ -348,32 +348,32 @@ export default function CreateTournament() {
 
   const renderStep2 = () => (
     <div className="space-y-6">
-      <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
         📝 Description & Règles
       </h3>
 
       <div>
-        <label className="block mb-2 text-fluky-text font-body">Description du tournoi</label>
+        <label className="block mb-2 text-white font-body">Description du tournoi</label>
         <WYSIWYGEditor
           value={formData.description}
           onChange={(value) => updateField('description', value)}
           placeholder="Décrivez votre tournoi : objectifs, ambiance, spécificités..."
           minHeight="200px"
         />
-        <p className="text-xs text-fluky-text/70 mt-2 font-body">
+        <p className="text-xs text-gray-400 mt-2 font-body">
           Utilisez cette section pour donner envie aux équipes de s'inscrire !
         </p>
       </div>
 
       <div>
-        <label className="block mb-2 text-fluky-text font-body">Règlement (Optionnel)</label>
+        <label className="block mb-2 text-white font-body">Règlement (Optionnel)</label>
         <WYSIWYGEditor
           value={formData.rules}
           onChange={(value) => updateField('rules', value)}
           placeholder="Rédigez le règlement : format, sanctions, preuves requises..."
           minHeight="300px"
         />
-        <p className="text-xs text-fluky-text/70 mt-2 font-body">
+        <p className="text-xs text-gray-400 mt-2 font-body">
           Un règlement clair évite les conflits ! Pas de limite de caractères.
         </p>
       </div>
@@ -382,7 +382,7 @@ export default function CreateTournament() {
 
   const renderStep3 = () => (
     <div className="space-y-6">
-      <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
         💰 Récompenses (Cashprize)
       </h3>
 
@@ -397,8 +397,8 @@ export default function CreateTournament() {
       />
 
       {formData.cashprizeTotal && parseFloat(formData.cashprizeTotal) > 0 && (
-        <Card variant="outlined" padding="md" className="border-fluky-secondary">
-          <label className="block mb-3 text-fluky-text font-body font-bold">
+        <Card variant="outlined" padding="md" className="border-violet-500/30">
+          <label className="block mb-3 text-white font-body font-bold">
             Distribution du cashprize par rang
           </label>
           
@@ -434,14 +434,14 @@ export default function CreateTournament() {
             />
           </div>
 
-          <p className="text-xs text-fluky-text/70 mt-3 font-body">
+          <p className="text-xs text-gray-400 mt-3 font-body">
             💡 Astuce : La somme des montants devrait correspondre au cashprize total
           </p>
         </Card>
       )}
 
       {!formData.cashprizeTotal && (
-        <div className="text-center text-fluky-text/50 py-8 font-body">
+        <div className="text-center text-gray-500 py-8 font-body">
           Aucun cashprize ? Pas de problème ! Les joueurs aiment aussi la gloire 🏆
         </div>
       )}
@@ -450,18 +450,18 @@ export default function CreateTournament() {
 
   const renderStep4 = () => (
     <div className="space-y-6">
-      <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
         ⚙️ Configuration Avancée
       </h3>
 
-      <Card variant="outlined" padding="md" className="border-fluky-secondary">
+      <Card variant="outlined" padding="md" className="border-violet-500/30">
         <Select
           label="Format des Matchs (Best-of-X)"
           value={String(formData.bestOf)}
           onChange={e => updateField('bestOf', parseInt(e.target.value))}
           options={bestOfOptions}
         />
-        <p className="text-sm text-fluky-text mt-2 italic font-body">
+        <p className="text-sm text-white mt-2 italic font-body">
           Le gagnant est la première équipe à remporter {Math.ceil(formData.bestOf / 2)} manche{Math.ceil(formData.bestOf / 2) > 1 ? 's' : ''}.
         </p>
       </Card>
@@ -477,8 +477,8 @@ export default function CreateTournament() {
         />
       )}
 
-      <Card variant="outlined" padding="md" className="border-fluky-secondary">
-        <label className="block mb-3 text-fluky-text font-body font-bold">
+      <Card variant="outlined" padding="md" className="border-violet-500/30">
+        <label className="block mb-3 text-white font-body font-bold">
           📺 Streams Officiels
         </label>
         
@@ -501,9 +501,9 @@ export default function CreateTournament() {
         </div>
       </Card>
 
-      <Card variant="outlined" padding="md" className="border-fluky-secondary">
+      <Card variant="outlined" padding="md" className="border-violet-500/30">
         <div className="flex justify-between items-center mb-3">
-          <label className="text-fluky-text font-body font-bold">
+          <label className="text-white font-body font-bold">
             🏢 Sponsors
           </label>
           <Button size="sm" onClick={addSponsor} variant="secondary">
@@ -543,16 +543,16 @@ export default function CreateTournament() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-fluky-text/50 text-center py-4 font-body">
+          <p className="text-sm text-gray-500 text-center py-4 font-body">
             Aucun sponsor pour le moment
           </p>
         )}
       </Card>
 
       {/* Section Clips */}
-      <Card variant="outlined" padding="md" className="border-fluky-secondary">
+      <Card variant="outlined" padding="md" className="border-violet-500/30">
         <div className="flex justify-between items-center mb-3">
-          <label className="text-fluky-text font-body font-bold">
+          <label className="text-white font-body font-bold">
             🎬 Clips & Temps Forts
           </label>
           <Button size="sm" onClick={addClip} variant="secondary">
@@ -605,7 +605,7 @@ export default function CreateTournament() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-fluky-text/50 text-center py-4 font-body">
+          <p className="text-sm text-gray-500 text-center py-4 font-body">
             Ajoutez des clips pour mettre en avant les meilleurs moments du tournoi
           </p>
         )}
@@ -628,11 +628,11 @@ export default function CreateTournament() {
             </Button>
           </div>
 
-          <h2 className="text-center mb-2 font-display text-4xl text-fluky-secondary" 
-              style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+          <h2 className="text-center mb-2 font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400" 
+              style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
             Créer un Tournoi
           </h2>
-          <p className="text-center text-fluky-text/70 mb-8 font-body">
+          <p className="text-center text-gray-400 mb-8 font-body">
             Configuration en {totalSteps} étapes
           </p>
 
@@ -657,7 +657,7 @@ export default function CreateTournament() {
                 ← Précédent
               </Button>
 
-              <div className="text-sm text-fluky-text/70 font-body">
+              <div className="text-sm text-gray-400 font-body">
                 Étape {currentStep} sur {totalSteps}
               </div>
 

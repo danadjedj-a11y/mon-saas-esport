@@ -14,8 +14,8 @@ export default function TournamentOverview({
   const navigate = useNavigate();
 
   return (
-    <div className="bg-fluky-bg/95 p-8 rounded-xl border-2 border-fluky-accent shadow-lg shadow-fluky-primary/30">
-      <h2 className="mt-0 text-fluky-accent font-handwriting text-3xl mb-6">
+    <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">
+      <h2 className="mt-0 text-cyan-400 font-handwriting text-3xl mb-6">
         Informations du tournoi
       </h2>
       
@@ -67,8 +67,8 @@ export default function TournamentOverview({
 
       {/* BOUTON D'INSCRIPTION */}
       {tournoi.status === 'draft' && (
-        <div className="mt-8 bg-gradient-to-br from-fluky-primary to-fluky-accent p-6 rounded-xl border-2 border-fluky-accent shadow-lg shadow-fluky-primary/40">
-          <h3 className="m-0 mb-4 text-fluky-text text-2xl font-handwriting">
+        <div className="mt-8 bg-gradient-to-br from-violet-600 to-cyan-500 p-6 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/40">
+          <h3 className="m-0 mb-4 text-white text-2xl font-handwriting">
             🎯 Inscription au Tournoi
           </h3>
           {session ? (
@@ -81,13 +81,13 @@ export default function TournamentOverview({
             />
           ) : (
             <div>
-              <p className="m-0 mb-4 text-fluky-text text-sm font-display">
+              <p className="m-0 mb-4 text-white text-sm font-display">
                 Connectez-vous pour vous inscrire à ce tournoi avec votre équipe
               </p>
               <button
                 type="button"
                 onClick={() => navigate('/auth')}
-                className="px-8 py-3 bg-fluky-bg text-fluky-text border-2 border-fluky-accent rounded-lg cursor-pointer font-handwriting text-base uppercase tracking-wider transition-all duration-300 hover:bg-fluky-accent hover:border-fluky-primary hover:-translate-y-0.5"
+                className="px-8 py-3 bg-gray-900 text-white border-2 border-cyan-400 rounded-lg cursor-pointer font-handwriting text-base uppercase tracking-wider transition-all duration-300 hover:bg-cyan-500 hover:border-violet-500 hover:-translate-y-0.5"
               >
                 🔐 Se Connecter
               </button>
@@ -98,11 +98,11 @@ export default function TournamentOverview({
 
       {/* RÈGLEMENT */}
       {tournoi.rules && (
-        <div className="mt-8 bg-fluky-bg/80 p-6 rounded-xl border-2 border-fluky-primary">
-          <h3 className="m-0 mb-4 text-fluky-accent text-2xl font-handwriting">
+        <div className="mt-8 bg-gray-900/80 p-6 rounded-xl border-2 border-violet-500">
+          <h3 className="m-0 mb-4 text-cyan-400 text-2xl font-handwriting">
             📋 Règlement du Tournoi
           </h3>
-          <div className="text-fluky-text leading-7 whitespace-pre-wrap font-display text-sm">
+          <div className="text-white leading-7 whitespace-pre-wrap font-display text-sm">
             {tournoi.rules}
           </div>
         </div>
@@ -110,16 +110,16 @@ export default function TournamentOverview({
 
       {/* PROGRESSION */}
       {matches.length > 0 && (
-        <div className="mt-8 bg-fluky-bg/80 p-5 rounded-xl border-2 border-fluky-primary">
-          <div className="text-sm text-fluky-accent mb-2.5 font-display">
+        <div className="mt-8 bg-gray-900/80 p-5 rounded-xl border-2 border-violet-500">
+          <div className="text-sm text-cyan-400 mb-2.5 font-display">
             Progression
           </div>
-          <div className="text-base text-fluky-text font-display mb-2.5">
+          <div className="text-base text-white font-display mb-2.5">
             {matches.filter(m => m.status === 'completed').length} / {matches.length} matchs joués
           </div>
-          <div className="w-full h-3 bg-fluky-bg/50 rounded-md mt-2.5 overflow-hidden border border-fluky-accent">
+          <div className="w-full h-3 bg-gray-900/50 rounded-md mt-2.5 overflow-hidden border border-cyan-400">
             <div 
-              className="h-full bg-gradient-to-r from-fluky-primary to-fluky-accent transition-all duration-300"
+              className="h-full bg-gradient-to-r from-violet-600 to-cyan-500 transition-all duration-300"
               style={{ width: `${(matches.filter(m => m.status === 'completed').length / matches.length) * 100}%` }}
             />
           </div>
@@ -131,14 +131,14 @@ export default function TournamentOverview({
 
 function InfoCard({ label, value, extra, isExpired }) {
   return (
-    <div className="bg-fluky-bg/80 p-5 rounded-xl border-2 border-fluky-primary">
-      <div className="text-sm text-fluky-accent mb-2 font-display">{label}</div>
-      <div className={`text-xl font-bold font-handwriting ${isExpired ? 'text-fluky-orange' : 'text-fluky-text'}`}>
+    <div className="bg-gray-900/80 p-5 rounded-xl border-2 border-violet-500">
+      <div className="text-sm text-cyan-400 mb-2 font-display">{label}</div>
+      <div className={`text-xl font-bold font-handwriting ${isExpired ? 'text-orange-400' : 'text-white'}`}>
         {value}
         {isExpired && ' (Expirée)'}
       </div>
       {extra && (
-        <div className="text-sm text-fluky-accent mt-2 font-display">
+        <div className="text-sm text-cyan-400 mt-2 font-display">
           {extra}
         </div>
       )}

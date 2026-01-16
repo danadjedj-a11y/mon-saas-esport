@@ -45,10 +45,13 @@ export default function Dashboard({ session }) {
 
   // Cette page ne devrait jamais être visible car elle redirige immédiatement
   return (
-    <div className="min-h-screen flex items-center justify-center bg-fluky-bg text-fluky-text">
+    <div className="min-h-screen flex items-center justify-center bg-dark">
       <div className="text-center">
-        <div className="text-5xl mb-5">⏳</div>
-        <p className="font-body text-xl text-fluky-secondary">Redirection en cours...</p>
+        <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-3xl shadow-glow-md animate-pulse">
+          🎮
+        </div>
+        <div className="w-8 h-8 border-2 border-violet/30 border-t-violet rounded-full animate-spin mx-auto mb-4" />
+        <p className="font-body text-text-secondary">Redirection en cours...</p>
       </div>
     </div>
   );

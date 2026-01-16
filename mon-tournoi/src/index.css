@@ -1,6 +1,6 @@
 /* ============================================
-   CHARTE GRAPHIQUE FLUKY BOYS
-   Design System - Comics/BD Style Spider-Verse
+   NEON GLASS DESIGN SYSTEM
+   Fluky Boys - Modern Gaming Platform
    ============================================ */
 
 @import './styles/animations.css';
@@ -9,262 +9,571 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Variables CSS - Palette de Couleurs */
+/* ============================================
+   CSS VARIABLES - DESIGN TOKENS
+   ============================================ */
 :root {
-  /* Couleurs Principales */
-  --fluky-bg-primary: #030913;        /* Fond Principal - Bleu nuit très sombre */
-  --fluky-primary: #C10468;          /* Rose Foncé - Action principale */
-  --fluky-secondary: #FF36A3;        /* Rose Flashy - Effets néon, Hover */
-  --fluky-accent-orange: #E7632C;     /* Orange - Détails subtils */
-  --fluky-accent-yellow: #F8EC54;     /* Jaune - Détails subtils */
-  --fluky-text: #F8F6F2;             /* Texte Principal - Blanc cassé */
+  /* === Colors === */
+  --color-bg-primary: #0A0A0F;
+  --color-bg-secondary: #12121A;
+  --color-bg-tertiary: #1A1A24;
   
-  /* Polices */
-  --fluky-font-heading: 'Shadows Into Light', cursive;
-  --fluky-font-body: 'Protest Riot', sans-serif;
+  --color-violet: #8B5CF6;
+  --color-violet-light: #A78BFA;
+  --color-violet-dark: #7C3AED;
+  --color-violet-glow: rgba(139, 92, 246, 0.4);
+  
+  --color-cyan: #06B6D4;
+  --color-cyan-light: #22D3EE;
+  --color-cyan-glow: rgba(6, 182, 212, 0.4);
+  
+  --color-pink: #EC4899;
+  --color-pink-light: #F472B6;
+  --color-pink-glow: rgba(236, 72, 153, 0.6);
+  
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+  
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+  
+  --color-glass-bg: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-hover: rgba(255, 255, 255, 0.08);
+  
+  /* === Typography === */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  
+  /* === Spacing === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  
+  /* === Border Radius === */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  /* === Shadows === */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--color-violet-glow);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+  
+  /* === Transitions === */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Reset & Base */
-* {
+/* ============================================
+   BASE STYLES
+   ============================================ */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-:root {
-  font-family: var(--fluky-font-body);
-  line-height: 1.5;
-  font-weight: 400;
-  
-  color-scheme: dark;
-  color: var(--fluky-text);
-  background-color: var(--fluky-bg-primary);
-  
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
   min-height: 100vh;
-  display: block;
-  background-color: var(--fluky-bg-primary);
-  background-image: radial-gradient(circle, rgba(193, 4, 104, 0.15) 1px, transparent 1px);
-  background-size: 20px 20px;
-  color: var(--fluky-text);
+  overflow-x: hidden;
 }
 
-/* Typographie */
+/* Subtle background pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--fluky-font-heading);
-  color: var(--fluky-text);
-  font-weight: 400;
+  font-family: var(--font-display);
+  font-weight: 600;
   line-height: 1.2;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
 }
 
 h2 {
-  font-size: 2.4em;
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 h3 {
-  font-size: 1.8em;
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
 }
 
-p, span, div, a, li, label, input, textarea, select {
-  font-family: var(--fluky-font-body);
-  color: var(--fluky-text);
+h4 {
+  font-size: 1.125rem;
 }
 
-/* Liens */
+p {
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
 a {
-  font-weight: 500;
-  color: var(--fluky-secondary);
+  color: var(--color-violet-light);
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--fluky-primary);
-  text-decoration: underline;
+  color: var(--color-cyan);
 }
 
-/* Boutons - Style Fluky Boys */
-button {
-  font-family: var(--fluky-font-heading);
-  border-radius: 8px;
-  border: 2px solid var(--fluky-secondary);
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  background-color: var(--fluky-primary);
-  color: var(--fluky-text);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* ============================================
+   GLASS COMPONENTS
+   ============================================ */
+.glass {
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
 }
 
-button:hover {
-  background-color: var(--fluky-secondary);
-  border-color: var(--fluky-primary);
+.glass-card {
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: all var(--transition-normal);
+}
+
+.glass-card:hover {
+  background: var(--color-glass-hover);
+  border-color: var(--color-violet);
+  box-shadow: var(--shadow-glow);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 54, 163, 0.4);
 }
 
-button:active {
-  transform: translateY(0);
+/* ============================================
+   BUTTONS
+   ============================================ */
+button, .btn {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: all var(--transition-normal);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
-button:focus,
-button:focus-visible {
-  outline: 2px solid var(--fluky-secondary);
-  outline-offset: 2px;
+/* Primary Button */
+.btn-primary, button:not([class*="btn-"]):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-success) {
+  background: linear-gradient(135deg, var(--color-violet) 0%, var(--color-violet-dark) 100%);
+  color: white;
+  box-shadow: 0 4px 14px var(--color-violet-glow);
 }
 
-button:disabled {
+.btn-primary:hover, button:not([class*="btn-"]):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-success):hover {
+  background: linear-gradient(135deg, var(--color-violet-light) 0%, var(--color-violet) 100%);
+  box-shadow: 0 6px 20px var(--color-violet-glow);
+  transform: translateY(-2px);
+}
+
+.btn-primary:active, button:not([class*="btn-"]):not(.btn-ghost):not(.btn-secondary):not(.btn-danger):not(.btn-success):active {
+  transform: scale(0.98);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-glass-border);
+}
+
+.btn-secondary:hover {
+  background: var(--color-glass-hover);
+  border-color: var(--color-violet);
+  color: var(--color-violet-light);
+}
+
+/* Ghost Button */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-violet-light);
+  border: none;
+}
+
+.btn-ghost:hover {
+  background: var(--color-glass-bg);
+  color: var(--color-cyan);
+}
+
+/* Danger Button */
+.btn-danger {
+  background: linear-gradient(135deg, var(--color-danger) 0%, #DC2626 100%);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #F87171 0%, var(--color-danger) 100%);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+}
+
+/* Success Button */
+.btn-success {
+  background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+  color: white;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #34D399 0%, var(--color-success) 100%);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+/* Button Sizes */
+.btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-8);
+  font-size: 1.125rem;
+  border-radius: var(--radius-md);
+}
+
+/* Disabled State */
+button:disabled, .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
-/* Inputs & Formulaires */
+/* Focus State */
+button:focus-visible, .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-violet-glow);
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
 input, textarea, select {
-  font-family: var(--fluky-font-body);
-  background-color: rgba(3, 9, 19, 0.8);
-  border: 2px solid var(--fluky-primary);
-  color: var(--fluky-text);
-  padding: 0.6em 1em;
-  border-radius: 6px;
-  transition: all 0.3s ease;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  transition: all var(--transition-fast);
+  width: 100%;
 }
 
 input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: var(--fluky-secondary);
-  box-shadow: 0 0 0 3px rgba(255, 54, 163, 0.2);
+  border-color: var(--color-violet);
+  box-shadow: 0 0 0 3px var(--color-violet-glow);
 }
 
 input::placeholder, textarea::placeholder {
-  color: rgba(248, 246, 242, 0.5);
+  color: var(--color-text-muted);
 }
 
-/* Cartes / Conteneurs */
-.card, .container-card {
-  background-color: rgba(3, 9, 19, 0.9);
-  border: 2px solid var(--fluky-secondary);
-  border-radius: 12px;
-  padding: 1.5em;
-  transition: all 0.3s ease;
+/* Select styling */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 16px;
+  padding-right: var(--space-12);
 }
 
-.card:hover, .container-card:hover {
-  border-color: var(--fluky-primary);
-  box-shadow: 0 8px 24px rgba(193, 4, 104, 0.3);
+/* Checkbox & Radio */
+input[type="checkbox"], input[type="radio"] {
+  width: auto;
+  accent-color: var(--color-violet);
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: all var(--transition-normal);
+}
+
+.card:hover {
+  border-color: var(--color-violet);
+  box-shadow: var(--shadow-glow);
+}
+
+.card-interactive {
+  cursor: pointer;
+}
+
+.card-interactive:hover {
   transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), var(--shadow-glow);
 }
 
-/* Effets de style BD/Graffiti */
-.comic-border {
-  border: 4px solid #000;
-  position: relative;
+/* ============================================
+   BADGES & TAGS
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-glass-border);
+  color: var(--color-text-primary);
 }
 
-.comic-border::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border: 2px solid var(--fluky-secondary);
-  border-radius: inherit;
-  z-index: -1;
+.badge-violet {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: var(--color-violet);
+  color: var(--color-violet-light);
 }
 
-/* Effets de texture Halftone (optionnel) */
-.halftone-bg {
-  background-image: 
-    radial-gradient(circle, rgba(193, 4, 104, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
+.badge-cyan {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: var(--color-cyan);
+  color: var(--color-cyan-light);
 }
 
-/* Utilitaires */
-.text-primary {
-  color: var(--fluky-primary);
+.badge-pink {
+  background: rgba(236, 72, 153, 0.15);
+  border-color: var(--color-pink);
+  color: var(--color-pink-light);
 }
 
-.text-secondary {
-  color: var(--fluky-secondary);
+.badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--color-success);
+  color: #34D399;
 }
 
-.bg-primary {
-  background-color: var(--fluky-primary);
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--color-danger);
+  color: #F87171;
 }
 
-.bg-secondary {
-  background-color: var(--fluky-secondary);
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--color-warning);
+  color: #FBBF24;
 }
 
-.bg-dark {
-  background-color: var(--fluky-bg-primary);
+/* Live Badge with pulse */
+.badge-live {
+  background: rgba(236, 72, 153, 0.2);
+  border-color: var(--color-pink);
+  color: var(--color-pink-light);
+  animation: live-pulse 2s ease-in-out infinite;
 }
 
-/* Animations */
-@keyframes pulse-neon {
-  0%, 100% {
-    box-shadow: 0 0 5px var(--fluky-secondary), 0 0 10px var(--fluky-secondary);
+@keyframes live-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 5px var(--color-pink-glow); 
   }
-  50% {
-    box-shadow: 0 0 10px var(--fluky-secondary), 0 0 20px var(--fluky-secondary), 0 0 30px var(--fluky-secondary);
+  50% { 
+    box-shadow: 0 0 15px var(--color-pink-glow), 0 0 25px var(--color-pink-glow); 
   }
 }
 
-.neon-effect {
-  animation: pulse-neon 2s ease-in-out infinite;
+/* ============================================
+   GRADIENT TEXT
+   ============================================ */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-violet) 0%, var(--color-cyan) 50%, var(--color-pink) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* Scrollbar personnalisée */
+.gradient-text-violet {
+  background: linear-gradient(135deg, var(--color-violet-light) 0%, var(--color-violet) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   DIVIDERS
+   ============================================ */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-glass-border), transparent);
+  margin: var(--space-6) 0;
+}
+
+.divider-gradient {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-violet), var(--color-cyan), transparent);
+  margin: var(--space-6) 0;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--fluky-bg-primary);
+  background: var(--color-bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--fluky-primary);
-  border-radius: 6px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--fluky-secondary);
+  background: var(--color-violet);
 }
 
-/* Responsive */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-bg-tertiary) var(--color-bg-primary);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-muted { color: var(--color-text-muted); }
+.text-violet { color: var(--color-violet-light); }
+.text-cyan { color: var(--color-cyan); }
+.text-pink { color: var(--color-pink); }
+.text-success { color: var(--color-success); }
+.text-danger { color: var(--color-danger); }
+.text-warning { color: var(--color-warning); }
+
+.bg-primary { background-color: var(--color-bg-primary); }
+.bg-secondary { background-color: var(--color-bg-secondary); }
+.bg-glass { background-color: var(--color-glass-bg); }
+
+/* Glow Effects */
+.glow-violet { box-shadow: var(--shadow-glow); }
+.glow-cyan { box-shadow: 0 0 20px var(--color-cyan-glow); }
+.glow-pink { box-shadow: 0 0 15px var(--color-pink-glow); }
+
+/* Neon text effect */
+.neon-text {
+  text-shadow: 
+    0 0 10px var(--color-violet-glow),
+    0 0 20px var(--color-violet-glow),
+    0 0 30px var(--color-violet-glow);
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
 @media (max-width: 768px) {
-  h1 {
-    font-size: 2.4em;
-  }
+  h1 { font-size: clamp(1.75rem, 6vw, 2.5rem); }
+  h2 { font-size: clamp(1.25rem, 5vw, 1.75rem); }
+  h3 { font-size: clamp(1.1rem, 4vw, 1.35rem); }
   
-  h2 {
-    font-size: 1.8em;
-  }
+  .glass-card { padding: var(--space-4); }
+  .card { padding: var(--space-4); }
   
-  h3 {
-    font-size: 1.4em;
+  button, .btn {
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.875rem;
   }
-  
-  button {
-    padding: 0.5em 1em;
-    font-size: 0.9em;
-  }
+}
+
+/* ============================================
+   SKELETON LOADING
+   ============================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg, 
+    var(--color-bg-secondary) 25%, 
+    rgba(139, 92, 246, 0.1) 50%, 
+    var(--color-bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+::selection {
+  background: var(--color-violet);
+  color: white;
+}
+
+::-moz-selection {
+  background: var(--color-violet);
+  color: white;
 }

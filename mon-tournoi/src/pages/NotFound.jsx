@@ -19,19 +19,19 @@ export default function NotFound() {
             <div className="text-8xl mb-6 font-display" style={{ 
               fontSize: '8rem',
               lineHeight: '1',
-              textShadow: '0 0 30px rgba(193, 4, 104, 0.5)'
+              textShadow: '0 0 30px rgba(139, 92, 246, 0.5)'
             }}>
               404
             </div>
-            <h1 className="font-display text-4xl text-fluky-secondary mb-4" style={{ 
-              textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' 
+            <h1 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4" style={{ 
+              textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' 
             }}>
               Page introuvable
             </h1>
-            <p className="font-body text-fluky-text/80 text-lg leading-relaxed mb-2">
+            <p className="font-body text-gray-300 text-lg leading-relaxed mb-2">
               Désolé, la page que vous recherchez n'existe pas ou a été déplacée.
             </p>
-            <p className="font-body text-fluky-text/60 text-sm">
+            <p className="font-body text-gray-500 text-sm">
               Vérifiez l'URL ou utilisez les boutons ci-dessous pour naviguer.
             </p>
           </div>

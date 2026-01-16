@@ -46,8 +46,8 @@ export default function GameRoundItem({
       {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <div>
-          <strong className="font-body text-fluky-text">Manche {gameNum}</strong>
-          {mapName && <span className="ml-3 text-sm text-fluky-text/70 font-body">🗺️ {mapName}</span>}
+          <strong className="font-body text-white">Manche {gameNum}</strong>
+          {mapName && <span className="ml-3 text-sm text-gray-300 font-body">🗺️ {mapName}</span>}
         </div>
         {isConfirmed && <span className="text-green-400 text-sm font-body">✅ Terminée</span>}
         {hasConflict && <span className="text-red-400 text-sm font-body">⚠️ Conflit</span>}

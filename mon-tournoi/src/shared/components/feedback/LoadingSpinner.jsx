@@ -20,8 +20,8 @@ const LoadingSpinner = ({
   };
 
   const variantStyles = {
-    primary: 'border-fluky-primary/30 border-t-fluky-primary',
-    secondary: 'border-fluky-secondary/30 border-t-fluky-secondary',
+    primary: 'border-violet-500/30 border-t-violet-500',
+    secondary: 'border-cyan-500/30 border-t-cyan-500',
   };
 
   const spinner = (
@@ -35,14 +35,14 @@ const LoadingSpinner = ({
         )}
       />
       {message && (
-        <p className="font-body text-sm text-fluky-text/70">{message}</p>
+        <p className="font-body text-sm text-gray-400">{message}</p>
       )}
     </div>
   );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-fluky-bg/80 backdrop-blur-sm z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm z-50">
         {spinner}
       </div>
     );

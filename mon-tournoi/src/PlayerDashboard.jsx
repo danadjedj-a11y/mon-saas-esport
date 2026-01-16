@@ -157,7 +157,7 @@ export default function PlayerDashboard({ session }) {
       <div className="w-full max-w-7xl mx-auto">
         {/* INVITATIONS D'ÉQUIPE */}
         <div className="mb-10">
-          <h2 className="font-display text-2xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+          <h2 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-5 drop-shadow-glow">
             📬 Invitations d'équipe
           </h2>
           <TeamInvitations userId={session?.user?.id} onUpdate={fetchPlayerData} />
@@ -166,25 +166,25 @@ export default function PlayerDashboard({ session }) {
         {/* MATCHS À VENIR - EN HAUT */}
         {upcomingMatches.length > 0 && (
           <div className="mb-10">
-            <h2 className="font-display text-2xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>⚡ Mes Prochains Matchs</h2>
+            <h2 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400 mb-5 drop-shadow-glow">⚡ Mes Prochains Matchs</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {upcomingMatches.map((match) => (
                 <div
                   key={match.id}
                   onClick={() => navigate(`/match/${match.id}`)}
-                  className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 cursor-pointer transition-all duration-300 hover:border-fluky-primary hover:-translate-y-1 hover:shadow-2xl hover:shadow-fluky-primary/40"
+                  className="glass-card border-cyan-500/30 p-5 cursor-pointer transition-all duration-300 hover:border-cyan-400 hover:-translate-y-1 hover:shadow-glow-cyan"
                 >
                   <div className="flex justify-between items-center mb-2">
-                    <div className="font-display text-lg font-bold text-fluky-secondary">
+                    <div className="font-display text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
                       {match.tournaments?.name || 'Tournoi'}
                     </div>
                     {match.scheduled_at && (
-                      <div className="text-xs text-white bg-fluky-primary px-3 py-1 rounded-lg font-body">
+                      <div className="text-xs text-white bg-gradient-to-r from-violet-600 to-cyan-500 px-3 py-1 rounded-lg">
                         📅 {new Date(match.scheduled_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </div>
                     )}
                   </div>
-                  <div className="text-sm text-fluky-text font-body">
+                  <div className="text-sm text-gray-400">
                     Round {match.round_number} • Match #{match.match_number}
                   </div>
                 </div>
@@ -197,10 +197,10 @@ export default function PlayerDashboard({ session }) {
         {followedTournaments.length > 0 && (
           <div className="mb-10">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="font-display text-3xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>
+              <h2 className="font-display text-3xl text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400 drop-shadow-glow">
                 ⭐ Tournois Suivis
               </h2>
-              <span className="text-sm text-fluky-text font-body">
+              <span className="text-sm text-gray-400">
                 {followedTournaments.length} tournoi{followedTournaments.length > 1 ? 's' : ''} suivi{followedTournaments.length > 1 ? 's' : ''}
               </span>
             </div>
@@ -208,9 +208,9 @@ export default function PlayerDashboard({ session }) {
               {followedTournaments.map((t) => {
                 const getStatusStyle = (status) => {
                   switch (status) {
-                    case 'draft': return { bg: '#E7632C', text: 'Inscriptions', icon: '📝' };
-                    case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
-                    default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+                    case 'draft': return { bg: 'bg-gradient-to-r from-orange-500 to-amber-500', text: 'Inscriptions', icon: '📝' };
+                    case 'completed': return { bg: 'bg-gradient-to-r from-pink-500 to-rose-500', text: 'Terminé', icon: '🏁' };
+                    default: return { bg: 'bg-gradient-to-r from-violet-600 to-cyan-500', text: 'En cours', icon: '⚔️' };
                   }
                 };
                 const statusStyle = getStatusStyle(t.status);
@@ -219,73 +219,27 @@ export default function PlayerDashboard({ session }) {
                   <div 
                     key={t.id} 
                     onClick={() => navigate(`/tournament/${t.id}/public`)}
-                    style={{ 
-                      background: 'rgba(3, 9, 19, 0.9)', 
-                      padding: '20px', 
-                      borderRadius: '12px', 
-                      border: '2px solid #FF36A3', 
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      position: 'relative'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#C10468';
-                      e.currentTarget.style.transform = 'translateY(-5px)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(193, 4, 104, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#FF36A3';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
+                    className="glass-card border-violet-500/30 p-5 cursor-pointer transition-all duration-300 hover:border-violet-400 hover:-translate-y-1 hover:shadow-glow-violet relative group"
                   >
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '10px', 
-                      right: '10px',
-                      fontSize: '1.2rem'
-                    }}>
+                    <div className="absolute top-3 right-3 text-xl">
                       ⭐
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
-                      <div style={{ flex: 1, paddingRight: '30px' }}>
-                        <h3 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#F8F6F2', fontFamily: "'Shadows Into Light', cursive" }}>
+                    <div className="flex justify-between items-start mb-3 pr-8">
+                      <div className="flex-1">
+                        <h3 className="font-display text-lg text-white mb-1">
                           {t.name}
                         </h3>
-                        <div style={{ fontSize: '0.85rem', color: '#F8F6F2', display: 'flex', gap: '15px', marginTop: '8px', fontFamily: "'Protest Riot', sans-serif" }}>
+                        <div className="text-sm text-gray-400 flex gap-4 mt-2">
                           <span>🎮 {t.game}</span>
                           <span>📊 {t.format}</span>
                         </div>
                       </div>
                     </div>
-                    <div style={{ 
-                      marginTop: '15px', 
-                      paddingTop: '15px', 
-                      borderTop: '2px solid #FF36A3',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ 
-                        background: statusStyle.bg, 
-                        padding: '5px 12px', 
-                        borderRadius: '5px', 
-                        fontSize: '0.8rem', 
-                        fontWeight: 'bold',
-                        color: '#F8F6F2',
-                        fontFamily: "'Protest Riot', sans-serif"
-                      }}>
+                    <div className="mt-4 pt-4 border-t border-violet-500/20 flex justify-between items-center">
+                      <span className={`${statusStyle.bg} px-3 py-1 rounded-lg text-xs font-bold text-white`}>
                         {statusStyle.icon} {statusStyle.text}
                       </span>
-                      <div style={{
-                        padding: '6px 12px',
-                        background: '#C10468',
-                        borderRadius: '5px',
-                        fontSize: '0.85rem',
-                        color: '#F8F6F2',
-                        fontWeight: 'bold',
-                        fontFamily: "'Protest Riot', sans-serif"
-                      }}>
+                      <div className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-lg text-sm text-white font-medium group-hover:shadow-glow-violet transition-all">
                         Voir →
                       </div>
                     </div>
@@ -300,8 +254,8 @@ export default function PlayerDashboard({ session }) {
           {/* COLONNE GAUCHE : MES TOURNOIS */}
           <div>
             <div className="flex justify-between items-center mb-5">
-              <h2 className="font-display text-2xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🎯 Mes Tournois</h2>
-              <span className="text-sm text-fluky-text font-body">{myTournaments.length} tournoi(s)</span>
+              <h2 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 drop-shadow-glow">🎯 Mes Tournois</h2>
+              <span className="text-sm text-gray-400">{myTournaments.length} tournoi(s)</span>
             </div>
 
             {myTournaments.length > 0 ? (
@@ -309,9 +263,9 @@ export default function PlayerDashboard({ session }) {
                 {myTournaments.map((t) => {
                   const getStatusStyle = (status) => {
                     switch (status) {
-                      case 'draft': return { bg: '#E7632C', text: 'Inscriptions', icon: '📝' };
-                      case 'completed': return { bg: '#FF36A3', text: 'Terminé', icon: '🏁' };
-                      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+                      case 'draft': return { bg: 'bg-gradient-to-r from-orange-500 to-amber-500', text: 'Inscriptions', icon: '📝' };
+                      case 'completed': return { bg: 'bg-gradient-to-r from-pink-500 to-rose-500', text: 'Terminé', icon: '🏁' };
+                      default: return { bg: 'bg-gradient-to-r from-violet-600 to-cyan-500', text: 'En cours', icon: '⚔️' };
                     }
                   };
                   const statusStyle = getStatusStyle(t.status);
@@ -320,17 +274,17 @@ export default function PlayerDashboard({ session }) {
                     <div 
                       key={t.id} 
                       onClick={() => navigate(`/player/tournament/${t.id}`)}
-                      className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 cursor-pointer transition-all duration-300 hover:border-fluky-primary hover:translate-x-1 hover:shadow-2xl hover:shadow-fluky-primary/40"
+                      className="glass-card border-violet-500/30 p-5 cursor-pointer transition-all duration-300 hover:border-violet-400 hover:translate-x-1 hover:shadow-glow-violet"
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <h3 className="font-display text-lg text-fluky-text mb-1">{t.name}</h3>
-                          <div className="text-sm text-fluky-text flex gap-4 mt-2 font-body">
+                          <h3 className="font-display text-lg text-white mb-1">{t.name}</h3>
+                          <div className="text-sm text-gray-400 flex gap-4 mt-2">
                             <span>🎮 {t.game}</span>
                             <span>📊 {t.format}</span>
                           </div>
                         </div>
-                        <span className="px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap text-white font-body" style={{ background: statusStyle.bg }}>
+                        <span className={`${statusStyle.bg} px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap text-white`}>
                           {statusStyle.icon} {statusStyle.text}
                         </span>
                       </div>
@@ -339,10 +293,10 @@ export default function PlayerDashboard({ session }) {
                 })}
               </div>
             ) : (
-              <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-10 text-center">
+              <div className="glass-card border-violet-500/30 p-10 text-center">
                 <div className="text-5xl mb-4">🎯</div>
-                <p className="text-fluky-text font-body">Vous n'êtes inscrit à aucun tournoi</p>
-                <p className="text-fluky-text text-sm mt-2 font-body">Rejoignez un tournoi disponible ci-contre</p>
+                <p className="text-white">Vous n'êtes inscrit à aucun tournoi</p>
+                <p className="text-gray-500 text-sm mt-2">Rejoignez un tournoi disponible ci-contre</p>
               </div>
             )}
           </div>
@@ -350,8 +304,8 @@ export default function PlayerDashboard({ session }) {
           {/* COLONNE DROITE : TOURNOIS DISPONIBLES */}
           <div>
             <div className="flex justify-between items-center mb-5">
-              <h2 className="font-display text-2xl text-fluky-secondary" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>🌟 Tournois Disponibles</h2>
-              <span className="text-sm text-fluky-text font-body">{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
+              <h2 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400 drop-shadow-glow">🌟 Tournois Disponibles</h2>
+              <span className="text-sm text-gray-400">{availableTournaments.filter(t => !myTournaments.some(mt => mt.id === t.id)).length} disponible(s)</span>
             </div>
 
             <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
@@ -360,8 +314,8 @@ export default function PlayerDashboard({ session }) {
                 .map((t) => {
                   const getStatusStyle = (status) => {
                     switch (status) {
-                      case 'draft': return { bg: '#E7632C', text: 'Inscriptions ouvertes', icon: '📝' };
-                      default: return { bg: '#C10468', text: 'En cours', icon: '⚔️' };
+                      case 'draft': return { bg: 'bg-gradient-to-r from-orange-500 to-amber-500', text: 'Inscriptions ouvertes', icon: '📝' };
+                      default: return { bg: 'bg-gradient-to-r from-violet-600 to-cyan-500', text: 'En cours', icon: '⚔️' };
                     }
                   };
                   const statusStyle = getStatusStyle(t.status);
@@ -370,17 +324,17 @@ export default function PlayerDashboard({ session }) {
                     <div 
                       key={t.id} 
                       onClick={() => navigate(`/tournament/${t.id}/public`)}
-                      className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 cursor-pointer transition-all duration-300 hover:border-fluky-primary hover:translate-x-1 hover:shadow-2xl hover:shadow-fluky-primary/40"
+                      className="glass-card border-cyan-500/30 p-5 cursor-pointer transition-all duration-300 hover:border-cyan-400 hover:translate-x-1 hover:shadow-glow-cyan"
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <h3 className="font-display text-lg text-fluky-text mb-1">{t.name}</h3>
-                          <div className="text-sm text-fluky-text flex gap-4 mt-2 font-body">
+                          <h3 className="font-display text-lg text-white mb-1">{t.name}</h3>
+                          <div className="text-sm text-gray-400 flex gap-4 mt-2">
                             <span>🎮 {t.game}</span>
                             <span>📊 {t.format}</span>
                           </div>
                         </div>
-                        <span className="px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap text-white font-body" style={{ background: statusStyle.bg }}>
+                        <span className={`${statusStyle.bg} px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap text-white`}>
                           {statusStyle.icon} {statusStyle.text}
                         </span>
                       </div>
@@ -396,19 +350,19 @@ export default function PlayerDashboard({ session }) {
         </div>
 
         {/* STATISTIQUES RAPIDES */}
-        <div className="mt-10 bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-6">
-          <h3 className="font-display text-xl text-fluky-secondary mb-5" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>📊 Aperçu Statistiques</h3>
+        <div className="mt-10 glass-card border-violet-500/30 p-6">
+          <h3 className="font-display text-xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-5 drop-shadow-glow">📊 Aperçu Statistiques</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="text-center">
-              <div className="font-display text-3xl font-bold text-fluky-secondary">{myTournaments.length}</div>
-              <div className="text-sm text-fluky-text mt-2 font-body">Tournois</div>
+              <div className="font-display text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">{myTournaments.length}</div>
+              <div className="text-sm text-gray-400 mt-2">Tournois</div>
             </div>
             <div className="text-center">
-              <div className="font-display text-3xl font-bold text-fluky-primary">{upcomingMatches.length}</div>
-              <div className="text-sm text-fluky-text mt-2 font-body">Matchs à venir</div>
+              <div className="font-display text-3xl font-bold text-cyan-400">{upcomingMatches.length}</div>
+              <div className="text-sm text-gray-400 mt-2">Matchs à venir</div>
             </div>
             <div className="text-center cursor-pointer" onClick={() => navigate('/stats')}>
-              <div className="text-sm text-fluky-secondary underline font-body hover:text-fluky-primary transition-colors">Voir toutes les stats →</div>
+              <div className="text-sm text-violet-400 underline hover:text-cyan-400 transition-colors">Voir toutes les stats →</div>
             </div>
           </div>
         </div>

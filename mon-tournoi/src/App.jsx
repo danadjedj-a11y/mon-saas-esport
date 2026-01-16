@@ -36,72 +36,37 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
-  <div style={{
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#030913',
-    color: '#F8F6F2',
-    fontFamily: "'Protest Riot', sans-serif"
-  }}>
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
-      <p style={{ fontSize: '1.2rem', color: '#FF36A3' }}>Chargement...</p>
+  <div className="min-h-screen flex items-center justify-center bg-dark">
+    <div className="text-center">
+      <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-3xl shadow-glow-md animate-pulse">
+        🎮
+      </div>
+      <div className="w-8 h-8 border-2 border-violet/30 border-t-violet rounded-full animate-spin mx-auto mb-4" />
+      <p className="font-body text-text-secondary">Chargement...</p>
     </div>
   </div>
 );
 
 // Composant de chargement pour la vérification de session (style neon)
 const AuthLoadingSpinner = () => (
-  <div style={{
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#030913',
-    backgroundImage: 'radial-gradient(circle, rgba(193, 4, 104, 0.15) 1px, transparent 1px)',
-    backgroundSize: '20px 20px',
-    color: '#F8F6F2',
-    fontFamily: "'Protest Riot', sans-serif"
-  }}>
-    <div style={{ textAlign: 'center' }}>
-      <div style={{
-        fontSize: '4rem',
-        marginBottom: '20px',
-        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        textShadow: '0 0 20px rgba(193, 4, 104, 0.8), 0 0 40px rgba(255, 54, 163, 0.6)'
-      }}>
+  <div className="min-h-screen flex items-center justify-center bg-dark relative overflow-hidden">
+    {/* Background effects */}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-violet/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+    </div>
+    
+    <div className="relative z-10 text-center">
+      <div className="w-20 h-20 mx-auto mb-8 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-4xl shadow-glow-lg float">
         🎮
       </div>
-      <p style={{
-        fontSize: '1.5rem',
-        color: '#FF36A3',
-        fontFamily: "'Shadows Into Light', cursive",
-        textShadow: '0 0 10px rgba(193, 4, 104, 0.5)'
-      }}>
-        Vérification de la session...
+      <h2 className="font-display text-xl font-semibold text-text mb-2">
+        Vérification de la session
+      </h2>
+      <p className="font-body text-text-muted mb-6">
+        Connexion en cours...
       </p>
-      <div style={{
-        marginTop: '20px',
-        width: '50px',
-        height: '50px',
-        border: '4px solid rgba(193, 4, 104, 0.3)',
-        borderTop: '4px solid #FF36A3',
-        borderRadius: '50%',
-        margin: '20px auto',
-        animation: 'spin 1s linear infinite'
-      }}></div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
+      <div className="w-10 h-10 border-3 border-glass-border border-t-violet rounded-full animate-spin mx-auto" />
     </div>
   </div>
 );
@@ -131,7 +96,14 @@ function OrganizerRoute({ children, session }) {
     checkRole();
   }, [session, navigate]);
 
-  if (authorized === null) return <div style={{color:'white', padding:'20px'}}>Vérification des permissions...</div>;
+  if (authorized === null) return (
+    <div className="min-h-screen flex items-center justify-center bg-dark">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-violet/30 border-t-violet rounded-full animate-spin mx-auto mb-4" />
+        <p className="font-body text-text-secondary">Vérification des permissions...</p>
+      </div>
+    </div>
+  );
   if (!authorized) return null;
   
   return children;

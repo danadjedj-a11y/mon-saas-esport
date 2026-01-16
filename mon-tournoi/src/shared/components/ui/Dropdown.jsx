@@ -62,7 +62,7 @@ const Dropdown = ({
           <div
             className={clsx(
               'absolute top-full mt-2 z-50 min-w-[200px]',
-              'bg-[#030913] border-2 border-fluky-primary rounded-lg shadow-xl',
+              'glass-card border-violet-500/30 shadow-xl',
               'animate-scaleIn',
               alignStyles[align],
               className
@@ -97,7 +97,7 @@ export const DropdownItem = ({
       disabled={disabled}
       className={clsx(
         'w-full px-4 py-2 text-left font-body text-sm',
-        'text-fluky-text hover:bg-white/5 hover:text-fluky-secondary',
+        'text-gray-300 hover:bg-white/5 hover:text-cyan-400',
         'transition-colors duration-200 first:rounded-t-lg last:rounded-b-lg',
         disabled && 'opacity-50 cursor-not-allowed',
         className
@@ -122,7 +122,7 @@ export const DropdownDivider = () => (
 export const DropdownHeader = ({ children, className = '' }) => (
   <div
     className={clsx(
-      'px-4 py-2 text-xs font-semibold text-fluky-text/60 uppercase tracking-wider',
+      'px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider',
       className
     )}
   >

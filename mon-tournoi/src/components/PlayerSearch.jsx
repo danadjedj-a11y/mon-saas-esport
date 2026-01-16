@@ -90,27 +90,27 @@ const PlayerSearch = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           onFocus={() => results.length > 0 && setShowDropdown(true)}
           placeholder={placeholder}
-          className="w-full px-4 py-3 pl-10 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+          className="w-full px-4 py-3 pl-10 bg-black/50 border-2 border-violet-500 text-white rounded-lg font-body text-base transition-all duration-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20"
         />
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-fluky-text/50 text-xl">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-xl">
           🔍
         </div>
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-fluky-secondary border-t-transparent" />
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-cyan-500 border-t-transparent" />
           </div>
         )}
       </div>
 
       {/* Dropdown avec résultats */}
       {showDropdown && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-[#030913] border-2 border-fluky-primary rounded-lg shadow-xl shadow-fluky-primary/20 max-h-80 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-2 bg-[#030913] border-2 border-violet-500 rounded-lg shadow-xl shadow-violet-500/20 max-h-80 overflow-y-auto">
           {results.map((player) => (
             <button
               key={player.id}
               type="button"
               onClick={() => handleSelectPlayer(player)}
-              className="w-full flex items-center gap-3 p-3 hover:bg-fluky-primary/10 transition-all duration-200 border-b border-white/5 last:border-b-0"
+              className="w-full flex items-center gap-3 p-3 hover:bg-violet-500/10 transition-all duration-200 border-b border-white/5 last:border-b-0"
             >
               <Avatar
                 src={player.avatar_url}
@@ -118,11 +118,11 @@ const PlayerSearch = ({
                 size="sm"
               />
               <div className="flex-1 text-left">
-                <p className="font-body text-fluky-text">
+                <p className="font-body text-white">
                   {player.username || 'Joueur sans pseudo'}
                 </p>
               </div>
-              <div className="text-fluky-secondary text-sm font-body">
+              <div className="text-cyan-400 text-sm font-body">
                 Sélectionner
               </div>
             </button>
@@ -132,8 +132,8 @@ const PlayerSearch = ({
 
       {/* Message si aucun résultat */}
       {!loading && searchTerm.length >= 2 && results.length === 0 && showDropdown && (
-        <div className="absolute z-50 w-full mt-2 bg-[#030913] border-2 border-fluky-primary rounded-lg shadow-xl shadow-fluky-primary/20 p-4">
-          <p className="text-center text-fluky-text/60 font-body">
+        <div className="absolute z-50 w-full mt-2 bg-[#030913] border-2 border-violet-500 rounded-lg shadow-xl shadow-violet-500/20 p-4">
+          <p className="text-center text-gray-400 font-body">
             Aucun joueur trouvé pour "{searchTerm}"
           </p>
         </div>

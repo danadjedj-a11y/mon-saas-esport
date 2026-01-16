@@ -323,12 +323,12 @@ export default function CommentSection({ tournamentId, session }) {
       background: 'rgba(3, 9, 19, 0.95)',
       padding: '30px',
       borderRadius: '15px',
-      border: '2px solid #FF36A3',
-      boxShadow: '0 4px 12px rgba(193, 4, 104, 0.3)'
+      border: '2px solid #06B6D4',
+      boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
     }}>
       <h3 style={{
         margin: '0 0 20px 0',
-        color: '#FF36A3',
+        color: '#06B6D4',
         fontFamily: "'Shadows Into Light', cursive",
         fontSize: '1.5rem'
       }}>

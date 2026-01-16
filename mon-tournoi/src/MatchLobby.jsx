@@ -951,7 +951,7 @@ export default function MatchLobby({ session }) {
 
   if (matchLoading || !match) return (
     <DashboardLayout session={session}>
-      <div className="text-fluky-text font-body text-center py-20">Chargement du Lobby...</div>
+      <div className="text-white font-body text-center py-20">Chargement du Lobby...</div>
     </DashboardLayout>
   );
 
@@ -981,8 +981,8 @@ export default function MatchLobby({ session }) {
           {/* COLONNE GAUCHE : INFO MATCH & SCORE */}
           <div className="lg:col-span-2">
         
-        <div className="bg-[#030913]/95 p-8 rounded-2xl border-2 border-fluky-secondary shadow-[0_8px_32px_rgba(193,4,104,0.3)]">
-          <h2 className="text-fluky-secondary text-sm uppercase mt-0 font-body">Match #{match.match_number} - Round {match.round_number}</h2>
+        <div className="bg-[#030913]/95 p-8 rounded-2xl border-2 border-cyan-500 shadow-[0_8px_32px_rgba(139,92,246,0.3)]">
+          <h2 className="text-cyan-400 text-sm uppercase mt-0 font-body">Match #{match.match_number} - Round {match.round_number}</h2>
           
           <MatchStatusBanner hasConflict={hasConflict} isConfirmed={isConfirmed} />
             
@@ -1079,7 +1079,7 @@ export default function MatchLobby({ session }) {
           {/* COLONNE DROITE : CHAT */}
           <div className="h-[600px] bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl overflow-hidden flex flex-col">
             <div className="p-4 border-b border-white/5 bg-white/5 flex-shrink-0">
-              <h3 className="font-display text-xl text-fluky-secondary m-0">💬 Chat du Match</h3>
+              <h3 className="font-display text-xl text-cyan-400 m-0">💬 Chat du Match</h3>
             </div>
             <div className="flex-1 min-h-0 overflow-hidden">
               <Chat matchId={id} session={session} supabase={supabase} />

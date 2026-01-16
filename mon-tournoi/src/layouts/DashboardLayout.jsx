@@ -52,37 +52,45 @@ export default function DashboardLayout({ children, session = null }) {
   });
 
   return (
-    <div className="min-h-screen bg-fluky-bg flex">
-      {/* Sidebar Fixe - Desktop - VERTICALE UNIQUEMENT */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-[#030913]/60 backdrop-blur-md border-r border-white/5 shadow-xl z-50 flex-col">
+    <div className="min-h-screen bg-dark flex">
+      {/* Sidebar Fixe - Desktop */}
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-dark-50/80 backdrop-blur-xl border-r border-glass-border shadow-elevation-3 z-50 flex-col">
         {/* Logo/Header */}
-        <div className="p-6 border-b border-white/5">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-fluky-primary to-fluky-secondary rounded-lg flex items-center justify-center text-2xl">
+        <div className="p-6 border-b border-glass-border">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-11 h-11 bg-gradient-to-br from-violet to-cyan rounded-xl flex items-center justify-center text-2xl shadow-glow-sm group-hover:shadow-glow-md transition-shadow duration-300">
               🎮
             </div>
-            <h1 className="font-display text-2xl text-fluky-text" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
-              Fluky Boys
-            </h1>
+            <div>
+              <h1 className="font-display text-xl font-semibold text-text gradient-text">
+                Fluky Boys
+              </h1>
+              <p className="text-xs text-text-muted font-body">Tournament Platform</p>
+            </div>
           </Link>
         </div>
 
-        {/* Navigation - VERTICALE UNIQUEMENT */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2 flex flex-col">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {filteredNavLinks.map((link) => {
             const active = isActive(link.path);
             return (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                   active
-                    ? 'bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white shadow-lg shadow-fluky-primary/50'
-                    : 'text-fluky-text hover:bg-white/5 hover:text-fluky-secondary'
+                    ? 'bg-gradient-to-r from-violet to-violet-dark text-white shadow-glow-sm'
+                    : 'text-text-secondary hover:bg-glass-hover hover:text-text'
                 }`}
               >
-                <span className="text-xl">{link.icon}</span>
-                <span className="font-body">{link.label}</span>
+                <span className={`text-lg transition-transform duration-200 ${!active && 'group-hover:scale-110'}`}>
+                  {link.icon}
+                </span>
+                <span className="font-body font-medium text-sm">{link.label}</span>
+                {active && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan animate-pulse" />
+                )}
               </Link>
             );
           })}
@@ -90,65 +98,79 @@ export default function DashboardLayout({ children, session = null }) {
 
         {/* Footer Sidebar - User Info & Logout */}
         {session && (
-          <div className="p-4 border-t border-white/5">
-            <div className="mb-3 px-4 py-2 bg-white/5 rounded-lg">
-              <p className="text-sm text-fluky-text/70 font-body">Connecté en tant que</p>
-              <p className="text-sm font-body text-fluky-secondary truncate">
-                {session.user.email || session.user.user_metadata?.username || 'Utilisateur'}
-              </p>
+          <div className="p-4 border-t border-glass-border">
+            <div className="mb-3 p-4 bg-glass-white rounded-xl border border-glass-border">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet to-pink flex items-center justify-center text-lg">
+                  👤
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-body text-text truncate font-medium">
+                    {session.user.user_metadata?.username || 'Utilisateur'}
+                  </p>
+                  <p className="text-xs text-text-muted truncate">
+                    {session.user.email}
+                  </p>
+                </div>
+              </div>
               {userRole && (
-                <p className="text-xs text-fluky-primary mt-1 font-body">
-                  {userRole === 'organizer' ? '🎯 Organisateur' : '👤 Joueur'}
-                </p>
+                <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-display font-medium rounded-md ${
+                  userRole === 'organizer' 
+                    ? 'bg-violet/20 text-violet-light border border-violet/30' 
+                    : 'bg-cyan/20 text-cyan-light border border-cyan/30'
+                }`}>
+                  {userRole === 'organizer' ? '🎯 Organisateur' : '🎮 Joueur'}
+                </span>
               )}
             </div>
             <button
               onClick={handleLogout}
-              className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-fluky-primary rounded-lg text-fluky-text hover:text-fluky-secondary transition-all duration-200 font-body"
+              className="w-full px-4 py-2.5 bg-glass-white hover:bg-danger/20 border border-glass-border hover:border-danger/50 rounded-xl text-text-secondary hover:text-danger transition-all duration-200 font-body text-sm font-medium flex items-center justify-center gap-2"
             >
+              <span>🚪</span>
               Déconnexion
             </button>
           </div>
         )}
       </aside>
 
-      {/* Mobile Menu Button - Seulement visible sur mobile (< 1024px) */}
+      {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-[60] p-3 bg-[#030913]/80 backdrop-blur-md border border-white/10 rounded-lg text-fluky-text hover:text-fluky-secondary hover:border-fluky-primary transition-all shadow-lg md:hidden"
+        className="fixed top-4 left-4 z-[60] p-3 bg-dark-50/90 backdrop-blur-xl border border-glass-border rounded-xl text-text hover:text-violet hover:border-violet/50 transition-all shadow-elevation-2 lg:hidden"
         aria-label="Menu"
       >
-        <span className="text-2xl">☰</span>
+        <span className="text-xl">{isMobileMenuOpen ? '✕' : '☰'}</span>
       </button>
 
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="lg:hidden fixed inset-0 bg-dark/80 backdrop-blur-sm z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="lg:hidden fixed left-0 top-0 h-full w-64 bg-[#030913]/95 backdrop-blur-md border-r border-white/5 shadow-xl z-50 flex flex-col">
+          <aside className="lg:hidden fixed left-0 top-0 h-full w-72 bg-dark-50/95 backdrop-blur-xl border-r border-glass-border shadow-elevation-3 z-50 flex flex-col animate-slide-right">
             {/* Mobile Header */}
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+            <div className="p-6 border-b border-glass-border flex items-center justify-between">
               <Link to="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-                <div className="w-10 h-10 bg-gradient-to-br from-fluky-primary to-fluky-secondary rounded-lg flex items-center justify-center text-2xl">
+                <div className="w-10 h-10 bg-gradient-to-br from-violet to-cyan rounded-xl flex items-center justify-center text-xl shadow-glow-sm">
                   🎮
                 </div>
-                <h1 className="font-display text-xl text-fluky-text" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+                <h1 className="font-display text-lg font-semibold gradient-text">
                   Fluky Boys
                 </h1>
               </Link>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="text-fluky-text hover:text-fluky-secondary text-2xl"
+                className="text-text-secondary hover:text-text text-2xl p-1"
               >
                 ✕
               </button>
             </div>
 
             {/* Mobile Navigation */}
-            <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
               {filteredNavLinks.map((link) => {
                 const active = isActive(link.path);
                 return (
@@ -156,14 +178,14 @@ export default function DashboardLayout({ children, session = null }) {
                     key={link.path}
                     to={link.path}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 ${
                       active
-                        ? 'bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white shadow-lg shadow-fluky-primary/50'
-                        : 'text-fluky-text hover:bg-white/5 hover:text-fluky-secondary'
+                        ? 'bg-gradient-to-r from-violet to-violet-dark text-white shadow-glow-sm'
+                        : 'text-text-secondary hover:bg-glass-hover hover:text-text'
                     }`}
                   >
-                    <span className="text-xl">{link.icon}</span>
-                    <span className="font-body">{link.label}</span>
+                    <span className="text-lg">{link.icon}</span>
+                    <span className="font-body font-medium">{link.label}</span>
                   </Link>
                 );
               })}
@@ -171,21 +193,20 @@ export default function DashboardLayout({ children, session = null }) {
 
             {/* Mobile Footer */}
             {session && (
-              <div className="p-4 border-t border-white/5">
-                <div className="mb-3 px-4 py-2 bg-white/5 rounded-lg">
-                  <p className="text-sm text-fluky-text/70 font-body">Connecté en tant que</p>
-                  <p className="text-sm font-body text-fluky-secondary truncate">
-                    {session.user.email || session.user.user_metadata?.username || 'Utilisateur'}
+              <div className="p-4 border-t border-glass-border">
+                <div className="mb-3 p-3 bg-glass-white rounded-xl border border-glass-border">
+                  <p className="text-sm font-body text-text truncate font-medium">
+                    {session.user.user_metadata?.username || session.user.email}
                   </p>
                   {userRole && (
-                    <p className="text-xs text-fluky-primary mt-1 font-body">
-                      {userRole === 'organizer' ? '🎯 Organisateur' : '👤 Joueur'}
+                    <p className="text-xs text-violet-light mt-1 font-body">
+                      {userRole === 'organizer' ? '🎯 Organisateur' : '🎮 Joueur'}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-fluky-primary rounded-lg text-fluky-text hover:text-fluky-secondary transition-all duration-200 font-body"
+                  className="w-full px-4 py-2.5 bg-glass-white hover:bg-danger/20 border border-glass-border hover:border-danger/50 rounded-xl text-text-secondary hover:text-danger transition-all duration-200 font-body text-sm"
                 >
                   Déconnexion
                 </button>
@@ -197,12 +218,12 @@ export default function DashboardLayout({ children, session = null }) {
 
       {/* Zone de Contenu Scrollable */}
       <main className="flex-1 lg:ml-64 min-h-screen overflow-y-auto">
-        <div className="w-full p-4 lg:p-8 pt-20 md:pt-4 lg:pt-4">
+        <div className="w-full p-4 lg:p-8 pt-20 lg:pt-6 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
 
-      {/* Active Match Widget - Shown across all pages */}
+      {/* Active Match Widget */}
       <ActiveMatchWidget session={session} />
     </div>
   );

@@ -172,10 +172,10 @@ export default function PublicTournament() {
       <div style={{
         width: isBestOf ? '300px' : '260px',
         background: 'rgba(3, 9, 19, 0.95)',
-        border: isCompleted ? '2px solid #C10468' : (isScheduled ? '2px solid #FF36A3' : '2px solid #C10468'),
+        border: isCompleted ? '2px solid #8B5CF6' : (isScheduled ? '2px solid #06B6D4' : '2px solid #8B5CF6'),
         borderRadius: '12px',
         position: 'relative',
-        boxShadow: '0 4px 12px rgba(193, 4, 104, 0.4)',
+        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
         overflow: 'hidden'
       }}>
         {/* Badge Best-of-X */}
@@ -184,14 +184,14 @@ export default function PublicTournament() {
             position: 'absolute',
             top: '5px',
             left: '5px',
-            background: 'linear-gradient(135deg, #C10468, #FF36A3)',
+            background: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
             color: '#F8F6F2',
             padding: '4px 10px',
             borderRadius: '6px',
             fontSize: '0.7rem',
             fontWeight: 'bold',
             zIndex: 10,
-            boxShadow: '0 2px 4px rgba(193, 4, 104, 0.5)',
+            boxShadow: '0 2px 4px rgba(139, 92, 246, 0.5)',
             fontFamily: "'Protest Riot', sans-serif"
           }}>
             🎮 Bo{tournoi.best_of}
@@ -204,7 +204,7 @@ export default function PublicTournament() {
             position: 'absolute',
             top: '5px',
             right: '5px',
-            background: '#FF36A3',
+            background: '#06B6D4',
             color: '#F8F6F2',
             padding: '3px 8px',
             borderRadius: '6px',
@@ -223,7 +223,7 @@ export default function PublicTournament() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: isTeam1Winning ? 'rgba(193, 4, 104, 0.2)' : 'transparent',
+          background: isTeam1Winning ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
           borderRadius: '12px 12px 0 0',
           paddingTop: isBestOf ? '25px' : '15px'
         }}>
@@ -236,14 +236,14 @@ export default function PublicTournament() {
                   height: '28px', 
                   borderRadius: '50%', 
                   objectFit: 'cover', 
-                  border: '2px solid #FF36A3', 
+                  border: '2px solid #06B6D4', 
                   flexShrink: 0
                 }} 
                 alt="" 
               />
             )}
             <span style={{
-              color: match.player1_id ? '#F8F6F2' : '#FF36A3',
+              color: match.player1_id ? '#F8F6F2' : '#06B6D4',
               fontWeight: isTeam1Winning ? 'bold' : 'normal',
               fontSize: '0.9rem',
               overflow: 'hidden',
@@ -255,7 +255,7 @@ export default function PublicTournament() {
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
-            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#06B6D4', fontFamily: "'Shadows Into Light', cursive" }}>
               {displayScore1 || '-'}
             </span>
             {isBestOf && bestOfScore && (
@@ -266,7 +266,7 @@ export default function PublicTournament() {
           </div>
         </div>
         
-        <div style={{ height: '2px', background: '#FF36A3' }}></div>
+        <div style={{ height: '2px', background: '#06B6D4' }}></div>
         
         {/* JOUEUR 2 */}
         <div style={{
@@ -274,7 +274,7 @@ export default function PublicTournament() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: isTeam2Winning ? 'rgba(193, 4, 104, 0.2)' : 'transparent',
+          background: isTeam2Winning ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
           borderRadius: '0 0 12px 12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
@@ -286,14 +286,14 @@ export default function PublicTournament() {
                   height: '28px', 
                   borderRadius: '50%', 
                   objectFit: 'cover', 
-                  border: '2px solid #FF36A3', 
+                  border: '2px solid #06B6D4', 
                   flexShrink: 0
                 }} 
                 alt="" 
               />
             )}
             <span style={{
-              color: match.player2_id ? '#F8F6F2' : '#FF36A3',
+              color: match.player2_id ? '#F8F6F2' : '#06B6D4',
               fontWeight: isTeam2Winning ? 'bold' : 'normal',
               fontSize: '0.9rem',
               overflow: 'hidden',
@@ -305,7 +305,7 @@ export default function PublicTournament() {
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px' }}>
-            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#06B6D4', fontFamily: "'Shadows Into Light', cursive" }}>
               {displayScore2 || '-'}
             </span>
             {isBestOf && bestOfScore && (
@@ -321,11 +321,11 @@ export default function PublicTournament() {
           <div style={{
             padding: '10px',
             background: 'rgba(3, 9, 19, 0.8)',
-            borderTop: '2px solid #FF36A3',
+            borderTop: '2px solid #06B6D4',
             fontSize: '0.75rem'
           }}>
             <div style={{ 
-              color: '#FF36A3', 
+              color: '#06B6D4', 
               marginBottom: '6px', 
               fontSize: '0.7rem',
               fontFamily: "'Protest Riot', sans-serif"
@@ -342,7 +342,7 @@ export default function PublicTournament() {
                       background: 'rgba(3, 9, 19, 0.9)',
                       padding: '4px 8px',
                       borderRadius: '4px',
-                      border: '1px solid #C10468',
+                      border: '1px solid #8B5CF6',
                       fontSize: '0.65rem',
                       display: 'flex',
                       alignItems: 'center',
@@ -350,22 +350,22 @@ export default function PublicTournament() {
                       fontFamily: "'Protest Riot', sans-serif"
                     }}
                   >
-                    <span style={{ color: '#FF36A3' }}>#{game.game_number}</span>
+                    <span style={{ color: '#06B6D4' }}>#{game.game_number}</span>
                     <span style={{ 
                       fontWeight: 'bold', 
-                      color: game.team1_score > game.team2_score ? '#FF36A3' : '#F8F6F2' 
+                      color: game.team1_score > game.team2_score ? '#06B6D4' : '#F8F6F2' 
                     }}>
                       {game.team1_score}
                     </span>
-                    <span style={{ color: '#C10468' }}>-</span>
+                    <span style={{ color: '#8B5CF6' }}>-</span>
                     <span style={{ 
                       fontWeight: 'bold', 
-                      color: game.team2_score > game.team1_score ? '#FF36A3' : '#F8F6F2' 
+                      color: game.team2_score > game.team1_score ? '#06B6D4' : '#F8F6F2' 
                     }}>
                       {game.team2_score}
                     </span>
                     {game.map_name && (
-                      <span style={{ color: '#FF36A3', fontSize: '0.6rem', marginLeft: '2px' }}>
+                      <span style={{ color: '#06B6D4', fontSize: '0.6rem', marginLeft: '2px' }}>
                         🗺️ {game.map_name}
                       </span>
                     )}
@@ -441,14 +441,14 @@ export default function PublicTournament() {
   // Tournoi introuvable
   if (!tournoi) return (
     <DashboardLayout session={session}>
-      <div className="min-h-screen flex items-center justify-center bg-fluky-bg text-fluky-text font-display">
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white font-display">
         <div className="text-center">
           <div className="text-5xl mb-5">❌</div>
-          <p className="text-xl text-fluky-accent">Tournoi introuvable</p>
+          <p className="text-xl text-pink-400">Tournoi introuvable</p>
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="mt-5 px-8 py-3 bg-fluky-primary border-2 border-fluky-accent text-fluky-text rounded-lg cursor-pointer font-handwriting text-base uppercase tracking-wider transition-all duration-300 hover:bg-fluky-accent hover:border-fluky-primary hover:-translate-y-0.5"
+            className="mt-5 px-8 py-3 bg-violet-600 border-2 border-violet-400 text-white rounded-lg cursor-pointer font-handwriting text-base uppercase tracking-wider transition-all duration-300 hover:bg-violet-500 hover:border-violet-300 hover:-translate-y-0.5"
           >
             Retour à l'accueil
           </button>

@@ -780,7 +780,7 @@ export default function Tournament({ session }) {
 
   if (loading) return (
     <DashboardLayout session={session}>
-      <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
+      <div className="text-gray-400 text-center py-20">Chargement...</div>
     </DashboardLayout>
   );
   
@@ -794,7 +794,7 @@ export default function Tournament({ session }) {
   
   if (!tournoi) return (
     <DashboardLayout session={session}>
-      <div className="text-fluky-text font-body text-center py-20">Tournoi introuvable</div>
+      <div className="text-gray-400 text-center py-20">Tournoi introuvable</div>
     </DashboardLayout>
   );
 
@@ -802,7 +802,7 @@ export default function Tournament({ session }) {
     <DashboardLayout session={session}>
       <div className="w-full max-w-7xl mx-auto">
         {/* --- HEADER --- */}
-        <div className="flex justify-between items-center border-b-4 border-fluky-secondary pb-5 mb-8">
+        <div className="flex justify-between items-center border-b-4 border-violet-500 pb-5 mb-8">
           <div>
             <button 
               onClick={() => {
@@ -818,21 +818,21 @@ export default function Tournament({ session }) {
                   }
                 }
               }} 
-              className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary mb-3"
+              className="px-4 py-2 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display text-sm uppercase tracking-wide transition-all duration-300 hover:bg-violet-500/20 hover:border-violet-400 mb-3"
             >
               ← Retour
             </button>
-            <h1 className="font-display text-4xl text-fluky-secondary m-0" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>{tournoi.name}</h1>
+            <h1 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 m-0 drop-shadow-glow">{tournoi.name}</h1>
           </div>
           <div className="text-right flex flex-col gap-3 items-end">
-            <div className={`font-bold font-body ${tournoi.status === 'draft' ? 'text-fluky-accent-orange' : 'text-fluky-primary'}`}>
+            <div className={`font-bold ${tournoi.status === 'draft' ? 'text-orange-400' : 'text-cyan-400'}`}>
               {winnerName ? '🏆 TERMINÉ' : (tournoi.status === 'draft' ? '🟠 Inscriptions Ouvertes' : '🟢 En cours')}
             </div>
             <div className="flex gap-3">
               <button 
                 type="button"
                 onClick={copyPublicLink} 
-                className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-sm uppercase tracking-wide font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+                className="px-4 py-2 btn-primary rounded-lg font-display text-sm uppercase tracking-wide font-bold"
               >
                 🔗 Lien Public
               </button>
@@ -840,7 +840,7 @@ export default function Tournament({ session }) {
                 <button 
                   type="button"
                   onClick={exportToPDF} 
-                  className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-sm uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+                  className="px-4 py-2 btn-secondary rounded-lg font-display text-sm uppercase tracking-wide"
                 >
                   📄 Export PDF
                 </button>
@@ -850,22 +850,16 @@ export default function Tournament({ session }) {
         </div>
 
       {winnerName && (
-          <div style={{background: 'linear-gradient(135deg, rgba(193, 4, 104, 0.3) 0%, rgba(255, 54, 163, 0.2) 100%)', color:'#F8F6F2', padding:'20px', borderRadius:'12px', textAlign:'center', marginBottom:'30px', border: '2px solid #FF36A3'}}>
-              <h2 style={{margin:0, fontFamily: "'Shadows Into Light', cursive", color: '#FF36A3', fontSize: '1.8rem'}}>👑 VAINQUEUR : {winnerName} 👑</h2>
+          <div className="glass-card border-violet-500/50 p-5 text-center mb-8 shadow-glow-violet">
+              <h2 className="m-0 font-display text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 text-3xl">👑 VAINQUEUR : {winnerName} 👑</h2>
           </div>
       )}
 
       {/* --- RÈGLEMENT --- */}
       {tournoi.rules && (
-        <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '2px solid #FF36A3' }}>
-          <h3 style={{ margin: '0 0 15px 0', color: '#FF36A3', borderBottom: '2px solid #FF36A3', paddingBottom: '10px', fontFamily: "'Shadows Into Light', cursive" }}>📋 Règlement du Tournoi</h3>
-          <div style={{ 
-            color: '#F8F6F2', 
-            lineHeight: '1.6', 
-            whiteSpace: 'pre-wrap',
-            fontFamily: "'Protest Riot', sans-serif",
-            fontSize: '0.95rem'
-          }}>
+        <div className="glass-card border-violet-500/30 p-5 mb-8">
+          <h3 className="m-0 mb-4 text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 font-display text-xl border-b border-violet-500/30 pb-3">📋 Règlement du Tournoi</h3>
+          <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">
             {tournoi.rules}
           </div>
         </div>
@@ -873,9 +867,9 @@ export default function Tournament({ session }) {
 
       {/* --- INFORMATIONS D'INSCRIPTION --- */}
       {(tournoi.max_participants || tournoi.registration_deadline) && tournoi.status === 'draft' && (
-        <div style={{ background: 'rgba(3, 9, 19, 0.9)', padding: '15px', borderRadius: '12px', marginBottom: '30px', borderLeft: '4px solid #E7632C', border: '2px solid #FF36A3' }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#FF36A3', fontFamily: "'Shadows Into Light', cursive" }}>🚪 Informations d'Inscription</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif" }}>
+        <div className="glass-card border-l-4 border-orange-500 border-violet-500/30 p-4 mb-8">
+          <h4 className="m-0 mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-400 font-display">🚪 Informations d'Inscription</h4>
+          <div className="flex flex-col gap-2 text-sm text-gray-300">
             {tournoi.max_participants && (
               <div>
                 <strong>Nombre maximum d'équipes :</strong> {tournoi.max_participants} ({participants.length} inscrites)
@@ -917,9 +911,9 @@ export default function Tournament({ session }) {
       )}
       
         {shouldShowAdminFeatures && tournoi.status === 'draft' && (
-          <div className="bg-[#030913]/60 backdrop-blur-md border-l-4 border-purple-500 p-5 rounded-lg mb-8 shadow-xl">
+          <div className="glass-card border-l-4 border-purple-500 border-violet-500/30 p-5 mb-8">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-fluky-text font-body">{participants.length} équipes inscrites.</span>
+              <span className="text-gray-300">{participants.length} équipes inscrites.</span>
               <div className="flex gap-3">
                 <button 
                   onClick={() => setIsSeedingModalOpen(true)} 
@@ -929,14 +923,14 @@ export default function Tournament({ session }) {
                 </button>
                 <button 
                   onClick={startTournament} 
-                  className="px-5 py-3 bg-purple-600 text-white border-none rounded-lg cursor-pointer font-bold transition-all duration-300 hover:scale-105 hover:bg-purple-700"
+                  className="px-5 py-3 bg-gradient-to-r from-violet-600 to-cyan-500 text-white border-none rounded-lg cursor-pointer font-bold transition-all duration-300 hover:scale-105 hover:shadow-glow-violet"
                 >
                   Générer l'Arbre et Lancer
                 </button>
               </div>
             </div>
             {participants.some(p => p.seed_order !== null) && (
-              <div className="bg-[#030913]/60 p-3 rounded-lg text-sm text-green-400 border-l-4 border-green-400 font-body">
+              <div className="glass-card border-l-4 border-green-400 p-3 text-sm text-green-400">
                 ✅ Seeding configuré.
               </div>
             )}
@@ -954,7 +948,7 @@ export default function Tournament({ session }) {
         <div className="flex gap-10 flex-wrap items-start">
           
           {/* --- COLONNE GAUCHE : ÉQUIPES & CHAT --- */}
-          <div className="flex-1 min-w-[300px] max-w-[400px] bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-lg">
+          <div className="flex-1 min-w-[300px] max-w-[400px] glass-card border-violet-500/30">
             <TeamsList
               participants={participants}
               isOwner={isOwner}
@@ -973,8 +967,8 @@ export default function Tournament({ session }) {
               />
             )}
             
-            <div className="border-t border-white/5 p-4">
-              <h3 className="font-display text-lg text-fluky-text m-0 mb-3">💬 Chat Lobby</h3>
+            <div className="border-t border-violet-500/20 p-4">
+              <h3 className="font-display text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 m-0 mb-3">💬 Chat Lobby</h3>
               <div className="h-[400px] flex flex-col">
                 <Chat tournamentId={id} session={session} supabase={supabase} />
               </div>

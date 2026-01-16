@@ -29,14 +29,14 @@ const Tabs = ({
     default: {
       container: 'border-b border-white/10',
       tab: 'px-6 py-3 font-body text-base transition-all duration-200 border-b-2 -mb-px',
-      active: 'border-fluky-primary text-fluky-secondary',
-      inactive: 'border-transparent text-fluky-text/60 hover:text-fluky-text hover:border-fluky-primary/50',
+      active: 'border-violet-500 text-cyan-400',
+      inactive: 'border-transparent text-gray-400 hover:text-white hover:border-violet-500/50',
     },
     pills: {
       container: 'bg-black/30 p-1 rounded-lg',
       tab: 'px-4 py-2 font-body text-sm transition-all duration-200 rounded-md',
-      active: 'bg-fluky-primary text-white',
-      inactive: 'text-fluky-text/60 hover:text-fluky-text hover:bg-white/5',
+      active: 'bg-violet-600 text-white',
+      inactive: 'text-gray-400 hover:text-white hover:bg-white/5',
     },
   };
 
@@ -60,7 +60,7 @@ const Tabs = ({
             {tab.icon && <span className="mr-2">{tab.icon}</span>}
             {tab.label}
             {tab.badge && (
-              <span className="ml-2 px-2 py-0.5 bg-fluky-secondary text-white text-xs rounded-full">
+              <span className="ml-2 px-2 py-0.5 bg-cyan-600 text-white text-xs rounded-full">
                 {tab.badge}
               </span>
             )}

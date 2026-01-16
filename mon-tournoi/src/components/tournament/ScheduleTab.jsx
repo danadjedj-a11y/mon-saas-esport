@@ -7,8 +7,8 @@ export default function ScheduleTab({ matches }) {
     });
 
   return (
-    <div className="bg-fluky-bg/95 p-8 rounded-xl border-2 border-fluky-accent shadow-lg shadow-fluky-primary/30">
-      <h2 className="mt-0 text-fluky-accent font-handwriting text-3xl mb-6">
+    <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">
+      <h2 className="mt-0 text-cyan-400 font-handwriting text-3xl mb-6">
         📅 Planning des Matchs
       </h2>
       
@@ -24,17 +24,17 @@ export default function ScheduleTab({ matches }) {
                 key={m.id}
                 className={`p-5 rounded-xl border-2 flex justify-between items-center flex-wrap gap-4 ${
                   isPast 
-                    ? 'bg-fluky-orange/20 border-fluky-orange' 
+                    ? 'bg-orange-400/20 border-orange-400' 
                     : isToday 
-                      ? 'bg-fluky-primary/30 border-fluky-accent' 
-                      : 'bg-fluky-bg/80 border-fluky-primary'
+                      ? 'bg-violet-500/30 border-cyan-400' 
+                      : 'bg-gray-900/80 border-violet-500'
                 }`}
               >
                 <div className="flex-1 min-w-[200px]">
-                  <div className="text-sm text-fluky-accent mb-2 font-display">
+                  <div className="text-sm text-cyan-400 mb-2 font-display">
                     Round {m.round_number} - Match #{m.match_number}
                     {m.bracket_type && (
-                      <span className={`ml-2.5 ${m.bracket_type === 'winners' ? 'text-fluky-accent' : 'text-fluky-primary'}`}>
+                      <span className={`ml-2.5 ${m.bracket_type === 'winners' ? 'text-cyan-400' : 'text-violet-400'}`}>
                         {m.bracket_type === 'winners' ? '🏆 Winners' : '💀 Losers'}
                       </span>
                     )}
@@ -43,24 +43,24 @@ export default function ScheduleTab({ matches }) {
                     <div className="flex items-center gap-2.5 flex-1">
                       <img 
                         src={m.p1_avatar} 
-                        className="w-10 h-10 rounded-full object-cover border-2 border-fluky-accent"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-cyan-400"
                         alt="" 
                         loading="lazy"
                       />
-                      <span className="text-fluky-text font-display">
+                      <span className="text-white font-display">
                         {m.p1_name.split(' [')[0]}
                       </span>
                     </div>
-                    <div className="text-xl font-bold text-fluky-accent font-handwriting">
+                    <div className="text-xl font-bold text-cyan-400 font-handwriting">
                       VS
                     </div>
                     <div className="flex items-center gap-2.5 flex-1 justify-end">
-                      <span className="text-fluky-text font-display">
+                      <span className="text-white font-display">
                         {m.p2_name.split(' [')[0]}
                       </span>
                       <img 
                         src={m.p2_avatar} 
-                        className="w-10 h-10 rounded-full object-cover border-2 border-fluky-accent"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-cyan-400"
                         alt=""
                         loading="lazy"
                       />
@@ -69,11 +69,11 @@ export default function ScheduleTab({ matches }) {
                 </div>
                 <div className="text-right min-w-[150px]">
                   <div className={`text-lg font-bold mb-1 font-handwriting ${
-                    isPast ? 'text-fluky-orange' : isToday ? 'text-fluky-accent' : 'text-fluky-primary'
+                    isPast ? 'text-orange-400' : isToday ? 'text-cyan-400' : 'text-violet-400'
                   }`}>
                     {isPast ? '⏰ Passé' : isToday ? '🟢 Aujourd\'hui' : '📅 À venir'}
                   </div>
-                  <div className="text-sm text-fluky-text font-display">
+                  <div className="text-sm text-white font-display">
                     {scheduledDate.toLocaleDateString('fr-FR', { 
                       weekday: 'long',
                       day: 'numeric', 
@@ -81,7 +81,7 @@ export default function ScheduleTab({ matches }) {
                       year: 'numeric'
                     })}
                   </div>
-                  <div className="text-lg font-bold text-fluky-accent mt-1 font-handwriting">
+                  <div className="text-lg font-bold text-cyan-400 mt-1 font-handwriting">
                     {scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
@@ -90,7 +90,7 @@ export default function ScheduleTab({ matches }) {
           })}
         </div>
       ) : (
-        <p className="text-center text-fluky-text mt-12 font-display">
+        <p className="text-center text-white mt-12 font-display">
           Aucun match planifié pour le moment.
         </p>
       )}

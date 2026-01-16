@@ -83,43 +83,43 @@ class MyTeamErrorBoundary extends React.Component {
       const isDev = process.env.NODE_ENV === 'development';
       
       return (
-        <div className="min-h-screen flex items-center justify-center bg-fluky-bg p-4">
-          <Card variant="outlined" padding="xl" className="max-w-2xl border-fluky-primary/30">
+        <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+          <Card variant="outlined" padding="xl" className="max-w-2xl border-violet-500/30">
             <div className="text-center mb-6">
               <div className="text-6xl mb-4">⚠️</div>
-              <h1 className="font-display text-3xl text-fluky-secondary mb-3">
+              <h1 className="font-display text-3xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-3">
                 Erreur de chargement de l'équipe
               </h1>
-              <p className="font-body text-fluky-text/70 text-base leading-relaxed mb-4">
+              <p className="font-body text-gray-400 text-base leading-relaxed mb-4">
                 {this.getErrorMessage()}
               </p>
-              <p className="font-body text-fluky-text/50 text-sm">
+              <p className="font-body text-gray-500 text-sm">
                 Si le problème persiste, essayez de rafraîchir la page ou de retourner à l'accueil.
               </p>
             </div>
             
             {isDev && this.state.error && (
               <details className="bg-black/30 border border-white/10 rounded-lg p-4 mb-6 text-left">
-                <summary className="cursor-pointer font-semibold text-fluky-text mb-3">
+                <summary className="cursor-pointer font-semibold text-white mb-3">
                   🔍 Détails techniques (mode développement)
                 </summary>
                 <div className="mt-3 space-y-4">
                   <div>
-                    <strong className="text-fluky-secondary block mb-2">Type d'erreur:</strong>
-                    <div className="text-fluky-text/80 text-sm">
+                    <strong className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 block mb-2">Type d'erreur:</strong>
+                    <div className="text-gray-300 text-sm">
                       {this.state.errorType}
                     </div>
                   </div>
                   <div>
-                    <strong className="text-fluky-secondary block mb-2">Message:</strong>
-                    <pre className="bg-black/50 p-3 rounded text-xs text-fluky-text/80 overflow-auto max-h-40">
+                    <strong className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 block mb-2">Message:</strong>
+                    <pre className="bg-black/50 p-3 rounded text-xs text-gray-300 overflow-auto max-h-40">
                       {this.state.error.toString()}
                     </pre>
                   </div>
                   {this.state.errorInfo && (
                     <div>
-                      <strong className="text-fluky-secondary block mb-2">Stack Trace:</strong>
-                      <pre className="bg-black/50 p-3 rounded text-xs text-fluky-text/80 overflow-auto max-h-60">
+                      <strong className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 block mb-2">Stack Trace:</strong>
+                      <pre className="bg-black/50 p-3 rounded text-xs text-gray-300 overflow-auto max-h-60">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     </div>

@@ -216,7 +216,7 @@ export default function PublicProfile({ session }) {
       <DashboardLayout session={session}>
         <div className="text-center py-20">
           <div className="text-6xl mb-4 animate-pulse">⏳</div>
-          <p className="font-body text-fluky-text">Chargement du profil...</p>
+          <p className="font-body text-white">Chargement du profil...</p>
         </div>
       </DashboardLayout>
     );
@@ -227,10 +227,10 @@ export default function PublicProfile({ session }) {
       <DashboardLayout session={session}>
         <Card variant="glass" padding="xl" className="text-center max-w-2xl mx-auto mt-20">
           <div className="text-6xl mb-4">🔍</div>
-          <h2 className="font-display text-3xl text-fluky-secondary mb-2">
+          <h2 className="font-display text-3xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
             Profil non trouvé
           </h2>
-          <p className="font-body text-fluky-text/70 mb-6">
+          <p className="font-body text-gray-400 mb-6">
             Ce profil n'existe pas ou n'est pas public.
           </p>
           <Button variant="primary" onClick={() => navigate('/')}>
@@ -261,11 +261,11 @@ export default function PublicProfile({ session }) {
               size="2xl"
             />
             <div className="flex-1 text-center md:text-left">
-              <h1 className="font-display text-4xl text-fluky-secondary mb-2">
+              <h1 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
                 {profile?.username || 'Joueur'}
               </h1>
               {profile?.bio && (
-                <p className="font-body text-fluky-text/70 mb-4">
+                <p className="font-body text-gray-400 mb-4">
                   {profile.bio}
                 </p>
               )}
@@ -303,38 +303,38 @@ export default function PublicProfile({ session }) {
           <div className="lg:col-span-2 space-y-6">
             {/* Stats */}
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 📊 Statistiques
               </h3>
               {stats && stats.totalMatches > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-black/30 rounded-lg">
-                    <div className="text-3xl font-display text-fluky-secondary">
+                    <div className="text-3xl font-display text-cyan-400">
                       {stats.totalMatches}
                     </div>
-                    <div className="text-sm text-fluky-text/70">Matchs</div>
+                    <div className="text-sm text-gray-400">Matchs</div>
                   </div>
                   <div className="text-center p-4 bg-black/30 rounded-lg">
                     <div className="text-3xl font-display text-green-500">
                       {stats.wins}
                     </div>
-                    <div className="text-sm text-fluky-text/70">Victoires</div>
+                    <div className="text-sm text-gray-400">Victoires</div>
                   </div>
                   <div className="text-center p-4 bg-black/30 rounded-lg">
                     <div className="text-3xl font-display text-red-500">
                       {stats.losses}
                     </div>
-                    <div className="text-sm text-fluky-text/70">Défaites</div>
+                    <div className="text-sm text-gray-400">Défaites</div>
                   </div>
                   <div className="text-center p-4 bg-black/30 rounded-lg">
-                    <div className="text-3xl font-display text-fluky-secondary">
+                    <div className="text-3xl font-display text-cyan-400">
                       {stats.winRate}%
                     </div>
-                    <div className="text-sm text-fluky-text/70">Winrate</div>
+                    <div className="text-sm text-gray-400">Winrate</div>
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-fluky-text/60 py-8">
+                <p className="text-center text-gray-500 py-8">
                   Aucune statistique disponible
                 </p>
               )}
@@ -342,7 +342,7 @@ export default function PublicProfile({ session }) {
 
             {/* Recent Matches */}
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 📜 Matchs Récents
               </h3>
               {recentMatches.length > 0 ? (
@@ -350,15 +350,15 @@ export default function PublicProfile({ session }) {
                   {recentMatches.map((match) => (
                     <div
                       key={match.id}
-                      className="bg-black/30 border border-fluky-primary/30 rounded-lg p-4 hover:border-fluky-secondary transition-all cursor-pointer"
+                      className="bg-black/30 border border-violet-500/30 rounded-lg p-4 hover:border-cyan-500 transition-all cursor-pointer"
                       onClick={() => navigate(`/match/${match.id}`)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-body text-fluky-text text-sm mb-1">
+                          <div className="font-body text-white text-sm mb-1">
                             {match.tournaments?.name}
                           </div>
-                          <div className="text-xs text-fluky-text/60">
+                          <div className="text-xs text-gray-500">
                             {match.tournaments?.game} • {new Date(match.created_at).toLocaleDateString('fr-FR')}
                           </div>
                         </div>
@@ -370,7 +370,7 @@ export default function PublicProfile({ session }) {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-fluky-text/60 py-8">
+                <p className="text-center text-gray-500 py-8">
                   Aucun match récent
                 </p>
               )}
@@ -381,7 +381,7 @@ export default function PublicProfile({ session }) {
           <div className="space-y-6">
             {/* Teams */}
             <Card variant="glass" padding="lg">
-              <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+              <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                 👥 Équipes
               </h3>
               {teams.length > 0 ? (
@@ -390,15 +390,15 @@ export default function PublicProfile({ session }) {
                     <Link
                       key={team.id}
                       to={`/team/${team.id}`}
-                      className="block bg-black/30 border border-fluky-primary/30 rounded-lg p-3 hover:border-fluky-secondary transition-all"
+                      className="block bg-black/30 border border-violet-500/30 rounded-lg p-3 hover:border-cyan-500 transition-all"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar src={team.logo_url} name={team.name} size="md" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-body text-fluky-text text-sm truncate">
+                          <div className="font-body text-white text-sm truncate">
                             {team.name}
                           </div>
-                          <div className="text-xs text-fluky-text/60">
+                          <div className="text-xs text-gray-500">
                             [{team.tag}]
                           </div>
                         </div>
@@ -410,7 +410,7 @@ export default function PublicProfile({ session }) {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-fluky-text/60 py-4 text-sm">
+                <p className="text-center text-gray-500 py-4 text-sm">
                   Aucune équipe
                 </p>
               )}
@@ -419,7 +419,7 @@ export default function PublicProfile({ session }) {
             {/* Gaming Accounts */}
             {gamingAccounts.length > 0 && (
               <Card variant="glass" padding="lg">
-                <h3 className="font-display text-2xl text-fluky-secondary mb-4">
+                <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
                   🎮 Comptes Gaming
                 </h3>
                 <div className="space-y-3">
@@ -434,10 +434,10 @@ export default function PublicProfile({ session }) {
                         className="w-8 h-8 rounded bg-white/10 p-1"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-fluky-text/60">
+                        <div className="text-xs text-gray-500">
                           {PLATFORM_NAMES[account.platform]}
                         </div>
-                        <div className="font-body text-fluky-text text-sm truncate">
+                        <div className="font-body text-white text-sm truncate">
                           {formatGamertag(account.game_username, account.game_tag, account.platform)}
                         </div>
                       </div>

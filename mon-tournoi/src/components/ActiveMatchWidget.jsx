@@ -6,6 +6,7 @@ import { Card } from '../shared/components/ui';
 /**
  * Persistent widget showing the user's active match
  * Stays visible across all pages
+ * Design System: Neon Glass
  */
 export default function ActiveMatchWidget({ session }) {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export default function ActiveMatchWidget({ session }) {
         className="fixed bottom-4 right-4 z-50 cursor-pointer"
         onClick={() => setIsMinimized(false)}
       >
-        <div className="bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white px-6 py-3 rounded-full shadow-2xl shadow-fluky-primary/50 flex items-center gap-3 hover:scale-105 transition-transform">
+        <div className="bg-gradient-to-r from-violet-600 to-cyan-500 text-white px-6 py-3 rounded-full shadow-glow-violet flex items-center gap-3 hover:scale-105 transition-transform">
           <span className="animate-pulse">🎮</span>
           <span className="font-display text-sm">Match en cours</span>
         </div>
@@ -43,16 +44,16 @@ export default function ActiveMatchWidget({ session }) {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80">
-      <Card className="bg-[#030913]/95 backdrop-blur-xl border-2 border-fluky-primary/50 shadow-2xl shadow-fluky-primary/30">
+      <Card className="glass-card border-violet-500/50 shadow-glow-violet">
         {/* Header */}
-        <div className="bg-gradient-to-r from-fluky-primary to-fluky-secondary p-3 flex justify-between items-center">
+        <div className="bg-gradient-to-r from-violet-600 to-cyan-500 p-3 flex justify-between items-center rounded-t-xl">
           <div className="flex items-center gap-2">
             <span className="text-xl animate-pulse">🎮</span>
             <h3 className="font-display text-white text-sm">Match Actif</h3>
           </div>
           <button
             onClick={() => setIsMinimized(true)}
-            className="text-white hover:text-fluky-text/70 transition-colors"
+            className="text-white/80 hover:text-white transition-colors"
             title="Réduire"
           >
             ➖
@@ -62,9 +63,9 @@ export default function ActiveMatchWidget({ session }) {
         {/* Content */}
         <div className="p-4 space-y-3">
           {/* Tournament Info */}
-          <div className="text-center border-b border-white/10 pb-2">
-            <p className="text-xs text-fluky-text/70 font-body">{tournaments?.name || 'Tournoi'}</p>
-            <p className="text-xs text-fluky-secondary font-body">{tournaments?.game || ''}</p>
+          <div className="text-center border-b border-violet-500/20 pb-2">
+            <p className="text-xs text-gray-400">{tournaments?.name || 'Tournoi'}</p>
+            <p className="text-xs text-cyan-400">{tournaments?.game || ''}</p>
           </div>
 
           {/* Match Score */}
@@ -85,16 +86,16 @@ export default function ActiveMatchWidget({ session }) {
                   />
                 )}
                 <div>
-                  <p className="text-sm font-body text-fluky-text">{userTeam?.name || 'Votre équipe'}</p>
-                  <p className="text-xs text-fluky-text/70 font-body">{userTeam?.tag || ''}</p>
+                  <p className="text-sm text-white">{userTeam?.name || 'Votre équipe'}</p>
+                  <p className="text-xs text-gray-400">{userTeam?.tag || ''}</p>
                 </div>
               </div>
-              <span className="text-xl font-bold text-fluky-text">{userScore || 0}</span>
+              <span className="text-xl font-bold text-white">{userScore || 0}</span>
             </div>
 
             {/* VS Divider */}
             <div className="text-center">
-              <span className="text-fluky-text/50 text-xs font-body">VS</span>
+              <span className="text-gray-500 text-xs">VS</span>
             </div>
 
             {/* Opponent Team */}
@@ -113,17 +114,17 @@ export default function ActiveMatchWidget({ session }) {
                   />
                 )}
                 <div>
-                  <p className="text-sm font-body text-fluky-text">{opponentTeam?.name || 'Adversaire'}</p>
-                  <p className="text-xs text-fluky-text/70 font-body">{opponentTeam?.tag || ''}</p>
+                  <p className="text-sm text-white">{opponentTeam?.name || 'Adversaire'}</p>
+                  <p className="text-xs text-gray-400">{opponentTeam?.tag || ''}</p>
                 </div>
               </div>
-              <span className="text-xl font-bold text-fluky-text">{opponentScore || 0}</span>
+              <span className="text-xl font-bold text-white">{opponentScore || 0}</span>
             </div>
           </div>
 
           {/* Status */}
           <div className="text-center">
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-body ${
+            <span className={`inline-block px-3 py-1 rounded-full text-xs ${
               activeMatch.status === 'ongoing' 
                 ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
                 : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
@@ -136,7 +137,7 @@ export default function ActiveMatchWidget({ session }) {
           <div className="flex gap-2">
             <button
               onClick={handleGoToMatch}
-              className="flex-1 bg-gradient-to-r from-fluky-primary to-fluky-secondary text-white py-2 px-4 rounded-lg font-body text-sm hover:scale-105 transition-transform"
+              className="flex-1 btn-primary py-2 px-4 rounded-lg text-sm hover:scale-105 transition-transform"
             >
               Aller au match →
             </button>

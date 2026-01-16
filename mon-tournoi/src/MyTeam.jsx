@@ -294,7 +294,7 @@ export default function MyTeam() {
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'captain':
-        return 'bg-fluky-accent-orange text-white';
+        return 'bg-orange-500 text-white';
       case 'manager':
         return 'bg-blue-500 text-white';
       case 'coach':
@@ -323,7 +323,7 @@ export default function MyTeam() {
   if (loading) return (
     <MyTeamErrorBoundary>
       <DashboardLayout session={session}>
-        <div className="text-fluky-text font-body text-center py-20">Chargement...</div>
+        <div className="text-white font-body text-center py-20">Chargement...</div>
       </DashboardLayout>
     </MyTeamErrorBoundary>
   );
@@ -333,11 +333,11 @@ export default function MyTeam() {
     <MyTeamErrorBoundary>
       <DashboardLayout session={session}>
         <div className="text-center py-20">
-          <h2 className="font-display text-4xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 15px rgba(193, 4, 104, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
+          <h2 className="font-display text-4xl text-cyan-400 mb-6" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
           <button 
             type="button"
             onClick={() => navigate('/create-team')} 
-            className="px-8 py-4 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+            className="px-8 py-4 bg-gradient-to-r from-violet-600 to-cyan-500 border-2 border-cyan-500 rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/50"
           >
             Créer une Team
           </button>
@@ -351,7 +351,7 @@ export default function MyTeam() {
     return (
       <MyTeamErrorBoundary>
         <DashboardLayout session={session}>
-          <div className="text-fluky-text font-body text-center py-20">Chargement de l'équipe...</div>
+          <div className="text-white font-body text-center py-20">Chargement de l'équipe...</div>
         </DashboardLayout>
       </MyTeamErrorBoundary>
     );
@@ -367,7 +367,7 @@ export default function MyTeam() {
               <select 
                 value={selectedTeamId || ''} 
                 onChange={(e) => handleTeamSwitch(e.target.value)}
-                className="px-4 py-2 bg-black/50 border-2 border-fluky-primary text-fluky-text rounded-lg font-body text-base transition-all duration-300 focus:border-fluky-secondary focus:ring-4 focus:ring-fluky-secondary/20"
+                className="px-4 py-2 bg-black/50 border-2 border-violet-500 text-white rounded-lg font-body text-base transition-all duration-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20"
               >
                 {allTeams.map(t => (
                   <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
@@ -384,14 +384,14 @@ export default function MyTeam() {
             <img 
               src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`} 
               alt="Team Logo" 
-              className="w-full h-full rounded-xl object-cover border-2 border-fluky-secondary"
+              className="w-full h-full rounded-xl object-cover border-2 border-cyan-500"
             />
             
             {isCaptain && (
               <>
                 <label 
                   htmlFor="logo-upload" 
-                  className={`absolute -bottom-1 -right-1 bg-fluky-secondary text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2 border-fluky-bg font-bold text-lg transition-all duration-300 hover:bg-fluky-primary hover:scale-110`}
+                  className={`absolute -bottom-1 -right-1 bg-cyan-500 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2 border-gray-900 font-bold text-lg transition-all duration-300 hover:bg-violet-600 hover:scale-110`}
                 >
                   {uploading ? '⏳' : '+'}
                 </label>
@@ -408,15 +408,15 @@ export default function MyTeam() {
           </div>
 
           <div className="flex-1 overflow-hidden">
-            <h1 className="font-display text-3xl text-fluky-text mb-1 truncate">{currentTeam.name}</h1>
-            <span className="text-lg text-fluky-secondary font-bold font-body">[{currentTeam.tag}]</span>
+            <h1 className="font-display text-3xl text-white mb-1 truncate">{currentTeam.name}</h1>
+            <span className="text-lg text-cyan-400 font-bold font-body">[{currentTeam.tag}]</span>
           </div>
 
           <div className="flex gap-2">
             <button 
               type="button"
               onClick={copyInviteLink} 
-              className="px-4 py-2 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+              className="px-4 py-2 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
             >
               🔗 Lien
             </button>
@@ -424,7 +424,7 @@ export default function MyTeam() {
               <button 
                 type="button"
                 onClick={() => setShowInviteModal(true)} 
-                className="px-4 py-2 bg-gradient-to-r from-fluky-primary to-fluky-secondary border-2 border-fluky-secondary rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-fluky-secondary/50"
+                className="px-4 py-2 bg-gradient-to-r from-violet-600 to-cyan-500 border-2 border-cyan-500 rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/50"
               >
                 👥 Inviter Joueur
               </button>
@@ -435,19 +435,19 @@ export default function MyTeam() {
         {/* INVITATIONS EN ATTENTE */}
         {canManage && pendingInvitations.length > 0 && (
           <div className="mb-6">
-            <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-xl text-fluky-secondary mb-4" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>
+            <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-xl text-cyan-400 mb-4" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>
               Invitations envoyées ({pendingInvitations.length})
             </h3>
             <div className="space-y-2">
               {pendingInvitations.map((inv) => (
-                <div key={inv.id} className="bg-black/30 border border-fluky-primary/30 rounded-lg p-3 flex items-center justify-between">
+                <div key={inv.id} className="bg-black/30 border border-violet-500/30 rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <img 
                       src={inv.invited_user?.avatar_url || `https://ui-avatars.com/api/?name=${inv.invited_user?.username || 'User'}`} 
-                      className="w-6 h-6 rounded-full object-cover border border-fluky-secondary" 
+                      className="w-6 h-6 rounded-full object-cover border border-cyan-500" 
                       alt="" 
                     />
-                    <span className="text-sm font-body text-fluky-text">
+                    <span className="text-sm font-body text-white">
                       {inv.invited_user?.username || 'Joueur'}
                     </span>
                   </div>
@@ -459,7 +459,7 @@ export default function MyTeam() {
         )}
 
         {/* LISTE DES MEMBRES */}
-        <h3 className="border-b-2 border-fluky-secondary pb-3 font-display text-2xl text-fluky-secondary mb-6" style={{ textShadow: '0 0 10px rgba(193, 4, 104, 0.5)' }}>Roster ({members.length})</h3>
+        <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-2xl text-cyan-400 mb-6" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>Roster ({members.length})</h3>
         <ul className="list-none p-0">
           {members.map(m => {
             const isCurrentUser = m.user_id === session.user.id;
@@ -470,12 +470,12 @@ export default function MyTeam() {
                 <div className="flex items-center gap-3 flex-1">
                   <img 
                     src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`} 
-                    className="w-8 h-8 rounded-full object-cover border-2 border-fluky-secondary" 
+                    className="w-8 h-8 rounded-full object-cover border-2 border-cyan-500" 
                     alt="" 
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className={`font-body ${isCurrentUser ? 'text-fluky-secondary' : 'text-fluky-text'}`}>
+                      <span className={`font-body ${isCurrentUser ? 'text-cyan-400' : 'text-white'}`}>
                         {m.profiles?.username || 'Joueur sans pseudo'}
                       </span>
                       <span className={`text-xs px-2 py-1 rounded font-body ${getRoleBadgeColor(memberRole)}`}>
@@ -488,13 +488,13 @@ export default function MyTeam() {
                         <select
                           value={memberRole}
                           onChange={(e) => handleChangeRole(m.user_id, e.target.value)}
-                          className="px-2 py-1 text-xs bg-black/50 border border-fluky-primary/50 text-fluky-text rounded font-body transition-all duration-200 hover:border-fluky-secondary focus:outline-none focus:border-fluky-secondary"
+                          className="px-2 py-1 text-xs bg-black/50 border border-violet-500/50 text-white rounded font-body transition-all duration-200 hover:border-cyan-500 focus:outline-none focus:border-cyan-500"
                         >
                           <option value="player">Joueur</option>
                           <option value="coach">Coach</option>
                           <option value="manager">Manager</option>
                         </select>
-                        <span className="ml-2 text-xs text-fluky-text/50 font-body">
+                        <span className="ml-2 text-xs text-white/50 font-body">
                           {canManageMembers(memberRole) && '🔑 Peut inviter/exclure'}
                         </span>
                       </div>
@@ -506,7 +506,7 @@ export default function MyTeam() {
                   <button 
                     type="button"
                     onClick={() => handleKickMember(m.user_id)} 
-                    className="px-3 py-1 bg-transparent border-2 border-fluky-primary text-fluky-text rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-fluky-primary hover:border-fluky-secondary"
+                    className="px-3 py-1 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
                   >
                     Exclure
                   </button>

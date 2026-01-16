@@ -21,7 +21,7 @@ export default function SwissStandings({
   return (
     <div className="mb-10 bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="font-display text-2xl text-fluky-text m-0 border-b border-white/5 pb-3">
+        <h2 className="font-display text-2xl text-white m-0 border-b border-white/5 pb-3">
           🇨🇭 Classement Suisse
         </h2>
         {isOwner && tournamentStatus === 'ongoing' && onGenerateNextRound && (

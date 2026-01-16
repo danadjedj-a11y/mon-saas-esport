@@ -11,7 +11,7 @@ export default function ProofSection({
 }) {
   return (
     <div className="mt-5 bg-[#1a1a1a] p-5 rounded-2xl border border-white/20">
-      <h3 className="font-display text-fluky-text mt-0">📷 Preuve du résultat (Screenshot)</h3>
+      <h3 className="font-display text-white mt-0">📷 Preuve du résultat (Screenshot)</h3>
       
       {proofUrl ? (
         <a href={proofUrl} target="_blank" rel="noreferrer">

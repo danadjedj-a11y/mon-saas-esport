@@ -21,7 +21,7 @@ export default function GameRoundsList({
 
   return (
     <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5 mt-5">
-      <h3 className="font-display text-xl text-fluky-text mt-0 mb-4">
+      <h3 className="font-display text-xl text-white mt-0 mb-4">
         🎮 Manches (Best-of-{tournamentBestOf})
       </h3>
       
