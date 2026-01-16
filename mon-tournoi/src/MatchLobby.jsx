@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import Chat from './Chat';
-import { notifyMatchResult, notifyScoreDispute } from './notificationUtils';
+import { notifyMatchResult, notifyScoreDispute, notifyOpponentScoreDeclared } from './notificationUtils';
 import { updateSwissScores } from './swissUtils';
 import { calculateMatchWinner } from './bofUtils';
 import { toast } from './utils/toast';
@@ -482,6 +482,17 @@ export default function MatchLobby({ session }) {
 
       // 3. Vérifier concordance
       const { data: currentMatch } = await supabase.from('matches').select('*').eq('id', id).single();
+
+      // Notifier l'équipe adverse qu'un score a été déclaré
+      const opponentTeamId = isTeam1 ? match.player2_id : match.player1_id;
+      const opponentName = isTeam1 ? (match.team2?.name || 'Équipe 2') : (match.team1?.name || 'Équipe 1');
+      const myTeamName = isTeam1 ? (match.team1?.name || 'Équipe 1') : (match.team2?.name || 'Équipe 2');
+      
+      // Notifier seulement si c'est la première déclaration (l'autre équipe n'a pas encore déclaré)
+      const otherTeamAlreadyReported = isTeam1 ? currentMatch?.reported_by_team2 : currentMatch?.reported_by_team1;
+      if (!otherTeamAlreadyReported && opponentTeamId) {
+        await notifyOpponentScoreDeclared(id, myTeamId, opponentTeamId, myTeamName, `${myScore} - ${opponentScore}`);
+      }
 
       if (currentMatch?.reported_by_team1 && currentMatch?.reported_by_team2) {
         

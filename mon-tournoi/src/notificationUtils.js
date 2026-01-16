@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Créer une notification pour un utilisateur
+ * Créer une notification pour un utilisateur via fonction RPC (bypass RLS)
  * @param {string} userId - ID de l'utilisateur
  * @param {string} type - Type de notification
  * @param {string} title - Titre de la notification
@@ -10,23 +10,23 @@ import { supabase } from './supabaseClient';
  * @param {object} metadata - Métadonnées supplémentaires (optionnel)
  */
 export async function createNotification(userId, type, title, message, link = null, metadata = null) {
-  const { error } = await supabase
-    .from('notifications')
-    .insert([
-      {
-        user_id: userId,
-        type,
-        title,
-        message,
-        link,
-        metadata
-      }
-    ]);
+  console.log('📧 Création notification:', { userId, type, title });
+  
+  const { data, error } = await supabase.rpc('create_notification', {
+    p_user_id: userId,
+    p_type: type,
+    p_title: title,
+    p_message: message,
+    p_link: link,
+    p_metadata: metadata
+  });
 
   if (error) {
-    console.error('Erreur création notification:', error);
+    console.error('❌ Erreur création notification:', error);
     return false;
   }
+  
+  console.log('✅ Notification créée, id:', data);
   return true;
 }
 
@@ -42,21 +42,23 @@ export async function createNotification(userId, type, title, message, link = nu
 export async function createNotificationsForUsers(userIds, type, title, message, link = null, metadata = null) {
   if (!userIds || userIds.length === 0) return;
 
-  const notifications = userIds.map(userId => ({
-    user_id: userId,
-    type,
-    title,
-    message,
-    link,
-    metadata
-  }));
+  // Utiliser la fonction RPC pour chaque utilisateur
+  const promises = userIds.map(userId => 
+    supabase.rpc('create_notification', {
+      p_user_id: userId,
+      p_type: type,
+      p_title: title,
+      p_message: message,
+      p_link: link,
+      p_metadata: metadata
+    })
+  );
 
-  const { error } = await supabase
-    .from('notifications')
-    .insert(notifications);
-
-  if (error) {
-    console.error('Erreur création notifications:', error);
+  const results = await Promise.all(promises);
+  const errors = results.filter(r => r.error);
+  
+  if (errors.length > 0) {
+    console.error('Erreur création notifications:', errors);
     return false;
   }
   return true;
@@ -181,6 +183,27 @@ export async function notifyScoreDispute(matchId, team1Id, team2Id) {
     'Les scores déclarés ne correspondent pas. Un admin va résoudre le conflit.',
     `/match/${matchId}`,
     { match_id: matchId }
+  );
+}
+
+/**
+ * Notification : Score déclaré par l'adversaire
+ * @param {string} matchId - ID du match
+ * @param {string} opponentTeamId - ID de l'équipe qui a déclaré
+ * @param {string} notifyTeamId - ID de l'équipe à notifier
+ * @param {string} opponentName - Nom de l'équipe adverse
+ * @param {number} scoreReported - Score déclaré (format "X - Y")
+ */
+export async function notifyOpponentScoreDeclared(matchId, opponentTeamId, notifyTeamId, opponentName, scoreReported) {
+  const userIds = await getTeamMemberIds(notifyTeamId);
+
+  await createNotificationsForUsers(
+    userIds,
+    'score_declared',
+    '📝 Score déclaré',
+    `${opponentName} a déclaré le score : ${scoreReported}. Confirme ou conteste !`,
+    `/match/${matchId}`,
+    { match_id: matchId, reported_by: opponentTeamId }
   );
 }
 

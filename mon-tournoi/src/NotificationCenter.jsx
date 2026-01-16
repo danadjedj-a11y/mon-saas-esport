@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Skeleton from './components/Skeleton';
 import { EmptyNotifications } from './components/EmptyState';
+import useUIStore from './stores/uiStore';
 
 export default function NotificationCenter({ session }) {
   const [notifications, setNotifications] = useState([]);
@@ -11,6 +12,10 @@ export default function NotificationCenter({ session }) {
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const lastNotificationIdRef = useRef(null);
+  const notifiedIdsRef = useRef(new Set()); // IDs déjà notifiés (son/toast)
+  const sessionStartRef = useRef(new Date().toISOString()); // Moment de connexion
+  const addToast = useUIStore((state) => state.addToast);
 
   const fetchNotifications = useCallback(async () => {
     if (!session?.user) return;
@@ -24,7 +29,11 @@ export default function NotificationCenter({ session }) {
     
     if (data) {
       setNotifications(data);
-      setUnreadCount(data.filter(n => !n.read).length);
+      setUnreadCount(data.filter(n => !n.is_read).length);
+      
+      // Marquer toutes les notifications existantes comme "déjà notifiées"
+      // pour ne pas rejouer le son/toast au changement de page
+      data.forEach(n => notifiedIdsRef.current.add(n.id));
     }
     setLoading(false);
   }, [session]);
@@ -34,27 +43,171 @@ export default function NotificationCenter({ session }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
-    // Abonnement temps réel aux notifications
+    console.log('🔔 Subscribing to notifications for user:', session.user.id);
+
+    // Abonnement temps réel aux notifications - SANS filtre pour éviter les problèmes RLS
     const channel = supabase
-      .channel(`notifications-${session.user.id}`)
+      .channel('notifications-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${session.user.id}`,
         },
-        () => {
-          fetchNotifications();
+        (payload) => {
+          console.log('🔔 REALTIME event received:', payload);
+          
+          // Filtrer côté client pour ne traiter que nos notifications
+          if (payload.eventType === 'INSERT' && payload.new?.user_id === session.user.id) {
+            const newNotification = payload.new;
+            
+            // Éviter les doublons - vérifier si déjà notifié
+            if (notifiedIdsRef.current.has(newNotification.id)) return;
+            notifiedIdsRef.current.add(newNotification.id);
+            
+            // Ajouter la notification à la liste
+            setNotifications((prev) => [newNotification, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+            
+            // Afficher un toast en temps réel
+            console.log('🔔 Showing toast...');
+            addToast({
+              message: `${getIconForType(newNotification.type)} ${newNotification.title}: ${newNotification.message}`,
+              variant: getToastVariant(newNotification.type),
+              duration: 6000,
+            });
+
+            // Jouer un son de notification
+            console.log('🔔 Playing sound...');
+            playNotificationSound();
+            
+            // Notification navigateur si autorisé
+            showBrowserNotification(newNotification);
+          } else if (payload.eventType === 'UPDATE' && payload.new?.user_id === session.user.id) {
+            fetchNotifications();
+          } else if (payload.eventType === 'DELETE' && payload.old?.user_id === session.user.id) {
+            fetchNotifications();
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔔 Channel subscription status:', status);
+      });
+
+    // FALLBACK: Polling toutes les 5 secondes si le Realtime ne marche pas
+    const pollInterval = setInterval(async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('is_read', false)
+        .gt('created_at', sessionStartRef.current) // Seulement les notifs créées APRÈS connexion
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (data && data.length > 0) {
+        for (const latestNotif of data) {
+          // Vérifier si on n'a pas déjà notifié cette notification
+          if (!notifiedIdsRef.current.has(latestNotif.id)) {
+            console.log('🔔 New notification via polling:', latestNotif);
+            notifiedIdsRef.current.add(latestNotif.id);
+            
+            setNotifications((prev) => {
+              const exists = prev.some(n => n.id === latestNotif.id);
+              if (exists) return prev;
+              return [latestNotif, ...prev];
+            });
+            setUnreadCount((prev) => prev + 1);
+            
+            addToast({
+              message: `${getIconForType(latestNotif.type)} ${latestNotif.title}: ${latestNotif.message}`,
+              variant: getToastVariant(latestNotif.type),
+              duration: 6000,
+            });
+            
+            playNotificationSound();
+            showBrowserNotification(latestNotif);
+          }
+        }
+      }
+    }, 5000); // Toutes les 5 secondes
 
     return () => {
+      console.log('🔔 Unsubscribing from channel');
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
-  }, [session, fetchNotifications]);
+  }, [session, fetchNotifications, addToast]);
+
+  // Fonction pour obtenir l'icône selon le type
+  const getIconForType = (type) => {
+    switch (type) {
+      case 'match_scheduled': return '📅';
+      case 'match_upcoming': return '⏰';
+      case 'match_result': return '🏆';
+      case 'score_declared': return '📝';
+      case 'score_dispute': return '⚠️';
+      case 'admin_message': return '📢';
+      case 'tournament_update': return '📊';
+      case 'team_invite': return '👥';
+      case 'team_invitation': return '👥';
+      case 'comment_like': return '👍';
+      case 'comment_reply': return '💬';
+      default: return '🔔';
+    }
+  };
+
+  // Fonction pour obtenir la variante du toast
+  const getToastVariant = (type) => {
+    switch (type) {
+      case 'match_result': return 'success';
+      case 'score_dispute': return 'error';
+      case 'match_scheduled': return 'info';
+      case 'match_upcoming': return 'warning';
+      case 'score_declared': return 'warning';
+      case 'team_invite': return 'info';
+      case 'team_invitation': return 'info';
+      default: return 'info';
+    }
+  };
+
+  // Jouer un son de notification
+  const playNotificationSound = () => {
+    try {
+      // Son de notification simple (beep)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Fréquence en Hz
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.3;
+      
+      oscillator.start();
+      
+      // Fade out
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      console.log('Could not play notification sound:', e);
+    }
+  };
+
+  // Notification navigateur
+  const showBrowserNotification = (notification) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(notification.title, {
+        body: notification.message,
+        icon: '/Logo.png',
+        tag: notification.id,
+        requireInteraction: false,
+      });
+    }
+  };
 
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
@@ -131,28 +284,7 @@ export default function NotificationCenter({ session }) {
     }
   };
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'match_upcoming':
-        return '⏰';
-      case 'match_result':
-        return '🏆';
-      case 'admin_message':
-        return '📢';
-      case 'tournament_update':
-        return '📊';
-      case 'team_invite':
-        return '👥';
-      case 'score_dispute':
-        return '⚠️';
-      case 'comment_like':
-        return '👍';
-      case 'comment_reply':
-        return '💬';
-      default:
-        return '🔔';
-    }
-  };
+  const getIcon = (type) => getIconForType(type);
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -188,19 +320,45 @@ export default function NotificationCenter({ session }) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full right-0 mt-3 glass-card border-violet-500/30 w-96 max-h-[500px] overflow-y-auto shadow-glow-violet z-50 animate-fadeIn">
+        <div className="fixed top-16 left-4 lg:left-64 lg:ml-4 glass-card border-violet-500/30 w-[calc(100vw-2rem)] sm:w-96 max-h-[500px] overflow-y-auto shadow-glow-violet z-[100] animate-fadeIn">
           {/* Header */}
-          <div className="p-4 border-b border-violet-500/20 flex justify-between items-center">
-            <h3 className="font-display text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
-              🔔 Notifications
-            </h3>
-            {unreadCount > 0 && (
+          <div className="p-4 border-b border-violet-500/20">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-display text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
+                🔔 Notifications
+              </h3>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="bg-transparent border-none text-cyan-400 cursor-pointer text-sm px-2 py-1 hover:text-cyan-300 transition-colors"
+                >
+                  Tout marquer comme lu
+                </button>
+              )}
+            </div>
+            {/* Bouton permission navigateur */}
+            {'Notification' in window && Notification.permission === 'default' && (
               <button
-                onClick={markAllAsRead}
-                className="bg-transparent border-none text-cyan-400 cursor-pointer text-sm px-2 py-1 hover:text-cyan-300 transition-colors"
+                onClick={async () => {
+                  const permission = await Notification.requestPermission();
+                  if (permission === 'granted') {
+                    addToast({
+                      message: '✅ Notifications du navigateur activées !',
+                      variant: 'success',
+                    });
+                  }
+                }}
+                className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-violet-600/20 to-cyan-600/20 border border-violet-500/30 rounded-lg text-sm text-gray-300 hover:border-violet-400 transition-all flex items-center justify-center gap-2"
               >
-                Tout marquer comme lu
+                <span>🔔</span>
+                Activer les notifications du navigateur
               </button>
+            )}
+            {'Notification' in window && Notification.permission === 'granted' && (
+              <div className="mt-2 py-1.5 px-3 text-xs text-green-400 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                Notifications du navigateur activées
+              </div>
             )}
           </div>
 

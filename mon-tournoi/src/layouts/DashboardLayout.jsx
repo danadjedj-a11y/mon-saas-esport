@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getUserRole } from '../utils/userRole';
 import ActiveMatchWidget from '../components/ActiveMatchWidget';
+import NotificationCenter from '../NotificationCenter';
 
 export default function DashboardLayout({ children, session = null }) {
   const location = useLocation();
@@ -57,19 +58,25 @@ export default function DashboardLayout({ children, session = null }) {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-dark-50/80 backdrop-blur-xl border-r border-glass-border shadow-elevation-3 z-50 flex-col">
         {/* Logo/Header */}
         <div className="p-6 border-b border-glass-border">
-          <Link to="/" className="flex items-center gap-3 group">
-            <img 
-              src="/Logo.png" 
-              alt="Fluky Boys" 
-              className="w-12 h-12 object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-300"
-            />
-            <div>
-              <h1 className="font-display text-xl font-semibold text-text gradient-text">
-                Fluky Boys
-              </h1>
-              <p className="text-xs text-text-muted font-body">Tournament Platform</p>
-            </div>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3 group">
+              <img 
+                src="/Logo.png" 
+                alt="Fluky Boys" 
+                className="w-12 h-12 object-contain drop-shadow-lg group-hover:scale-105 transition-transform duration-300"
+              />
+              <div>
+                <h1 className="font-display text-xl font-semibold text-text gradient-text">
+                  Fluky Boys
+                </h1>
+                <p className="text-xs text-text-muted font-body">Tournament Platform</p>
+              </div>
+            </Link>
+            {/* Notifications - Desktop */}
+            {session && (
+              <NotificationCenter session={session} />
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
@@ -137,13 +144,20 @@ export default function DashboardLayout({ children, session = null }) {
       </aside>
 
       {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-[60] p-3 bg-dark-50/90 backdrop-blur-xl border border-glass-border rounded-xl text-text hover:text-violet hover:border-violet/50 transition-all shadow-elevation-2 lg:hidden"
-        aria-label="Menu"
-      >
-        <span className="text-xl">{isMobileMenuOpen ? '✕' : '☰'}</span>
-      </button>
+      <div className="fixed top-4 left-4 right-4 z-[60] flex items-center justify-between lg:hidden">
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-3 bg-dark-50/90 backdrop-blur-xl border border-glass-border rounded-xl text-text hover:text-violet hover:border-violet/50 transition-all shadow-elevation-2"
+          aria-label="Menu"
+        >
+          <span className="text-xl">{isMobileMenuOpen ? '✕' : '☰'}</span>
+        </button>
+        
+        {/* Notifications - Mobile */}
+        {session && (
+          <NotificationCenter session={session} />
+        )}
+      </div>
 
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
