@@ -26,6 +26,7 @@ export default function Profile({ session }) {
     if (session) {
       loadProfileData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const loadProfileData = async () => {

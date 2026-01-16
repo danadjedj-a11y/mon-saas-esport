@@ -17,6 +17,7 @@ export default function PlayerDashboard({ session }) {
 
   useEffect(() => {
     fetchPlayerData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const fetchPlayerData = async () => {

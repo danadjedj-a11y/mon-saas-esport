@@ -155,6 +155,7 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId, session?.user?.id, supabase]);
 
   const handleCheckIn = async () => {

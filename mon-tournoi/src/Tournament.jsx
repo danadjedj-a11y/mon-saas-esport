@@ -16,6 +16,13 @@ import { exportTournamentToPDF } from './utils/pdfExport';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { useTournament } from './shared/hooks';
+import { 
+  TournamentBracket, 
+  SwissStandings, 
+  RoundRobinStandings,
+  TeamsList, 
+  WaitlistSection 
+} from './components/tournament';
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -763,27 +770,6 @@ export default function Tournament({ session }) {
     }
   };
 
-  const getStandings = () => {
-    if (!participants || !matches) return [];
-    const stats = participants.map(p => ({ ...p, played: 0, wins: 0, draws: 0, losses: 0, points: 0, goalDiff: 0 }));
-
-    matches.filter(m => m.status === 'completed').forEach(m => {
-      const p1 = stats.find(p => p.team_id === m.player1_id);
-      const p2 = stats.find(p => p.team_id === m.player2_id);
-      if (!p1 || !p2) return;
-
-      p1.played++; p2.played++;
-      const diff = m.score_p1 - m.score_p2;
-      p1.goalDiff += diff; p2.goalDiff -= diff;
-
-      if (m.score_p1 > m.score_p2) { p1.wins++; p1.points += 3; p2.losses++; }
-      else if (m.score_p2 > m.score_p1) { p2.wins++; p2.points += 3; p1.losses++; }
-      else { p1.draws++; p1.points++; p2.draws++; p2.points++; }
-    });
-
-    return stats.sort((a, b) => (b.points - a.points) || (b.goalDiff - a.goalDiff));
-  };
-
   const triggerConfetti = () => {
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
   };
@@ -969,113 +955,22 @@ export default function Tournament({ session }) {
           
           {/* --- COLONNE GAUCHE : ÉQUIPES & CHAT --- */}
           <div className="flex-1 min-w-[300px] max-w-[400px] bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-lg">
-            <div className="p-4 border-b border-white/5">
-              <h3 className="font-display text-xl text-fluky-text m-0 mb-2">Équipes ({participants.length})</h3>
-              {shouldShowAdminFeatures && tournoi.status === 'draft' && (
-                <div className="text-xs text-fluky-text/70 flex gap-4 flex-wrap font-body">
-                  <span className="text-green-400">✅ Check-in: {participants.filter(p => p.checked_in).length}</span>
-                  <span className="text-gray-400">⏳ En attente: {participants.filter(p => !p.checked_in && !p.disqualified).length}</span>
-                  {participants.filter(p => p.disqualified).length > 0 && (
-                    <span className="text-red-400">❌ DQ: {participants.filter(p => p.disqualified).length}</span>
-                  )}
-                </div>
-              )}
-            </div>
-            <ul className="list-none p-0 m-0 max-h-[300px] overflow-y-auto">
-              {participants.map(p => (
-                <li 
-                  key={p.id} 
-                  className={`p-3 border-b border-white/5 flex justify-between items-center ${
-                    p.checked_in ? 'bg-green-900/20' : (p.disqualified ? 'bg-red-900/20' : 'bg-transparent')
-                  }`}
-                >
-                  <div className="flex gap-3 items-center flex-1">
-                    <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-fluky-text">
-                      {p.teams?.tag || '?'}
-                    </div>
-                    <span className={`font-body ${
-                      p.disqualified ? 'text-red-400' : (p.checked_in ? 'text-green-400' : 'text-fluky-text/70')
-                    }`}>
-                      {p.teams?.name || 'Inconnu'}
-                    </span>
-                    {/* Indicateur de statut */}
-                    {isOwner && tournoi.status === 'draft' && (
-                      <span className={`text-xs px-2 py-1 rounded-full text-white font-bold font-body ${
-                        p.checked_in ? 'bg-green-500' : (p.disqualified ? 'bg-red-500' : 'bg-gray-500')
-                      }`}>
-                        {p.checked_in ? '✅ Check-in' : (p.disqualified ? '❌ DQ' : '⏳ En attente')}
-                      </span>
-                    )}
-                  </div>
-                  {isOwner && (
-                    <div className="flex gap-2 items-center">
-                      {tournoi.status === 'draft' && (
-                        <button
-                          onClick={() => handleAdminCheckIn(p.id, p.checked_in)}
-                          className={`px-3 py-1 text-white border-none rounded-lg cursor-pointer text-xs font-bold transition-all duration-300 hover:scale-105 ${
-                            p.checked_in ? 'bg-orange-500' : 'bg-green-500'
-                          }`}
-                          title={p.checked_in ? 'Retirer le check-in' : 'Valider le check-in'}
-                        >
-                          {p.checked_in ? '↩️ Retirer' : '✅ Check-in'}
-                        </button>
-                      )}
-                      <button 
-                        onClick={()=>removeParticipant(p.id)} 
-                        className="text-red-400 bg-none border-none cursor-pointer text-xl hover:text-red-500 transition-colors" 
-                        title="Exclure cette équipe"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <TeamsList
+              participants={participants}
+              isOwner={isOwner}
+              tournamentStatus={tournoi.status}
+              onRemove={removeParticipant}
+              onToggleCheckIn={handleAdminCheckIn}
+            />
           
             {/* LISTE D'ATTENTE */}
             {shouldShowAdminFeatures && waitlist.length > 0 && tournoi.status === 'draft' && (
-              <>
-                <div className="border-t border-white/5 p-4 border-b border-white/5 bg-white/5">
-                  <h3 className="m-0 text-sm text-yellow-400 font-body">⏳ Liste d'Attente ({waitlist.length})</h3>
-                </div>
-                <ul className="list-none p-0 m-0 max-h-[200px] overflow-y-auto">
-                  {waitlist.map((w) => {
-                    const canPromote = !tournoi?.max_participants || participants.length < tournoi.max_participants;
-                    return (
-                      <li key={w.id} className="p-3 border-b border-white/5 flex justify-between items-center bg-black/30 opacity-90">
-                        <div className="flex gap-3 items-center flex-1">
-                          <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-xs font-bold text-black">
-                            {w.position}
-                          </div>
-                          <div className="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-fluky-text">
-                            {w.teams?.tag || '?'}
-                          </div>
-                          <span className="text-sm text-fluky-text/70 font-body">{w.teams?.name || 'Inconnu'}</span>
-                        </div>
-                        <div className="flex gap-3 items-center">
-                          <span className="text-xs text-fluky-text/50 font-body">Position #{w.position}</span>
-                          {canPromote && (
-                            <button
-                              onClick={() => {
-                                if (confirm(`Promouvoir "${w.teams?.name || 'cette équipe'}" depuis la liste d'attente ?`)) {
-                                  promoteTeamFromWaitlist(w.id, w.team_id);
-                                }
-                              }}
-                              className="px-3 py-1 bg-green-500 text-white border-none rounded-lg cursor-pointer text-xs font-bold transition-all duration-300 hover:scale-105 hover:bg-green-600"
-                            >
-                              ✅ Promouvoir
-                            </button>
-                          )}
-                          {!canPromote && (
-                            <span className="text-xs text-fluky-text/50 italic font-body">Complet</span>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
+              <WaitlistSection
+                waitlist={waitlist}
+                maxParticipants={tournoi?.max_participants}
+                currentCount={participants.length}
+                onPromote={promoteTeamFromWaitlist}
+              />
             )}
             
             <div className="border-t border-white/5 p-4">
@@ -1091,183 +986,29 @@ export default function Tournament({ session }) {
               
               {/* Table Swiss System */}
               {tournoi?.format === 'swiss' && swissScores.length > 0 && (
-                <div className="mb-10 bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-5">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="font-display text-2xl text-fluky-text m-0 border-b border-white/5 pb-3">🇨🇭 Classement Suisse</h2>
-                  {isOwner && tournoi.status === 'ongoing' && (
-                    <button 
-                      onClick={generateNextSwissRound}
-                      style={{ padding: '10px 20px', background: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      ➕ Générer Round Suivant
-                    </button>
-                  )}
-                </div>
-                  <table className="w-full border-collapse text-white">
-                    <thead>
-                      <tr className="bg-black/50 text-left">
-                        <th className="p-3">Rang</th>
-                        <th className="p-3">Équipe</th>
-                        <th className="p-3 text-center">Victoires</th>
-                        <th className="p-3 text-center">Défaites</th>
-                        <th className="p-3 text-center">Nuls</th>
-                        <th className="p-3 text-center">Buchholz</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const standings = swissScores.sort((a, b) => {
-                          if (b.wins !== a.wins) return b.wins - a.wins;
-                          if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
-                          return a.team_id.localeCompare(b.team_id);
-                        });
-                        return standings.map((score, index) => {
-                          const team = participants.find(p => p.team_id === score.team_id);
-                          return (
-                            <tr key={score.id} className="border-b border-white/5">
-                              <td className={`p-3 ${index === 0 ? 'font-bold text-yellow-400' : 'text-white'}`}>
-                                #{index + 1}
-                              </td>
-                              <td className="p-3 flex items-center gap-3">
-                                <img 
-                                  src={team?.teams?.logo_url || `https://ui-avatars.com/api/?name=${team?.teams?.tag || '?'}`} 
-                                  className="w-6 h-6 rounded-full" 
-                                  alt=""
-                                />
-                                <span className="font-body">{team?.teams?.name || 'Inconnu'}</span>
-                              </td>
-                              <td className="p-3 text-center text-green-400 font-bold">{score.wins}</td>
-                              <td className="p-3 text-center text-red-400">{score.losses}</td>
-                              <td className="p-3 text-center text-yellow-400">{score.draws}</td>
-                              <td className="p-3 text-center text-blue-400">{parseFloat(score.buchholz_score || 0).toFixed(1)}</td>
-                            </tr>
-                          );
-                        });
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
+                <SwissStandings
+                  swissScores={swissScores}
+                  participants={participants}
+                  isOwner={isOwner}
+                  tournamentStatus={tournoi.status}
+                  onGenerateNextRound={generateNextSwissRound}
+                />
               )}
 
             {/* Table Round Robin */}
             {tournoi?.format === 'round_robin' && (
-                <div style={{ marginBottom: '40px', background: '#1a1a1a', borderRadius: '15px', padding: '20px', border: '1px solid #333' }}>
-                <h2 style={{ borderBottom: '1px solid #444', paddingBottom: '10px', marginTop: 0 }}>🏆 Classement</h2>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white' }}>
-                    <thead>
-                    <tr style={{ background: '#252525', textAlign: 'left' }}>
-                        <th style={{ padding: '10px' }}>Rang</th>
-                        <th style={{ padding: '10px' }}>Équipe</th>
-                        <th style={{ padding: '10px', textAlign:'center' }}>Pts</th>
-                        <th style={{ padding: '10px', textAlign:'center' }}>J</th>
-                        <th style={{ padding: '10px', textAlign:'center' }}>V</th>
-                        <th style={{ padding: '10px', textAlign:'center' }}>N</th>
-                        <th style={{ padding: '10px', textAlign:'center' }}>D</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {getStandings().map((team, index) => (
-                        <tr key={team.id} style={{ borderBottom: '1px solid #333' }}>
-                        <td style={{ padding: '10px', color: index === 0 ? '#f1c40f' : 'white' }}>#{index + 1}</td>
-                        <td style={{ padding: '10px', display:'flex', alignItems:'center', gap:'10px' }}>
-                            <img loading="lazy" src={team.teams?.logo_url || `https://ui-avatars.com/api/?name=${team.teams?.tag}`} style={{width:'24px', height:'24px', borderRadius:'50%'}} alt=""/>
-                            {team.teams?.name}
-                        </td>
-                        <td style={{ padding: '10px', textAlign:'center', color:'#4ade80' }}>{team.points}</td>
-                        <td style={{ padding: '10px', textAlign:'center', color:'#888' }}>{team.played}</td>
-                        <td style={{ padding: '10px', textAlign:'center' }}>{team.wins}</td>
-                        <td style={{ padding: '10px', textAlign:'center' }}>{team.draws}</td>
-                        <td style={{ padding: '10px', textAlign:'center' }}>{team.losses}</td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-                </div>
+              <RoundRobinStandings
+                participants={participants}
+                matches={matches}
+              />
             )}
 
             {/* Arbres Visuels */}
-            {matches.length > 0 ? (
-                tournoi.format === 'double_elimination' ? (
-                <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
-                    {/* Winners */}
-                    <div style={{flex: 1}}>
-                    <h3 style={{textAlign:'center', color:'#4ade80'}}>🏆 Winners Bracket</h3>
-                    <div style={{display:'flex', gap:'40px'}}>
-                        {[...new Set(matches.filter(m => m.bracket_type === 'winners').map(m=>m.round_number))].sort().map(round => (
-                        <div key={`winners-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                            {matches.filter(m => m.bracket_type === 'winners' && m.round_number === round).map(m => (
-                                <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
-                            ))}
-                        </div>
-                        ))}
-                    </div>
-                    </div>
-                    {/* Losers */}
-                    <div style={{flex: 1}}>
-                    <h3 style={{textAlign:'center', color:'#e74c3c'}}>💀 Losers Bracket</h3>
-                    <div style={{display:'flex', gap:'40px'}}>
-                        {[...new Set(matches.filter(m => m.bracket_type === 'losers').map(m=>m.round_number))].sort().map(round => (
-                        <div key={`losers-${round}`} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                            {matches.filter(m => m.bracket_type === 'losers' && m.round_number === round).map(m => (
-                                <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
-                            ))}
-                        </div>
-                        ))}
-                    </div>
-                    {/* Grand Finals */}
-                    {matches.filter(m => !m.bracket_type && !m.is_reset).length > 0 && (
-                        <div style={{marginTop:'40px', paddingTop:'20px', borderTop:'2px solid #444'}}>
-                            <h3 style={{textAlign:'center', color:'#f1c40f'}}>🏅 Grand Finals</h3>
-                            <div style={{display:'flex', justifyContent:'center'}}>
-                                {matches.filter(m => !m.bracket_type && !m.is_reset).map(m => (
-                                    <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {/* Reset Match (affiché seulement s'il est nécessaire) */}
-                    {matches.filter(m => m.is_reset && m.player1_id && m.player2_id).length > 0 && (
-                        <div style={{marginTop:'20px', paddingTop:'20px', borderTop:'2px solid #444'}}>
-                            <h4 style={{textAlign:'center', color:'#f39c12', marginBottom:'10px'}}>🔄 Reset Match</h4>
-                            <div style={{display:'flex', justifyContent:'center'}}>
-                                {matches.filter(m => m.is_reset).map(m => (
-                                    <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    </div>
-                </div>
-                ) : tournoi.format === 'swiss' ? (
-                // Swiss System (affichage par rounds)
-                <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
-                    {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
-                    <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                        <h4 style={{textAlign:'center', color:'#3498db', fontWeight:'bold'}}>🇨🇭 Round {round}</h4>
-                        {matches.filter(m=>m.round_number === round && m.bracket_type === 'swiss').map(m => (
-                            <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
-                        ))}
-                    </div>
-                    ))}
-                </div>
-                ) : (
-                // Single Elimination ou Round Robin (vue simple)
-                <div style={{display:'flex', gap:'40px', paddingBottom:'20px'}}>
-                    {[...new Set(matches.map(m=>m.round_number))].sort().map(round => (
-                    <div key={round} style={{display:'flex', flexDirection:'column', justifyContent:'space-around', gap:'20px'}}>
-                        <h4 style={{textAlign:'center', color:'#666'}}>Round {round}</h4>
-                        {matches.filter(m=>m.round_number === round).map(m => (
-                            <MatchCard key={m.id} match={m} onClick={handleMatchClick} isOwner={isOwner} />
-                        ))}
-                    </div>
-                    ))}
-                </div>
-                )
-            ) : (
-                <div style={{textAlign:'center', padding:'50px', border:'2px dashed #333', borderRadius:'8px', color:'#666'}}>
-                Les brackets apparaîtront une fois le tournoi lancé.
-                </div>
-            )}
+            <TournamentBracket
+              matches={matches}
+              format={tournoi.format}
+              onMatchClick={handleMatchClick}
+            />
         </div>
       </div>
 
@@ -1302,61 +1043,4 @@ export default function Tournament({ session }) {
       </div>
     </DashboardLayout>
   );
-}
-
-// Petit sous-composant pour alléger le rendu (Render pur)
-function MatchCard({ match, onClick, _isOwner }) {
-    const hasDisqualified = match.p1_disqualified || match.p2_disqualified;
-    const isCompleted = match.status === 'completed';
-    const isScheduled = match.scheduled_at && !isCompleted;
-    
-    return (
-        <div onClick={()=>onClick(match)} style={{
-            width:'240px', 
-            background: hasDisqualified ? '#3a1a1a' : (match.bracket_type === 'losers' ? '#1a1a1a' : '#252525'), 
-            border: hasDisqualified ? '1px solid #e74c3c' : (isCompleted ? '1px solid #4ade80' : (isScheduled ? '1px solid #3498db' : '1px solid #444')), 
-            borderRadius:'8px', 
-            cursor: 'pointer', 
-            position:'relative',
-            opacity: hasDisqualified ? 0.7 : 1
-        }}>
-            {/* Badge Date planifiée */}
-            {isScheduled && (
-                <div style={{
-                    position: 'absolute',
-                    top: '5px',
-                    right: '5px',
-                    background: '#3498db',
-                    color: 'white',
-                    padding: '3px 8px',
-                    borderRadius: '3px',
-                    fontSize: '0.7rem',
-                    fontWeight: 'bold',
-                    zIndex: 10
-                }}>
-                    📅 {new Date(match.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-            )}
-            {/* J1 */}
-            <div style={{padding:'10px', display:'flex', justifyContent:'space-between', alignItems:'center', background: match.score_p1 > match.score_p2 ? '#2f3b2f' : 'transparent', borderRadius:'8px 8px 0 0'}}>
-                <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>
-                    {match.player1_id && <img loading="lazy" src={match.p1_avatar} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="" />}
-                    <span style={{fontSize:'0.9rem', whiteSpace:'nowrap', textDecoration: match.p1_disqualified ? 'line-through' : 'none', color: match.p1_disqualified ? '#e74c3c' : 'white'}}>
-                        {match.p1_name.split(' [')[0]}
-                    </span>
-                </div>
-                <span style={{fontWeight:'bold'}}>{match.score_p1}</span>
-            </div>
-            {/* J2 */}
-            <div style={{padding:'10px', display:'flex', justifyContent:'space-between', alignItems:'center', background: match.score_p2 > match.score_p1 ? '#2f3b2f' : 'transparent', borderRadius:'0 0 8px 8px', borderTop:'1px solid #333'}}>
-                <div style={{display:'flex', alignItems:'center', gap:'8px', overflow:'hidden'}}>
-                    {match.player2_id && <img loading="lazy" src={match.p2_avatar} style={{width:'20px', height:'20px', borderRadius:'50%'}} alt="" />}
-                    <span style={{fontSize:'0.9rem', whiteSpace:'nowrap', textDecoration: match.p2_disqualified ? 'line-through' : 'none', color: match.p2_disqualified ? '#e74c3c' : 'white'}}>
-                        {match.p2_name.split(' [')[0]}
-                    </span>
-                </div>
-                <span style={{fontWeight:'bold'}}>{match.score_p2}</span>
-            </div>
-        </div>
-    );
 }

@@ -9,6 +9,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
 
   useEffect(() => {
     fetchTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const fetchTemplates = async () => {

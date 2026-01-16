@@ -17,6 +17,7 @@ export default function OrganizerDashboard({ session }) {
 
   useEffect(() => {
     fetchMyTournaments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const fetchMyTournaments = async () => {

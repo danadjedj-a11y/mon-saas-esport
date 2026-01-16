@@ -20,12 +20,14 @@ export default function PublicTeam({ session }) {
 
   useEffect(() => {
     loadTeam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId]);
 
   useEffect(() => {
     if (session?.user?.id && teamId) {
       checkFollowStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, teamId]);
 
   const loadTeam = async () => {

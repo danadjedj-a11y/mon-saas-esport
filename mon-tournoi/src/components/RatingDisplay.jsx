@@ -7,6 +7,7 @@ export default function RatingDisplay({ tournamentId }) {
 
   useEffect(() => {
     fetchRating();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchRating = async () => {

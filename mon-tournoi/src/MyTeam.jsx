@@ -134,6 +134,7 @@ export default function MyTeam() {
     if (selectedTeamId) {
       loadPendingInvitations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTeamId]);
 
   const loadPendingInvitations = async () => {

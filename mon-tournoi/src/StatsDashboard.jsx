@@ -22,6 +22,7 @@ export default function StatsDashboard({ session, supabase }) {
     if (session) {
       fetchMyTeams();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function StatsDashboard({ session, supabase }) {
       setCurrentPage(1); // Réinitialiser la page quand on change d'équipe
       fetchTeamStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTeam]);
 
   // Calculer les tournois paginés

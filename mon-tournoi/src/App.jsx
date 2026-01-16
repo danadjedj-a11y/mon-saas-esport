@@ -8,7 +8,6 @@ import { getUserRole } from './utils/userRole';
 import { toast } from './utils/toast';
 import analytics from './utils/analytics';
 import monitoring from './utils/monitoring';
-import logger from './utils/logger';
 import './i18n/config'; // Initialiser i18n
 
 // Lazy loading des composants pour améliorer les performances

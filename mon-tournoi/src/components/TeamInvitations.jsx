@@ -18,6 +18,7 @@ const TeamInvitations = ({ userId, onUpdate }) => {
     if (userId) {
       loadInvitations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const loadInvitations = async () => {

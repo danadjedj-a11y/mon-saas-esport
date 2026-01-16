@@ -14,6 +14,7 @@ export default function BadgeDisplay({ userId, _session, compact = false }) {
       fetchBadges();
       fetchUserLevel();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const fetchBadges = async () => {

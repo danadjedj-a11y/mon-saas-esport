@@ -23,6 +23,7 @@ export default function TeamJoinButton({ tournamentId, supabase, session, onJoin
       checkRegistration();
       fetchMyTeams();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, tournamentId, tournament]);
 
   // Récupérer les infos du tournoi pour vérifier les limitations

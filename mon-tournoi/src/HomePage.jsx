@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from './supabaseClient';
 import { toast } from './utils/toast';
+import logger from './utils/logger';
 import TournamentCard from './components/TournamentCard';
 import { TournamentCardSkeleton } from './components/Skeleton';
 import { EmptyTournaments } from './components/EmptyState';
@@ -29,7 +30,7 @@ export default function HomePage() {
 
   const fetchTournaments = useCallback(async () => {
     if (isFetchingRef.current) {
-      console.log('⏸️ Chargement déjà en cours, ignoré');
+      logger.debug('Chargement déjà en cours, ignoré');
       return;
     }
     
@@ -37,7 +38,7 @@ export default function HomePage() {
     setLoading(true);
     
     try {
-      console.log('🔄 Chargement des tournois...');
+      logger.debug('Chargement des tournois...');
       
       const { data, error } = await supabase
         .from('tournaments')
@@ -46,15 +47,15 @@ export default function HomePage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Erreur chargement tournois:', error);
+        logger.error('Erreur chargement tournois', error);
         toast.error(`Erreur: ${error.message}`);
         setAllTournaments([]);
       } else {
-        console.log('✅ Tournois chargés:', data?.length || 0);
+        logger.debug('Tournois chargés', { count: data?.length || 0 });
         setAllTournaments(data || []);
       }
     } catch (err) {
-      console.error('❌ Erreur lors du chargement des tournois:', err.message || err);
+      logger.error('Erreur lors du chargement des tournois', { message: err.message });
       toast.error(`Erreur de chargement: ${err.message || 'Erreur inconnue'}`);
       setAllTournaments([]);
     } finally {
@@ -87,6 +88,7 @@ export default function HomePage() {
       if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Récupérer les jeux uniques pour le filtre

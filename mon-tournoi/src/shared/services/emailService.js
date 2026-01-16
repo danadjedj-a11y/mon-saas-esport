@@ -22,8 +22,11 @@ const EMAIL_CONFIG = {
  */
 const sendToMakeWebhook = async (data) => {
   if (!MAKE_WEBHOOK_URL) {
-    console.warn('⚠️ VITE_MAKE_WEBHOOK_URL non configuré - Email non envoyé');
-    console.log('📧 Données email (mode dev):', data);
+    // En développement, on log les données email au lieu d'envoyer
+    if (import.meta.env?.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('📧 [DEV] Données email:', data);
+    }
     return { success: true, mode: 'dev' };
   }
 
@@ -40,10 +43,9 @@ const sendToMakeWebhook = async (data) => {
       throw new Error(`Make.com webhook error: ${response.status}`);
     }
 
-    console.log('✅ Email envoyé via Make.com');
     return { success: true };
   } catch (error) {
-    console.error('❌ Erreur webhook Make.com:', error);
+    // En production, on capture l'erreur silencieusement
     return { success: false, error };
   }
 };

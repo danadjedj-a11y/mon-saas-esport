@@ -26,6 +26,7 @@ export default function GamingAccountsSection({ session }) {
     if (session?.user?.id) {
       loadAccounts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const loadAccounts = async () => {

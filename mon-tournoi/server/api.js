@@ -335,7 +335,7 @@ export default function apiRouter(req, res, next) {
   }
 
   // Parser l'URL: /api/tournament/{id}/{endpoint}
-  const match = req.url.match(/^\/api\/tournament\/([^\/]+)\/([^\/]+)$/);
+  const match = req.url.match(/^\/api\/tournament\/([^/]+)\/([^/]+)$/);
   if (!match) {
     next(); // Passer au middleware suivant si ce n'est pas une route API
     return;

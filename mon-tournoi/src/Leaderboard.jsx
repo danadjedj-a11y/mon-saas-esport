@@ -27,6 +27,7 @@ export default function Leaderboard({ session, supabase }) {
       setCurrentLevelPage(1); // Réinitialiser la page quand on change de tab
       fetchLevelLeaderboard();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, gameFilter, activeTab]);
 
   // Calculer les données paginées pour les équipes

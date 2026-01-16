@@ -96,6 +96,7 @@ export default function MatchDetails({ session }) {
     if (id) {
       fetchMatchDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchMatchDetails = async () => {

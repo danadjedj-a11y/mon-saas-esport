@@ -16,6 +16,7 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
 
     checkFollowStatus();
     fetchFollowersCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, tournamentId, teamId, type]);
 
   const checkFollowStatus = async () => {
