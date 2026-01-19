@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import TeamJoinButton from '../../TeamJoinButton';
-import { supabase } from '../../supabaseClient';
+import { TournamentRegistration } from '../registration';
 import { getFormatLabel } from './TournamentHeader';
 
 export default function TournamentOverview({ 
@@ -65,34 +64,15 @@ export default function TournamentOverview({
         )}
       </div>
 
-      {/* BOUTON D'INSCRIPTION */}
+      {/* BOUTON D'INSCRIPTION - Nouveau système avec équipe temporaire */}
       {tournoi.status === 'draft' && (
-        <div className="mt-8 bg-gradient-to-br from-violet-600 to-cyan-500 p-6 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/40">
-          <h3 className="m-0 mb-4 text-white text-2xl font-handwriting">
-            🎯 Inscription au Tournoi
-          </h3>
-          {session ? (
-            <TeamJoinButton 
-              tournamentId={tournamentId} 
-              supabase={supabase} 
-              session={session} 
-              onJoinSuccess={onRefetch} 
-              tournament={tournoi} 
-            />
-          ) : (
-            <div>
-              <p className="m-0 mb-4 text-white text-sm font-display">
-                Connectez-vous pour vous inscrire à ce tournoi avec votre équipe
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/auth')}
-                className="px-8 py-3 bg-gray-900 text-white border-2 border-cyan-400 rounded-lg cursor-pointer font-handwriting text-base uppercase tracking-wider transition-all duration-300 hover:bg-cyan-500 hover:border-violet-500 hover:-translate-y-0.5"
-              >
-                🔐 Se Connecter
-              </button>
-            </div>
-          )}
+        <div className="mt-8">
+          <TournamentRegistration
+            tournamentId={tournamentId}
+            tournament={tournoi}
+            session={session}
+            onSuccess={onRefetch}
+          />
         </div>
       )}
 

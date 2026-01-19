@@ -98,6 +98,47 @@
     "noTeam": "No team",
     "noTeamDesc": "Create your first team or join an existing team to start playing!"
   },
+  "registration": {
+    "title": "Tournament Registration",
+    "chooseType": "How would you like to register?",
+    "chooseTypeDesc": "Choose the registration method that suits you",
+    "existingTeam": "Existing team",
+    "existingTeamDesc": "Register a team you are the captain of",
+    "temporaryTeam": "Temporary team",
+    "temporaryTeamDesc": "Create a team only for this tournament",
+    "selectTeam": "Select your team",
+    "createTemporary": "Create a temporary team",
+    "noTeam": "You don't have a team",
+    "createPermanent": "Create a permanent team",
+    "teamInfo": "Team information",
+    "teamName": "Team name",
+    "teamTag": "Tag (optional)",
+    "contactEmail": "Contact email",
+    "discordContact": "Discord (optional)",
+    "logoUrl": "Logo URL (optional)",
+    "players": "Team players",
+    "addPlayer": "Add a player",
+    "playerName": "Username",
+    "playerEmail": "Email (optional)",
+    "gameAccount": "Game account",
+    "role": "Role",
+    "temporaryInfo": "This team exists only for this tournament. After the tournament, you can convert it to a permanent team if you wish.",
+    "confirmRegistration": "Confirm registration",
+    "createAndRegister": "Create and register",
+    "spotsLeft": "{{count}} spot(s) left",
+    "tournamentFull": "Full",
+    "joinWaitlist": "Join the waitlist",
+    "alreadyRegistered": "You are registered!",
+    "registrationsClosed": "Registrations closed",
+    "features": {
+      "configured": "Team already configured",
+      "permanentMembers": "Permanent members",
+      "existingInfo": "Logo and existing information",
+      "quick": "Quick and simple",
+      "oneTime": "Perfect for one-time teams",
+      "convertible": "Can be converted to a permanent team"
+    }
+  },
   "match": {
     "title": "Match",
     "vs": "VS",
@@ -229,6 +270,39 @@
     "updated": "Updated successfully",
     "joined": "Joined successfully",
     "left": "Left successfully"
+  },
+  "play": {
+    "home": {
+      "title": "Find your next tournament",
+      "subtitle": "Discover and participate in the best esports tournaments",
+      "searchPlaceholder": "Search for a game, tournament or team...",
+      "featured": "Featured tournaments",
+      "popularGames": "Popular games",
+      "viewAllGames": "View all games",
+      "upcomingTournaments": "Upcoming tournaments",
+      "viewAllTournaments": "View all tournaments",
+      "viewTournament": "View tournament",
+      "noTournaments": "No upcoming tournaments",
+      "noTournamentsDesc": "Check back soon for new tournaments!",
+      "cta": {
+        "title": "Ready to join the competition?",
+        "subtitle": "Sign up for free and participate in the best esports tournaments",
+        "register": "Create an account",
+        "browse": "Browse games"
+      }
+    },
+    "games": {
+      "title": "All games",
+      "searchPlaceholder": "Search for a game...",
+      "noResults": "No games found",
+      "noResultsDesc": "Try adjusting your search filters",
+      "requestTitle": "Your game is not in the list?",
+      "requestDesc": "Contact us to add a new game to the platform"
+    },
+    "game": {
+      "overview": "Overview",
+      "tournaments": "Tournaments"
+    }
   }
 }
 

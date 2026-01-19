@@ -34,6 +34,12 @@ const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const PublicTeam = lazy(() => import('./pages/PublicTeam'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
+// Pages Play (côté joueur public)
+const PlayHome = lazy(() => import('./pages/play/PlayHome'));
+const GamesDirectory = lazy(() => import('./pages/play/GamesDirectory'));
+const GamePage = lazy(() => import('./pages/play/GamePage'));
+const SearchResults = lazy(() => import('./pages/play/SearchResults'));
+
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-dark">
@@ -446,6 +452,12 @@ function App() {
         
         {/* Route racine - Page publique d'accueil */}
         <Route path="/" element={<HomePage />} />
+        
+        {/* ROUTES PLAY - Navigation joueur public */}
+        <Route path="/play" element={<PlayHome session={session} />} />
+        <Route path="/play/games" element={<GamesDirectory session={session} />} />
+        <Route path="/play/games/:gameSlug" element={<GamePage session={session} />} />
+        <Route path="/play/search" element={<SearchResults session={session} />} />
         
         {/* Route de connexion/authentification */}
         <Route path="/auth" element={<Auth />} />

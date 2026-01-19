@@ -50,14 +50,34 @@ export default function PublicTournament() {
   const matches = useMemo(() => {
     if (!rawMatches || !participants || rawMatches.length === 0) return [];
     
-    const participantsMap = new Map(participants.map(p => [p.team_id, p]));
+    // Supporter équipes permanentes ET temporaires
+    const participantsMap = new Map();
+    participants.forEach(p => {
+      if (p.team_id) participantsMap.set(p.team_id, p);
+      if (p.temporary_team_id) participantsMap.set(p.temporary_team_id, p);
+    });
     
     return rawMatches.map(match => {
       const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
       const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
       
-      const getTeamName = (p) => p ? `${p.teams?.name || 'Inconnu'} [${p.teams?.tag || '?'}]` : 'En attente';
-      const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
+      const getTeamData = (p) => {
+        if (!p) return null;
+        const isTemp = !!p.temporary_team_id && !p.team_id;
+        return isTemp ? p.temporary_teams : p.teams;
+      };
+      
+      const getTeamName = (p) => {
+        if (!p) return 'En attente';
+        const team = getTeamData(p);
+        return `${team?.name || 'Inconnu'} [${team?.tag || '?'}]`;
+      };
+      
+      const getTeamLogo = (p) => {
+        const team = getTeamData(p);
+        const isTemp = p && !!p.temporary_team_id && !p.team_id;
+        return team?.logo_url || `https://ui-avatars.com/api/?name=${team?.tag || '?'}&background=${isTemp ? '06B6D4' : '8B5CF6'}&size=64`;
+      };
 
       return {
         ...match,

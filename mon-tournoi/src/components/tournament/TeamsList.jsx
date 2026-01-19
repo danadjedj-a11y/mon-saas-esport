@@ -2,6 +2,7 @@ import React from 'react';
 
 /**
  * Liste des participants avec gestion admin
+ * Supporte les équipes permanentes ET temporaires
  */
 export default function TeamsList({
   participants,
@@ -10,6 +11,14 @@ export default function TeamsList({
   onRemove,
   onToggleCheckIn
 }) {
+  // Helper pour récupérer les données de l'équipe (permanente ou temporaire)
+  const getTeamData = (p) => {
+    const isTemp = !!p.temporary_team_id && !p.team_id;
+    return isTemp ? p.temporary_teams : p.teams;
+  };
+  
+  const isTemporaryTeam = (p) => !!p.temporary_team_id && !p.team_id;
+
   return (
     <>
       <div className="p-4 border-b border-white/5">
@@ -34,59 +43,73 @@ export default function TeamsList({
       </div>
       
       <ul className="list-none p-0 m-0 max-h-[300px] overflow-y-auto">
-        {participants.map(p => (
-          <li
-            key={p.id}
-            className={`p-3 border-b border-white/5 flex justify-between items-center ${
-              p.checked_in ? 'bg-green-900/20' : (p.disqualified ? 'bg-red-900/20' : 'bg-transparent')
-            }`}
-          >
-            <div className="flex gap-3 items-center flex-1">
-              <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-xs font-bold text-white">
-                {p.teams?.tag || '?'}
-              </div>
-              <span className={`font-body ${
-                p.disqualified ? 'text-red-400' : (p.checked_in ? 'text-green-400' : 'text-gray-300')
-              }`}>
-                {p.teams?.name || 'Inconnu'}
-              </span>
-              
-              {/* Indicateur de statut */}
-              {isOwner && tournamentStatus === 'draft' && (
-                <span className={`text-xs px-2 py-1 rounded-full text-white font-bold font-body ${
-                  p.checked_in ? 'bg-green-500' : (p.disqualified ? 'bg-red-500' : 'bg-gray-500')
+        {participants.map(p => {
+          const team = getTeamData(p);
+          const isTemp = isTemporaryTeam(p);
+          
+          return (
+            <li
+              key={p.id}
+              className={`p-3 border-b border-white/5 flex justify-between items-center ${
+                p.checked_in ? 'bg-green-900/20' : (p.disqualified ? 'bg-red-900/20' : 'bg-transparent')
+              }`}
+            >
+              <div className="flex gap-3 items-center flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                  isTemp ? 'bg-cyan-500/50' : 'bg-black/50'
                 }`}>
-                  {p.checked_in ? '✅ Check-in' : (p.disqualified ? '❌ DQ' : '⏳ En attente')}
+                  {team?.tag?.[0] || team?.name?.[0] || '?'}
+                </div>
+                <span className={`font-body ${
+                  p.disqualified ? 'text-red-400' : (p.checked_in ? 'text-green-400' : 'text-gray-300')
+                }`}>
+                  {team?.name || 'Inconnu'}
                 </span>
-              )}
-            </div>
-            
-            {isOwner && (
-              <div className="flex gap-2 items-center">
-                {tournamentStatus === 'draft' && onToggleCheckIn && (
-                  <button
-                    onClick={() => onToggleCheckIn(p.id, p.checked_in)}
-                    className={`px-3 py-1 text-white border-none rounded-lg cursor-pointer text-xs font-bold transition-all duration-300 hover:scale-105 ${
-                      p.checked_in ? 'bg-orange-500' : 'bg-green-500'
-                    }`}
-                    title={p.checked_in ? 'Retirer le check-in' : 'Valider le check-in'}
-                  >
-                    {p.checked_in ? '↩️ Retirer' : '✅ Check-in'}
-                  </button>
+                
+                {/* Badge équipe temporaire */}
+                {isTemp && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold">
+                    TEMP
+                  </span>
                 )}
-                {onRemove && (
-                  <button
-                    onClick={() => onRemove(p.id)}
-                    className="text-red-400 bg-none border-none cursor-pointer text-xl hover:text-red-500 transition-colors"
-                    title="Exclure cette équipe"
-                  >
-                    ✕
-                  </button>
+                
+                {/* Indicateur de statut */}
+                {isOwner && tournamentStatus === 'draft' && (
+                  <span className={`text-xs px-2 py-1 rounded-full text-white font-bold font-body ${
+                    p.checked_in ? 'bg-green-500' : (p.disqualified ? 'bg-red-500' : 'bg-gray-500')
+                  }`}>
+                    {p.checked_in ? '✅ Check-in' : (p.disqualified ? '❌ DQ' : '⏳ En attente')}
+                  </span>
                 )}
               </div>
-            )}
-          </li>
-        ))}
+              
+              {isOwner && (
+                <div className="flex gap-2 items-center">
+                  {tournamentStatus === 'draft' && onToggleCheckIn && (
+                    <button
+                      onClick={() => onToggleCheckIn(p.id, p.checked_in)}
+                      className={`px-3 py-1 text-white border-none rounded-lg cursor-pointer text-xs font-bold transition-all duration-300 hover:scale-105 ${
+                        p.checked_in ? 'bg-orange-500' : 'bg-green-500'
+                      }`}
+                      title={p.checked_in ? 'Retirer le check-in' : 'Valider le check-in'}
+                    >
+                      {p.checked_in ? '↩️ Retirer' : '✅ Check-in'}
+                    </button>
+                  )}
+                  {onRemove && (
+                    <button
+                      onClick={() => onRemove(p.id)}
+                      className="text-red-400 bg-none border-none cursor-pointer text-xl hover:text-red-500 transition-colors"
+                      title="Exclure cette équipe"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </>
   );

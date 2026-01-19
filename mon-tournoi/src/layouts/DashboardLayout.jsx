@@ -35,6 +35,7 @@ export default function DashboardLayout({ children, session = null }) {
 
   const navLinks = [
     { path: '/', label: 'Accueil', icon: '🏠', public: true },
+    { path: '/play', label: 'Explorer', icon: '🎮', public: true },
     { path: '/player/dashboard', label: 'Tableau de Bord', icon: '📊', requiresAuth: true },
     { path: '/organizer/dashboard', label: 'Organisateur', icon: '🎯', requiresAuth: true, requiresRole: 'organizer' },
     { path: '/create-tournament', label: 'Créer un Tournoi', icon: '➕', requiresAuth: true, requiresRole: 'organizer' },
