@@ -46,6 +46,16 @@ const TournamentOverview = lazy(() => import('./pages/organizer/TournamentOvervi
 const TournamentStructure = lazy(() => import('./pages/organizer/TournamentStructure'));
 const BracketEditor = lazy(() => import('./components/bracket/BracketEditor'));
 const SettingsGeneral = lazy(() => import('./pages/organizer/settings/SettingsGeneral'));
+const SettingsAppearance = lazy(() => import('./pages/organizer/settings/SettingsAppearance'));
+const SettingsDiscipline = lazy(() => import('./pages/organizer/settings/SettingsDiscipline'));
+const SettingsMatch = lazy(() => import('./pages/organizer/settings/SettingsMatch'));
+const SettingsRegistration = lazy(() => import('./pages/organizer/settings/SettingsRegistration'));
+const SettingsParticipant = lazy(() => import('./pages/organizer/settings/SettingsParticipant'));
+const SettingsCustomFields = lazy(() => import('./pages/organizer/settings/SettingsCustomFields'));
+const SettingsLocations = lazy(() => import('./pages/organizer/settings/SettingsLocations'));
+const SettingsLanguages = lazy(() => import('./pages/organizer/settings/SettingsLanguages'));
+const SettingsPermissions = lazy(() => import('./pages/organizer/settings/SettingsPermissions'));
+const SettingsOperations = lazy(() => import('./pages/organizer/settings/SettingsOperations'));
 
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
@@ -511,16 +521,16 @@ function App() {
           
           {/* Settings */}
           <Route path="settings/general" element={<SettingsGeneral />} />
-          <Route path="settings/appearance" element={<PlaceholderPage title="Apparence" />} />
-          <Route path="settings/discipline" element={<PlaceholderPage title="Discipline" />} />
-          <Route path="settings/match" element={<PlaceholderPage title="Paramètres de match" />} />
-          <Route path="settings/registration" element={<PlaceholderPage title="Inscriptions" />} />
-          <Route path="settings/participant" element={<PlaceholderPage title="Participant" />} />
-          <Route path="settings/custom-fields" element={<PlaceholderPage title="Champs personnalisés" />} />
-          <Route path="settings/locations" element={<PlaceholderPage title="Emplacements de match" />} />
-          <Route path="settings/languages" element={<PlaceholderPage title="Langues" />} />
-          <Route path="settings/permissions" element={<PlaceholderPage title="Permissions" />} />
-          <Route path="settings/operations" element={<PlaceholderPage title="Opérations globales" />} />
+          <Route path="settings/appearance" element={<SettingsAppearance />} />
+          <Route path="settings/discipline" element={<SettingsDiscipline />} />
+          <Route path="settings/match" element={<SettingsMatch />} />
+          <Route path="settings/registration" element={<SettingsRegistration />} />
+          <Route path="settings/participant" element={<SettingsParticipant />} />
+          <Route path="settings/custom-fields" element={<SettingsCustomFields />} />
+          <Route path="settings/locations" element={<SettingsLocations />} />
+          <Route path="settings/languages" element={<SettingsLanguages />} />
+          <Route path="settings/permissions" element={<SettingsPermissions />} />
+          <Route path="settings/operations" element={<SettingsOperations />} />
           
           {/* Participants */}
           <Route path="participants" element={<PlaceholderPage title="Liste des participants" />} />
