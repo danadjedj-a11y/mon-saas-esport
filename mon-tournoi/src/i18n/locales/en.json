@@ -303,6 +303,96 @@
       "overview": "Overview",
       "tournaments": "Tournaments"
     }
+  },
+  "organizer": {
+    "title": "Organizer",
+    "overview": "Overview",
+    "settings": {
+      "title": "Settings",
+      "general": "General",
+      "appearance": "Appearance",
+      "discipline": "Discipline",
+      "match": "Match",
+      "registration": "Registration",
+      "participant": "Participant",
+      "customFields": "Custom fields",
+      "locations": "Match locations",
+      "languages": "Languages",
+      "permissions": "Permissions",
+      "operations": "Global operations"
+    },
+    "structure": {
+      "title": "Structure",
+      "createPhase": "Create a new phase",
+      "configure": "Configure",
+      "editBracket": "Edit bracket",
+      "deletePhase": "Delete phase",
+      "chooseMatchType": "Choose a match type",
+      "choosePhaseType": "Choose a phase type",
+      "configurePhase": "Configure the phase",
+      "duel": "Duel",
+      "duelDesc": "Matches involving two participants (players or teams)",
+      "ffa": "FFA",
+      "ffaDesc": "Matches involving more than two participants",
+      "elimination": "Single elimination",
+      "eliminationDesc": "Bracket where participants are eliminated after one loss.",
+      "doubleElimination": "Double elimination",
+      "doubleEliminationDesc": "Bracket where a participant must lose twice to be eliminated.",
+      "gauntlet": "Gauntlet",
+      "gauntletDesc": "Lower-seeded participants progressively face higher-seeded opponents.",
+      "groups": "Bracket groups",
+      "groupsDesc": "Groups where participants play in small brackets.",
+      "custom": "Custom bracket",
+      "customDesc": "Bracket where participant progression can be customized.",
+      "roundRobin": "Round-robin groups",
+      "roundRobinDesc": "Small groups where participants face all opponents.",
+      "league": "League system",
+      "leagueDesc": "Large divisions with multiple match days.",
+      "swiss": "Swiss system",
+      "swissDesc": "Participants face opponents with similar results.",
+      "phaseNumber": "Number",
+      "phaseSize": "Size",
+      "phaseName": "Name",
+      "grandFinal": "Enable Grand Final?",
+      "grandFinalSimple": "Simple",
+      "grandFinalDouble": "Double",
+      "grandFinalNone": "None",
+      "skipFirstRound": "Skip first round?",
+      "general": "General",
+      "advanced": "Advanced",
+      "placement": "Placement",
+      "matchSettings": "Match settings"
+    },
+    "participants": {
+      "title": "Participants",
+      "list": "List",
+      "bulkEdit": "Bulk edit",
+      "export": "Export"
+    },
+    "placement": {
+      "title": "Placement",
+      "overview": "Overview",
+      "autoPlace": "Auto-place by seeding",
+      "reset": "Reset"
+    },
+    "matches": {
+      "title": "Matches",
+      "overview": "Overview"
+    },
+    "standings": {
+      "title": "Final standings"
+    },
+    "sharing": {
+      "title": "Sharing",
+      "public": "Public page",
+      "widgets": "Widgets",
+      "tv": "Mon-Tournoi TV"
+    },
+    "sponsors": {
+      "title": "Sponsors"
+    },
+    "streams": {
+      "title": "Streams"
+    }
   }
 }
-

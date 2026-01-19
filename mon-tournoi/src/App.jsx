@@ -40,6 +40,13 @@ const GamesDirectory = lazy(() => import('./pages/play/GamesDirectory'));
 const GamePage = lazy(() => import('./pages/play/GamePage'));
 const SearchResults = lazy(() => import('./pages/play/SearchResults'));
 
+// Pages Organizer (nouvelle interface organisateur)
+const OrganizerLayout = lazy(() => import('./layouts/OrganizerLayout'));
+const TournamentOverview = lazy(() => import('./pages/organizer/TournamentOverview'));
+const TournamentStructure = lazy(() => import('./pages/organizer/TournamentStructure'));
+const BracketEditor = lazy(() => import('./components/bracket/BracketEditor'));
+const SettingsGeneral = lazy(() => import('./pages/organizer/settings/SettingsGeneral'));
+
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-dark">
@@ -74,6 +81,18 @@ const AuthLoadingSpinner = () => (
       </p>
       <div className="w-10 h-10 border-3 border-glass-border border-t-violet rounded-full animate-spin mx-auto" />
     </div>
+  </div>
+);
+
+// Composant placeholder pour les pages en cours de développement
+const PlaceholderPage = ({ title }) => (
+  <div className="text-center py-16">
+    <div className="w-20 h-20 mx-auto mb-6 bg-violet/20 rounded-2xl flex items-center justify-center text-4xl">
+      🚧
+    </div>
+    <h1 className="text-2xl font-display font-bold text-white mb-2">{title}</h1>
+    <p className="text-gray-400 mb-6">Cette fonctionnalité est en cours de développement</p>
+    <p className="text-sm text-gray-500">Revenez bientôt pour découvrir les nouvelles fonctionnalités !</p>
   </div>
 );
 
@@ -473,7 +492,64 @@ function App() {
             </OrganizerRoute>
           ) : <Navigate to="/auth" />
         } />
+        
+        {/* NOUVELLE Interface Organizer avec OrganizerLayout */}
         <Route path="/organizer/tournament/:id" element={
+          session ? (
+            <OrganizerRoute session={session}>
+              <OrganizerLayout session={session} />
+            </OrganizerRoute>
+          ) : <Navigate to="/auth" />
+        }>
+          {/* Vue d'ensemble */}
+          <Route index element={<TournamentOverview />} />
+          
+          {/* Structure */}
+          <Route path="structure" element={<TournamentStructure />} />
+          <Route path="structure/:phaseId/bracket" element={<BracketEditor />} />
+          <Route path="structure/:phaseId/settings" element={<SettingsGeneral />} />
+          
+          {/* Settings */}
+          <Route path="settings/general" element={<SettingsGeneral />} />
+          <Route path="settings/appearance" element={<PlaceholderPage title="Apparence" />} />
+          <Route path="settings/discipline" element={<PlaceholderPage title="Discipline" />} />
+          <Route path="settings/match" element={<PlaceholderPage title="Paramètres de match" />} />
+          <Route path="settings/registration" element={<PlaceholderPage title="Inscriptions" />} />
+          <Route path="settings/participant" element={<PlaceholderPage title="Participant" />} />
+          <Route path="settings/custom-fields" element={<PlaceholderPage title="Champs personnalisés" />} />
+          <Route path="settings/locations" element={<PlaceholderPage title="Emplacements de match" />} />
+          <Route path="settings/languages" element={<PlaceholderPage title="Langues" />} />
+          <Route path="settings/permissions" element={<PlaceholderPage title="Permissions" />} />
+          <Route path="settings/operations" element={<PlaceholderPage title="Opérations globales" />} />
+          
+          {/* Participants */}
+          <Route path="participants" element={<PlaceholderPage title="Liste des participants" />} />
+          <Route path="participants/bulk-edit" element={<PlaceholderPage title="Éditer tous les participants" />} />
+          <Route path="participants/export" element={<PlaceholderPage title="Exporter les participants" />} />
+          
+          {/* Placement */}
+          <Route path="placement" element={<PlaceholderPage title="Placement - Vue d'ensemble" />} />
+          <Route path="placement/:phaseId" element={<PlaceholderPage title="Placement de phase" />} />
+          
+          {/* Matchs */}
+          <Route path="matches" element={<PlaceholderPage title="Matchs - Vue d'ensemble" />} />
+          <Route path="matches/:phaseId" element={<PlaceholderPage title="Matchs de phase" />} />
+          
+          {/* Classement final */}
+          <Route path="final-standings" element={<PlaceholderPage title="Classement final" />} />
+          
+          {/* Partage */}
+          <Route path="sharing/public" element={<PlaceholderPage title="Page publique" />} />
+          <Route path="sharing/widgets" element={<PlaceholderPage title="Widgets" />} />
+          <Route path="sharing/tv" element={<PlaceholderPage title="Mon-Tournoi TV" />} />
+          
+          {/* Sponsors & Streams */}
+          <Route path="sponsors" element={<PlaceholderPage title="Sponsors" />} />
+          <Route path="streams" element={<PlaceholderPage title="Streams" />} />
+        </Route>
+        
+        {/* Route legacy pour Tournament (ancien système) */}
+        <Route path="/organizer/tournament/:id/legacy" element={
           session ? (
             <OrganizerRoute session={session}>
               <Tournament session={session} />

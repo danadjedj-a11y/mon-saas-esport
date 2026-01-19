@@ -303,6 +303,96 @@
       "overview": "Vue d'ensemble",
       "tournaments": "Tournois"
     }
+  },
+  "organizer": {
+    "title": "Organizer",
+    "overview": "Vue d'ensemble",
+    "settings": {
+      "title": "Paramètres",
+      "general": "Général",
+      "appearance": "Apparence",
+      "discipline": "Discipline",
+      "match": "Match",
+      "registration": "Inscriptions",
+      "participant": "Participant",
+      "customFields": "Champs personnalisés",
+      "locations": "Emplacements de match",
+      "languages": "Langues",
+      "permissions": "Permissions",
+      "operations": "Opérations globales"
+    },
+    "structure": {
+      "title": "Structure",
+      "createPhase": "Créer une nouvelle phase",
+      "configure": "Configurer",
+      "editBracket": "Modifier l'arbre",
+      "deletePhase": "Supprimer la phase",
+      "chooseMatchType": "Choisir un type de match",
+      "choosePhaseType": "Choisir un type de phase",
+      "configurePhase": "Configurez la phase",
+      "duel": "Duel",
+      "duelDesc": "Les matchs impliquant deux participants (joueurs ou équipes)",
+      "ffa": "FFA",
+      "ffaDesc": "Les matchs impliquant plus de deux participants",
+      "elimination": "Élimination directe",
+      "eliminationDesc": "Arbre dans lequel les participants sont éliminés après une défaite.",
+      "doubleElimination": "Double élimination",
+      "doubleEliminationDesc": "Arbre dans lequel un participant doit perdre deux matchs pour être éliminé.",
+      "gauntlet": "Gauntlet",
+      "gauntletDesc": "Les participants moins bien classés rencontrent progressivement des adversaires mieux classés.",
+      "groups": "Groupes d'arbres",
+      "groupsDesc": "Groupes dans lesquels les participants jouent dans de petits arbres.",
+      "custom": "Arbre personnalisé",
+      "customDesc": "Arbre dans lequel la progression des participants peut être personnalisée.",
+      "roundRobin": "Groupes round-robin",
+      "roundRobinDesc": "Petits groupes où les participants affrontent tous les adversaires.",
+      "league": "Système de ligue",
+      "leagueDesc": "Grandes divisions avec plusieurs journées.",
+      "swiss": "Système suisse",
+      "swissDesc": "Les participants affrontent des adversaires avec des résultats similaires.",
+      "phaseNumber": "Numéro",
+      "phaseSize": "Taille",
+      "phaseName": "Nom",
+      "grandFinal": "Activer la Grande Finale ?",
+      "grandFinalSimple": "Simple",
+      "grandFinalDouble": "Double",
+      "grandFinalNone": "Aucune",
+      "skipFirstRound": "Passer le premier tour ?",
+      "general": "Général",
+      "advanced": "Avancé",
+      "placement": "Placement",
+      "matchSettings": "Paramètres de match"
+    },
+    "participants": {
+      "title": "Participants",
+      "list": "Liste",
+      "bulkEdit": "Éditer tous",
+      "export": "Exporter"
+    },
+    "placement": {
+      "title": "Placement",
+      "overview": "Vue d'ensemble",
+      "autoPlace": "Auto-placer selon seeding",
+      "reset": "Réinitialiser"
+    },
+    "matches": {
+      "title": "Matchs",
+      "overview": "Vue d'ensemble"
+    },
+    "standings": {
+      "title": "Classement final"
+    },
+    "sharing": {
+      "title": "Partage",
+      "public": "Page publique",
+      "widgets": "Widgets",
+      "tv": "Mon-Tournoi TV"
+    },
+    "sponsors": {
+      "title": "Sponsors"
+    },
+    "streams": {
+      "title": "Streams"
+    }
   }
 }
-
