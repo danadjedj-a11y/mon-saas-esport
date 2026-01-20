@@ -32,6 +32,7 @@ const StreamDashboard = lazy(() => import('./stream/StreamDashboard'));
 const TournamentAPI = lazy(() => import('./api/TournamentAPI'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const PublicTeam = lazy(() => import('./pages/PublicTeam'));
+const TournamentRegister = lazy(() => import('./pages/tournament/TournamentRegister'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Pages Play (côté joueur public)
@@ -79,10 +80,12 @@ const Streams = lazy(() => import('./pages/organizer/share/Streams'));
 const SharingPublic = lazy(() => import('./pages/organizer/sharing/SharingPublic'));
 const SharingTV = lazy(() => import('./pages/organizer/sharing/SharingTV'));
 // Embed Widgets
+const EmbedTournament = lazy(() => import('./pages/embed/EmbedTournament'));
 const EmbedBracket = lazy(() => import('./pages/embed/EmbedBracket'));
 const EmbedParticipants = lazy(() => import('./pages/embed/EmbedParticipants'));
 const EmbedStandings = lazy(() => import('./pages/embed/EmbedStandings'));
 const EmbedMatches = lazy(() => import('./pages/embed/EmbedMatches'));
+const EmbedCalendar = lazy(() => import('./pages/embed/EmbedCalendar'));
 
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
@@ -498,6 +501,7 @@ function App() {
         <Routes>
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
+        <Route path="/tournament/:id/register" element={<TournamentRegister session={session} />} />
         <Route path="/player/:userId" element={<PublicProfile session={session} />} />
         <Route path="/team/:teamId" element={<PublicTeam session={session} />} />
         
@@ -507,10 +511,12 @@ function App() {
         <Route path="/api/tournament/:id/:endpoint" element={<TournamentAPI />} />
         
         {/* EMBED WIDGETS (Accessibles sans authentification) */}
+        <Route path="/embed/tournament/:id" element={<EmbedTournament />} />
         <Route path="/embed/tournament/:id/bracket" element={<EmbedBracket />} />
         <Route path="/embed/tournament/:id/participants" element={<EmbedParticipants />} />
         <Route path="/embed/tournament/:id/standings" element={<EmbedStandings />} />
         <Route path="/embed/tournament/:id/matches" element={<EmbedMatches />} />
+        <Route path="/embed/tournament/:id/calendar" element={<EmbedCalendar />} />
         
         {/* Route racine - Page publique d'accueil */}
         <Route path="/" element={<HomePage />} />
