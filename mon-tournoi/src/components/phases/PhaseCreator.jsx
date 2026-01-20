@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Button, Input } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
+import { generateBracketMatches } from '../../utils/matchGenerator';
 import clsx from 'clsx';
 
 /**
@@ -276,6 +277,16 @@ export default function PhaseCreator({ tournamentId, phaseOrder, onPhaseCreated,
         .single();
 
       if (error) throw error;
+
+      // Générer automatiquement les matchs pour cette phase
+      try {
+        const matchesGenerated = await generateBracketMatches(data, tournamentId);
+        console.log(`${matchesGenerated.length} matchs générés pour la phase`);
+      } catch (matchError) {
+        console.error('Erreur génération matchs:', matchError);
+        // On continue même si la génération échoue (la phase est créée)
+        toast.warning('Phase créée mais erreur lors de la génération des matchs');
+      }
 
       onPhaseCreated(data);
     } catch (error) {

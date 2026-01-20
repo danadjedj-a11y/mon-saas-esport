@@ -8,5 +8,4 @@ export { default as SettingsParticipant } from './SettingsParticipant';
 export { default as SettingsCustomFields } from './SettingsCustomFields';
 export { default as SettingsPermissions } from './SettingsPermissions';
 export { default as SettingsOperations } from './SettingsOperations';
-export { default as SettingsLanguages } from './SettingsLanguages';
 export { default as SettingsLocations } from './SettingsLocations';

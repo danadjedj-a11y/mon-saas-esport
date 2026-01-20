@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
-import { Button } from '../../shared/components/ui';
+import { Button, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import clsx from 'clsx';
+import PlacementManager from '../phases/PlacementManager';
+import MatchResultEditor from '../match/MatchResultEditor';
 
 /**
  * Calcule la structure du bracket en fonction du format et de la taille
@@ -206,7 +208,11 @@ export default function BracketEditor() {
   
   const [phase, setPhase] = useState(null);
   const [participants, setParticipants] = useState([]);
+  const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('bracket'); // 'bracket', 'placement', 'results'
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [showMatchEditor, setShowMatchEditor] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -238,6 +244,21 @@ export default function BracketEditor() {
       if (!participantsError && participantsData) {
         setParticipants(participantsData);
       }
+
+      // Charger les matchs de cette phase
+      const { data: matchesData, error: matchesError } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          team1:teams!matches_team1_id_fkey(id, name, logo_url),
+          team2:teams!matches_team2_id_fkey(id, name, logo_url)
+        `)
+        .eq('phase_id', phaseId)
+        .order('round_number', { ascending: true });
+
+      if (!matchesError && matchesData) {
+        setMatches(matchesData);
+      }
     } catch (error) {
       console.error('Erreur chargement:', error);
       toast.error('Erreur lors du chargement');
@@ -256,12 +277,23 @@ export default function BracketEditor() {
     );
   }, [phase]);
 
+  const handleMatchClick = (match) => {
+    setSelectedMatch(match);
+    setShowMatchEditor(true);
+  };
+
+  const handleMatchSaved = () => {
+    fetchData(); // Rafraîchir les données après sauvegarde
+    setShowMatchEditor(false);
+    setSelectedMatch(null);
+  };
+
   const handlePlaceTeam = (matchId, position, seed) => {
-    // TODO: Ouvrir modal de sélection d'équipe
     toast.info(`Placement équipe pour Seed #${seed}`);
   };
 
-  const handleAutoPlace = () => {
+  const handleAutoPlace = async () => {
+    // Implémenté via PlacementManager
     toast.success('Placement automatique selon le seeding');
   };
 
@@ -304,107 +336,248 @@ export default function BracketEditor() {
     gauntlet: 'Gauntlet',
   };
 
+  const VIEW_TABS = [
+    { id: 'bracket', label: '🏗️ Arbre', icon: '🏗️' },
+    { id: 'placement', label: '🎯 Placement', icon: '🎯' },
+    { id: 'results', label: '📊 Résultats', icon: '📊' },
+  ];
+
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="mb-4 text-sm">
-        <span className="text-gray-400">Structure</span>
-        <span className="text-gray-600 mx-2">/</span>
+      <div className="mb-4 text-sm flex items-center gap-2">
+        <button 
+          onClick={() => navigate(`/organizer/tournament/${tournamentId}/structure`)}
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          Structure
+        </button>
+        <span className="text-gray-600">/</span>
+        <span className="text-white">{phase.name}</span>
       </div>
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-display font-bold text-white mb-2">
-          Modifier l'arbre de la phase "{phase.name}"
-        </h1>
-      </div>
-
-      {/* Format Title */}
-      <div className="mb-6">
-        <h2 className="text-xl font-display font-semibold text-white">
-          {PHASE_LABELS[phase.format] || phase.format}
-        </h2>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          onClick={handleAutoPlace}
-          variant="secondary"
-          className="bg-[#2a2d3e] border-white/10 hover:bg-white/10"
-        >
-          🎲 Auto-placer selon seeding
-        </Button>
-        <Button
-          onClick={handleReset}
-          variant="secondary"
-          className="bg-[#2a2d3e] border-white/10 hover:bg-white/10"
-        >
-          ↺ Réinitialiser
-        </Button>
-      </div>
-
-      {/* Bracket View */}
-      <div className="bg-[#252836] rounded-xl p-6 overflow-x-auto">
-        <div className="flex gap-12 min-w-max">
-          {/* Winners Bracket */}
-          {bracketStructure.winnersRounds.map((round, idx) => (
-            <BracketRound 
-              key={`winners-${idx}`}
-              round={round}
-              teams={participants}
-              onPlaceTeam={handlePlaceTeam}
-            />
-          ))}
-
-          {/* Grand Final */}
-          {bracketStructure.grandFinal && (
-            <BracketRound 
-              round={bracketStructure.grandFinal}
-              teams={participants}
-              onPlaceTeam={handlePlaceTeam}
-            />
-          )}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-white mb-1">
+            Modifier l'arbre de la phase "{phase.name}"
+          </h1>
+          <p className="text-gray-400">
+            {PHASE_LABELS[phase.format] || phase.format} • {phase.config?.size || 8} équipes
+          </p>
         </div>
+        
+        <Button
+          onClick={() => navigate(`/organizer/tournament/${tournamentId}/structure/${phaseId}/settings`)}
+          variant="secondary"
+          className="bg-[#2a2d3e] border-white/10 hover:bg-white/10"
+        >
+          ⚙️ Paramètres
+        </Button>
+      </div>
 
-        {/* Losers Bracket */}
-        {bracketStructure.losersRounds.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-white/10">
+      {/* View Tabs */}
+      <div className="border-b border-white/10 mb-6">
+        <div className="flex gap-1">
+          {VIEW_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={clsx(
+                'px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px',
+                activeView === tab.id
+                  ? 'border-cyan-400 text-cyan-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Toolbar pour le bracket */}
+      {activeView === 'bracket' && (
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            onClick={handleAutoPlace}
+            variant="secondary"
+            className="bg-[#2a2d3e] border-white/10 hover:bg-white/10"
+          >
+            🎲 Auto-placer selon seeding
+          </Button>
+          <Button
+            onClick={handleReset}
+            variant="secondary"
+            className="bg-[#2a2d3e] border-white/10 hover:bg-white/10"
+          >
+            ↺ Réinitialiser
+          </Button>
+        </div>
+      )}
+
+      {/* Vue Bracket */}
+      {activeView === 'bracket' && (
+        <>
+          <div className="bg-[#252836] rounded-xl p-6 overflow-x-auto">
             <div className="flex gap-12 min-w-max">
-              {bracketStructure.losersRounds.map((round, idx) => (
+              {/* Winners Bracket */}
+              {bracketStructure.winnersRounds.map((round, idx) => (
                 <BracketRound 
-                  key={`losers-${idx}`}
+                  key={`winners-${idx}`}
                   round={round}
                   teams={participants}
                   onPlaceTeam={handlePlaceTeam}
+                  onMatchClick={handleMatchClick}
+                  matches={matches}
                 />
               ))}
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Unplaced Teams Sidebar (when we have teams to place) */}
-      {participants.length > 0 && (
-        <div className="mt-8 p-6 bg-[#2a2d3e] rounded-xl">
-          <h3 className="font-display font-semibold text-white mb-4">
-            Équipes inscrites ({participants.length})
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {participants.map((p, idx) => (
-              <div 
-                key={p.id}
-                className="bg-[#1e2235] rounded-lg p-3 border border-white/10 cursor-grab hover:border-violet/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">#{idx + 1}</span>
-                  <span className="text-sm text-white truncate">
-                    {p.team?.name || p.team_name || `Équipe ${idx + 1}`}
-                  </span>
+              {/* Grand Final */}
+              {bracketStructure.grandFinal && (
+                <BracketRound 
+                  round={bracketStructure.grandFinal}
+                  teams={participants}
+                  onPlaceTeam={handlePlaceTeam}
+                  onMatchClick={handleMatchClick}
+                  matches={matches}
+                />
+              )}
+            </div>
+
+            {/* Losers Bracket */}
+            {bracketStructure.losersRounds.length > 0 && (
+              <div className="mt-12 pt-8 border-t border-white/10">
+                <h3 className="text-orange-400 font-display text-sm mb-4">Losers Bracket</h3>
+                <div className="flex gap-12 min-w-max">
+                  {bracketStructure.losersRounds.map((round, idx) => (
+                    <BracketRound 
+                      key={`losers-${idx}`}
+                      round={round}
+                      teams={participants}
+                      onPlaceTeam={handlePlaceTeam}
+                      onMatchClick={handleMatchClick}
+                      matches={matches}
+                    />
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
+
+          {/* Équipes inscrites */}
+          {participants.length > 0 && (
+            <div className="mt-8 p-6 bg-[#2a2d3e] rounded-xl">
+              <h3 className="font-display font-semibold text-white mb-4">
+                Équipes inscrites ({participants.length})
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {participants.map((p, idx) => (
+                  <div 
+                    key={p.id}
+                    className="bg-[#1e2235] rounded-lg p-3 border border-white/10 cursor-grab hover:border-violet/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      {p.team?.logo_url ? (
+                        <img src={p.team.logo_url} alt="" className="w-5 h-5 rounded object-cover" />
+                      ) : (
+                        <span className="text-xs text-gray-500">#{idx + 1}</span>
+                      )}
+                      <span className="text-sm text-white truncate">
+                        {p.team?.name || p.team_name || `Équipe ${idx + 1}`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Vue Placement */}
+      {activeView === 'placement' && (
+        <div className="bg-[#252836] rounded-xl p-6">
+          <h3 className="font-display font-semibold text-white mb-6">
+            Placement des équipes
+          </h3>
+          <PlacementManager
+            phaseId={phaseId}
+            tournamentId={tournamentId}
+            size={phase.config?.size || 8}
+            format={phase.format}
+            onPlacementChange={fetchData}
+          />
+        </div>
+      )}
+
+      {/* Vue Résultats */}
+      {activeView === 'results' && (
+        <div className="bg-[#252836] rounded-xl p-6">
+          <h3 className="font-display font-semibold text-white mb-6">
+            Résultats des matchs
+          </h3>
+          
+          {matches.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400 mb-4">Aucun match n'a encore été créé pour cette phase.</p>
+              <p className="text-sm text-gray-500">
+                Les matchs seront générés une fois le placement des équipes terminé et la phase lancée.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {matches.map(match => (
+                <div 
+                  key={match.id}
+                  onClick={() => handleMatchClick(match)}
+                  className="flex items-center gap-4 p-4 bg-[#1e2235] rounded-lg border border-white/10 hover:border-violet/30 cursor-pointer transition-all"
+                >
+                  {/* Round info */}
+                  <div className="text-sm text-gray-500 w-24">
+                    Round {match.round_number}
+                  </div>
+                  
+                  {/* Team 1 */}
+                  <div className={clsx(
+                    'flex-1 flex items-center gap-2 p-2 rounded',
+                    match.winner_id === match.team1_id && 'bg-green-500/10'
+                  )}>
+                    {match.team1?.logo_url && (
+                      <img src={match.team1.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
+                    )}
+                    <span className="text-white">{match.team1?.name || 'TBD'}</span>
+                    <span className="ml-auto font-bold text-cyan-400">{match.team1_score ?? '-'}</span>
+                  </div>
+                  
+                  <span className="text-gray-500">VS</span>
+                  
+                  {/* Team 2 */}
+                  <div className={clsx(
+                    'flex-1 flex items-center gap-2 p-2 rounded',
+                    match.winner_id === match.team2_id && 'bg-green-500/10'
+                  )}>
+                    {match.team2?.logo_url && (
+                      <img src={match.team2.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
+                    )}
+                    <span className="text-white">{match.team2?.name || 'TBD'}</span>
+                    <span className="ml-auto font-bold text-cyan-400">{match.team2_score ?? '-'}</span>
+                  </div>
+
+                  {/* Status */}
+                  <span className={clsx(
+                    'px-2 py-1 text-xs rounded',
+                    match.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                    match.status === 'in_progress' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  )}>
+                    {match.status === 'completed' ? 'Terminé' :
+                     match.status === 'in_progress' ? 'En cours' : 'À venir'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -413,17 +586,34 @@ export default function BracketEditor() {
         <Button
           onClick={() => navigate(`/organizer/tournament/${tournamentId}/structure`)}
           variant="secondary"
+          className="bg-[#2a2d3e] border-white/10"
         >
           ← Retour à la structure
         </Button>
         
         <Button
-          onClick={() => toast.success('Bracket sauvegardé')}
+          onClick={() => toast.success('Modifications sauvegardées')}
           className="bg-gradient-to-r from-cyan-500 to-cyan-600"
         >
           💾 Sauvegarder
         </Button>
       </div>
+
+      {/* Modal éditeur de résultat */}
+      {selectedMatch && (
+        <MatchResultEditor
+          match={selectedMatch}
+          isOpen={showMatchEditor}
+          onClose={() => {
+            setShowMatchEditor(false);
+            setSelectedMatch(null);
+          }}
+          onSave={handleMatchSaved}
+          matchFormat={phase.config?.match_format || 'best_of'}
+          bestOf={phase.config?.best_of || 3}
+          fixedGames={phase.config?.fixed_games || 1}
+        />
+      )}
     </div>
   );
 }

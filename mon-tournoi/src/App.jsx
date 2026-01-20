@@ -45,6 +45,7 @@ const OrganizerLayout = lazy(() => import('./layouts/OrganizerLayout'));
 const TournamentOverview = lazy(() => import('./pages/organizer/TournamentOverview'));
 const TournamentStructure = lazy(() => import('./pages/organizer/TournamentStructure'));
 const BracketEditor = lazy(() => import('./components/bracket/BracketEditor'));
+const PhaseSettings = lazy(() => import('./pages/organizer/structure/PhaseSettings'));
 const SettingsGeneral = lazy(() => import('./pages/organizer/settings/SettingsGeneral'));
 const SettingsAppearance = lazy(() => import('./pages/organizer/settings/SettingsAppearance'));
 const SettingsDiscipline = lazy(() => import('./pages/organizer/settings/SettingsDiscipline'));
@@ -53,9 +54,33 @@ const SettingsRegistration = lazy(() => import('./pages/organizer/settings/Setti
 const SettingsParticipant = lazy(() => import('./pages/organizer/settings/SettingsParticipant'));
 const SettingsCustomFields = lazy(() => import('./pages/organizer/settings/SettingsCustomFields'));
 const SettingsLocations = lazy(() => import('./pages/organizer/settings/SettingsLocations'));
-const SettingsLanguages = lazy(() => import('./pages/organizer/settings/SettingsLanguages'));
 const SettingsPermissions = lazy(() => import('./pages/organizer/settings/SettingsPermissions'));
 const SettingsOperations = lazy(() => import('./pages/organizer/settings/SettingsOperations'));
+// Participants
+const ParticipantsList = lazy(() => import('./pages/organizer/participants/ParticipantsList'));
+const ParticipantCreate = lazy(() => import('./pages/organizer/participants/ParticipantCreate'));
+const ParticipantsBulkEdit = lazy(() => import('./pages/organizer/participants/ParticipantsBulkEdit'));
+const ParticipantsExport = lazy(() => import('./pages/organizer/participants/ParticipantsExport'));
+// Placement
+const PlacementOverview = lazy(() => import('./pages/organizer/placement/PlacementOverview'));
+const PlacementPhase = lazy(() => import('./pages/organizer/placement/PlacementPhase'));
+// Matches
+const MatchesOverview = lazy(() => import('./pages/organizer/matches/MatchesOverview'));
+const MatchesPhase = lazy(() => import('./pages/organizer/matches/MatchesPhase'));
+const MatchEdit = lazy(() => import('./pages/organizer/matches/MatchEdit'));
+// Final Standings
+const FinalStandings = lazy(() => import('./pages/organizer/FinalStandings'));
+// Share
+const Widgets = lazy(() => import('./pages/organizer/share/Widgets'));
+const Sponsors = lazy(() => import('./pages/organizer/share/Sponsors'));
+const Streams = lazy(() => import('./pages/organizer/share/Streams'));
+const SharingPublic = lazy(() => import('./pages/organizer/sharing/SharingPublic'));
+const SharingTV = lazy(() => import('./pages/organizer/sharing/SharingTV'));
+// Embed Widgets
+const EmbedBracket = lazy(() => import('./pages/embed/EmbedBracket'));
+const EmbedParticipants = lazy(() => import('./pages/embed/EmbedParticipants'));
+const EmbedStandings = lazy(() => import('./pages/embed/EmbedStandings'));
+const EmbedMatches = lazy(() => import('./pages/embed/EmbedMatches'));
 
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
@@ -479,6 +504,12 @@ function App() {
         <Route path="/stream/dashboard/:id" element={<StreamDashboard />} />
         <Route path="/api/tournament/:id/:endpoint" element={<TournamentAPI />} />
         
+        {/* EMBED WIDGETS (Accessibles sans authentification) */}
+        <Route path="/embed/tournament/:id/bracket" element={<EmbedBracket />} />
+        <Route path="/embed/tournament/:id/participants" element={<EmbedParticipants />} />
+        <Route path="/embed/tournament/:id/standings" element={<EmbedStandings />} />
+        <Route path="/embed/tournament/:id/matches" element={<EmbedMatches />} />
+        
         {/* Route racine - Page publique d'accueil */}
         <Route path="/" element={<HomePage />} />
         
@@ -517,7 +548,7 @@ function App() {
           {/* Structure */}
           <Route path="structure" element={<TournamentStructure />} />
           <Route path="structure/:phaseId/bracket" element={<BracketEditor />} />
-          <Route path="structure/:phaseId/settings" element={<SettingsGeneral />} />
+          <Route path="structure/:phaseId/settings" element={<PhaseSettings />} />
           
           {/* Settings */}
           <Route path="settings/general" element={<SettingsGeneral />} />
@@ -528,34 +559,35 @@ function App() {
           <Route path="settings/participant" element={<SettingsParticipant />} />
           <Route path="settings/custom-fields" element={<SettingsCustomFields />} />
           <Route path="settings/locations" element={<SettingsLocations />} />
-          <Route path="settings/languages" element={<SettingsLanguages />} />
           <Route path="settings/permissions" element={<SettingsPermissions />} />
           <Route path="settings/operations" element={<SettingsOperations />} />
           
           {/* Participants */}
-          <Route path="participants" element={<PlaceholderPage title="Liste des participants" />} />
-          <Route path="participants/bulk-edit" element={<PlaceholderPage title="Éditer tous les participants" />} />
-          <Route path="participants/export" element={<PlaceholderPage title="Exporter les participants" />} />
+          <Route path="participants" element={<ParticipantsList />} />
+          <Route path="participants/create" element={<ParticipantCreate />} />
+          <Route path="participants/bulk-edit" element={<ParticipantsBulkEdit />} />
+          <Route path="participants/export" element={<ParticipantsExport />} />
           
           {/* Placement */}
-          <Route path="placement" element={<PlaceholderPage title="Placement - Vue d'ensemble" />} />
-          <Route path="placement/:phaseId" element={<PlaceholderPage title="Placement de phase" />} />
+          <Route path="placement" element={<PlacementOverview />} />
+          <Route path="placement/:phaseId" element={<PlacementPhase />} />
           
           {/* Matchs */}
-          <Route path="matches" element={<PlaceholderPage title="Matchs - Vue d'ensemble" />} />
-          <Route path="matches/:phaseId" element={<PlaceholderPage title="Matchs de phase" />} />
+          <Route path="matches" element={<MatchesOverview />} />
+          <Route path="matches/phase/:phaseId" element={<MatchesPhase />} />
+          <Route path="matches/:matchId" element={<MatchEdit />} />
           
           {/* Classement final */}
-          <Route path="final-standings" element={<PlaceholderPage title="Classement final" />} />
+          <Route path="final-standings" element={<FinalStandings />} />
           
           {/* Partage */}
-          <Route path="sharing/public" element={<PlaceholderPage title="Page publique" />} />
-          <Route path="sharing/widgets" element={<PlaceholderPage title="Widgets" />} />
-          <Route path="sharing/tv" element={<PlaceholderPage title="Mon-Tournoi TV" />} />
+          <Route path="sharing/public" element={<SharingPublic />} />
+          <Route path="sharing/widgets" element={<Widgets />} />
+          <Route path="sharing/tv" element={<SharingTV />} />
           
           {/* Sponsors & Streams */}
-          <Route path="sponsors" element={<PlaceholderPage title="Sponsors" />} />
-          <Route path="streams" element={<PlaceholderPage title="Streams" />} />
+          <Route path="sponsors" element={<Sponsors />} />
+          <Route path="streams" element={<Streams />} />
         </Route>
         
         {/* Route legacy pour Tournament (ancien système) */}

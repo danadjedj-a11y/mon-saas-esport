@@ -3,6 +3,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Button, Card, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
+import { generateBracketMatches, calculateMatchCount } from '../../utils/matchGenerator';
 import PhaseCreator from '../../components/phases/PhaseCreator';
 
 // Icônes pour les types de phases
@@ -31,8 +32,9 @@ const PHASE_LABELS = {
 /**
  * PhaseCard - Carte d'une phase existante
  */
-function PhaseCard({ phase, index, onConfigure, onDelete, onEditBracket }) {
+function PhaseCard({ phase, index, onConfigure, onDelete, onEditBracket, onGenerateMatches }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const matchCount = calculateMatchCount(phase.format, phase.config?.size || 8, phase.config);
 
   return (
     <div className="bg-[#2a2d3e] rounded-xl p-6 border border-white/10 hover:border-violet/30 transition-all group relative">
@@ -97,6 +99,9 @@ function PhaseCard({ phase, index, onConfigure, onDelete, onEditBracket }) {
         <p className="text-sm text-gray-400 mt-1">
           {PHASE_LABELS[phase.format] || phase.format}
         </p>
+        <p className="text-xs text-gray-500 mt-1">
+          {matchCount} matchs • {phase.config?.size || 8} équipes
+        </p>
       </div>
 
       {/* Actions */}
@@ -123,7 +128,7 @@ function PhaseCard({ phase, index, onConfigure, onDelete, onEditBracket }) {
                 className="fixed inset-0 z-10" 
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 top-8 bg-[#1e2235] border border-white/10 rounded-lg shadow-xl z-20 py-1 min-w-[160px]">
+              <div className="absolute right-0 top-8 bg-[#1e2235] border border-white/10 rounded-lg shadow-xl z-20 py-1 min-w-[180px]">
                 <button
                   onClick={() => {
                     onEditBracket(phase);
@@ -141,6 +146,15 @@ function PhaseCard({ phase, index, onConfigure, onDelete, onEditBracket }) {
                   className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
                 >
                   ⚙️ Paramètres
+                </button>
+                <button
+                  onClick={() => {
+                    onGenerateMatches(phase);
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                >
+                  🔄 Générer les matchs
                 </button>
                 <div className="border-t border-white/10 my-1" />
                 <button
@@ -264,6 +278,22 @@ export default function TournamentStructure() {
     }
   };
 
+  const handleGenerateMatches = async (phase) => {
+    const matchCount = calculateMatchCount(phase.format, phase.config?.size || 8, phase.config);
+    
+    if (!confirm(`Cela va générer ${matchCount} matchs pour la phase "${phase.name}". Les matchs existants seront supprimés. Continuer ?`)) {
+      return;
+    }
+
+    try {
+      const matches = await generateBracketMatches(phase, tournamentId);
+      toast.success(`✓ ${matches.length} matchs générés avec succès !`);
+    } catch (error) {
+      console.error('Erreur génération matchs:', error);
+      toast.error('Erreur lors de la génération des matchs');
+    }
+  };
+
   const handlePhaseCreated = (newPhase) => {
     setShowCreator(false);
     toast.success(`Phase "${newPhase.name}" créée avec succès`);
@@ -307,6 +337,7 @@ export default function TournamentStructure() {
             onConfigure={handleConfigure}
             onDelete={handleDelete}
             onEditBracket={handleEditBracket}
+            onGenerateMatches={handleGenerateMatches}
           />
         ))}
 

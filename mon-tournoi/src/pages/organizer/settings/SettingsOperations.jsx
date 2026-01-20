@@ -100,7 +100,7 @@ export default function SettingsOperations() {
       setShowDuplicateModal(false);
       
       // Rediriger vers le nouveau tournoi
-      navigate(`/organizer/${newTournament.id}`);
+      navigate(`/organizer/tournament/${newTournament.id}`);
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la duplication');

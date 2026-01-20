@@ -140,7 +140,6 @@ export default function OrganizerLayout({ session, tournament: tournamentProp })
         { key: 'participant', label: 'Participant', path: `${basePath}/settings/participant` },
         { key: 'custom-fields', label: 'Champs personnalisés', path: `${basePath}/settings/custom-fields` },
         { key: 'locations', label: 'Emplacements de match', path: `${basePath}/settings/locations` },
-        { key: 'languages', label: 'Langues', path: `${basePath}/settings/languages` },
         { key: 'permissions', label: 'Permissions', path: `${basePath}/settings/permissions` },
         { key: 'operations', label: 'Opérations globales', path: `${basePath}/settings/operations` },
       ]
@@ -188,7 +187,7 @@ export default function OrganizerLayout({ session, tournament: tournamentProp })
         ...phases.map((phase, idx) => ({
           key: `phase-${phase.id}`,
           label: `${idx + 1}. ${phase.name}`,
-          path: `${basePath}/matches/${phase.id}`,
+          path: `${basePath}/matches/phase/${phase.id}`,
         }))
       ]
     },
@@ -278,10 +277,6 @@ export default function OrganizerLayout({ session, tournament: tournamentProp })
                 <p className="text-xs text-text-muted truncate">{tournament.game}</p>
               </div>
             </div>
-            {/* Upgrade button style Toornament */}
-            <button className="mt-3 w-full py-2 px-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 rounded-lg text-white text-sm font-medium transition-all">
-              ⏫ Upgrade ce tournoi
-            </button>
           </div>
         )}
 
@@ -356,18 +351,6 @@ export default function OrganizerLayout({ session, tournament: tournamentProp })
             );
           })}
         </nav>
-
-        {/* Footer - Support & Legal */}
-        <div className="border-t border-white/10 py-2">
-          <button className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
-            <span>Support & Legal</span>
-            <span className="text-xs">▼</span>
-          </button>
-          <button className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors">
-            <span>Language</span>
-            <span className="text-xs">▼</span>
-          </button>
-        </div>
 
         {/* User Info */}
         {session && (
