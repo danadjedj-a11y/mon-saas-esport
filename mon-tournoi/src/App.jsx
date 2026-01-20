@@ -68,6 +68,8 @@ const PlacementPhase = lazy(() => import('./pages/organizer/placement/PlacementP
 const MatchesOverview = lazy(() => import('./pages/organizer/matches/MatchesOverview'));
 const MatchesPhase = lazy(() => import('./pages/organizer/matches/MatchesPhase'));
 const MatchEdit = lazy(() => import('./pages/organizer/matches/MatchEdit'));
+// Bracket
+const TournamentBracket = lazy(() => import('./pages/organizer/TournamentBracket'));
 // Final Standings
 const FinalStandings = lazy(() => import('./pages/organizer/FinalStandings'));
 // Share
@@ -549,6 +551,9 @@ function App() {
           <Route path="structure" element={<TournamentStructure />} />
           <Route path="structure/:phaseId/bracket" element={<BracketEditor />} />
           <Route path="structure/:phaseId/settings" element={<PhaseSettings />} />
+          
+          {/* Bracket */}
+          <Route path="bracket" element={<TournamentBracket />} />
           
           {/* Settings */}
           <Route path="settings/general" element={<SettingsGeneral />} />

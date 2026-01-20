@@ -1,31 +1,25 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
 /**
- * OrganizerLayout - Layout principal pour l'interface Organizer
- * Inspiré de Toornament avec navigation latérale et sous-menus
+ * OrganizerLayout - Layout original pour la gestion de tournoi
+ * Design unique avec header fixe + navigation par onglets + sidebar contextuelle
  */
 export default function OrganizerLayout({ session, tournament: tournamentProp }) {
-  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { id: tournamentId } = useParams();
   
   const [tournament, setTournament] = useState(tournamentProp || null);
   const [phases, setPhases] = useState([]);
+  const [participantCount, setParticipantCount] = useState(0);
+  const [matchCount, setMatchCount] = useState(0);
   const [loading, setLoading] = useState(!tournamentProp);
-  const [expandedMenus, setExpandedMenus] = useState({
-    parametres: false,
-    participants: false,
-    placement: false,
-    matchs: false,
-    partage: false,
-  });
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // Charger le tournoi si pas fourni en prop
+  // Charger le tournoi
   useEffect(() => {
     if (tournamentProp) {
       setTournament(tournamentProp);
@@ -58,325 +52,306 @@ export default function OrganizerLayout({ session, tournament: tournamentProp })
     fetchTournament();
   }, [tournamentId, tournamentProp]);
 
-  // Charger les phases du tournoi
+  // Charger les données complémentaires
   useEffect(() => {
     if (!tournamentId) return;
 
-    const fetchPhases = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('tournament_phases')
-          .select('*')
-          .eq('tournament_id', tournamentId)
-          .order('phase_order', { ascending: true });
-        
-        if (!error && data) {
-          setPhases(data);
-        }
-      } catch (error) {
-        console.error('Erreur chargement phases:', error);
-      }
+    const fetchData = async () => {
+      const [phasesRes, participantsRes, matchesRes] = await Promise.all([
+        supabase.from('tournament_phases').select('*').eq('tournament_id', tournamentId).order('phase_order'),
+        supabase.from('participants').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId),
+        supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId),
+      ]);
+      
+      setPhases(phasesRes.data || []);
+      setParticipantCount(participantsRes.count || 0);
+      setMatchCount(matchesRes.count || 0);
     };
 
-    fetchPhases();
+    fetchData();
   }, [tournamentId]);
 
   const basePath = `/organizer/tournament/${tournamentId}`;
 
-  const isActive = (path) => {
-    if (path === basePath) {
+  // Navigation principale par onglets
+  const mainTabs = useMemo(() => [
+    { id: 'overview', label: 'Aperçu', path: basePath, icon: '📊' },
+    { id: 'settings', label: 'Configuration', path: `${basePath}/settings/general`, icon: '⚙️', matchPath: '/settings' },
+    { id: 'structure', label: 'Structure', path: `${basePath}/structure`, icon: '🏗️' },
+    { id: 'participants', label: 'Participants', path: `${basePath}/participants`, icon: '👥', badge: participantCount },
+    { id: 'matches', label: 'Matchs', path: `${basePath}/matches`, icon: '⚔️', badge: matchCount },
+    { id: 'sharing', label: 'Partage', path: `${basePath}/sharing/public`, icon: '🔗', matchPath: '/sharing' },
+  ], [basePath, participantCount, matchCount]);
+
+  const isTabActive = (tab) => {
+    if (tab.matchPath) {
+      return location.pathname.includes(tab.matchPath);
+    }
+    if (tab.path === basePath) {
       return location.pathname === basePath;
     }
-    return location.pathname.startsWith(path);
+    return location.pathname.startsWith(tab.path);
   };
 
-  const toggleMenu = (menuKey) => {
-    setExpandedMenus(prev => ({
-      ...prev,
-      [menuKey]: !prev[menuKey]
-    }));
-  };
-
-  // Auto-expand menu basé sur la route actuelle
-  useEffect(() => {
+  // Sous-navigation contextuelle selon l'onglet actif
+  const getSubNav = () => {
     const path = location.pathname;
+    
     if (path.includes('/settings')) {
-      setExpandedMenus(prev => ({ ...prev, parametres: true }));
+      return [
+        { label: 'Général', path: `${basePath}/settings/general` },
+        { label: 'Apparence', path: `${basePath}/settings/appearance` },
+        { label: 'Jeu', path: `${basePath}/settings/discipline` },
+        { label: 'Matchs', path: `${basePath}/settings/match` },
+        { label: 'Inscriptions', path: `${basePath}/settings/registration` },
+      ];
     }
+    
     if (path.includes('/participants')) {
-      setExpandedMenus(prev => ({ ...prev, participants: true }));
+      return [
+        { label: 'Liste', path: `${basePath}/participants` },
+        { label: 'Édition groupée', path: `${basePath}/participants/bulk-edit` },
+        { label: 'Export', path: `${basePath}/participants/export` },
+      ];
     }
-    if (path.includes('/placement')) {
-      setExpandedMenus(prev => ({ ...prev, placement: true }));
-    }
+    
     if (path.includes('/matches')) {
-      setExpandedMenus(prev => ({ ...prev, matchs: true }));
+      return [
+        { label: 'Tous les matchs', path: `${basePath}/matches` },
+        ...phases.map((p, i) => ({ label: `Phase ${i + 1}`, path: `${basePath}/matches/phase/${p.id}` })),
+      ];
     }
+
     if (path.includes('/sharing')) {
-      setExpandedMenus(prev => ({ ...prev, partage: true }));
+      return [
+        { label: 'Page publique', path: `${basePath}/sharing/public` },
+        { label: 'Widgets', path: `${basePath}/sharing/widgets` },
+        { label: 'Mode TV', path: `${basePath}/sharing/tv` },
+      ];
     }
-  }, [location.pathname]);
+    
+    return null;
+  };
 
-  // Définition de la navigation
-  const navigation = useMemo(() => [
-    {
-      key: 'overview',
-      label: 'Vue d\'ensemble',
-      icon: '📊',
-      path: basePath,
-      exact: true,
-    },
-    {
-      key: 'parametres',
-      label: 'Paramètres',
-      icon: '⚙️',
-      expandable: true,
-      subItems: [
-        { key: 'general', label: 'Général', path: `${basePath}/settings/general` },
-        { key: 'appearance', label: 'Apparence', path: `${basePath}/settings/appearance` },
-        { key: 'discipline', label: 'Discipline', path: `${basePath}/settings/discipline` },
-        { key: 'match', label: 'Match', path: `${basePath}/settings/match` },
-        { key: 'inscriptions', label: 'Inscriptions', path: `${basePath}/settings/registration` },
-        { key: 'participant', label: 'Participant', path: `${basePath}/settings/participant` },
-        { key: 'custom-fields', label: 'Champs personnalisés', path: `${basePath}/settings/custom-fields` },
-        { key: 'locations', label: 'Emplacements de match', path: `${basePath}/settings/locations` },
-        { key: 'permissions', label: 'Permissions', path: `${basePath}/settings/permissions` },
-        { key: 'operations', label: 'Opérations globales', path: `${basePath}/settings/operations` },
-      ]
-    },
-    {
-      key: 'structure',
-      label: 'Structure',
-      icon: '🏗️',
-      path: `${basePath}/structure`,
-    },
-    {
-      key: 'participants',
-      label: 'Participants',
-      icon: '👥',
-      expandable: true,
-      subItems: [
-        { key: 'list', label: 'Liste', path: `${basePath}/participants` },
-        { key: 'bulk-edit', label: 'Éditer tous', path: `${basePath}/participants/bulk-edit` },
-        { key: 'export', label: 'Exporter', path: `${basePath}/participants/export` },
-      ]
-    },
-    {
-      key: 'placement',
-      label: 'Placement',
-      icon: '🎯',
-      expandable: true,
-      subItems: [
-        { key: 'overview', label: 'Vue d\'ensemble', path: `${basePath}/placement` },
-        // Les phases seront ajoutées dynamiquement
-        ...phases.map((phase, idx) => ({
-          key: `phase-${phase.id}`,
-          label: `${idx + 1}. ${phase.name}`,
-          path: `${basePath}/placement/${phase.id}`,
-        }))
-      ]
-    },
-    {
-      key: 'matchs',
-      label: 'Matchs',
-      icon: '⚔️',
-      expandable: true,
-      subItems: [
-        { key: 'overview', label: 'Vue d\'ensemble', path: `${basePath}/matches` },
-        // Les phases seront ajoutées dynamiquement
-        ...phases.map((phase, idx) => ({
-          key: `phase-${phase.id}`,
-          label: `${idx + 1}. ${phase.name}`,
-          path: `${basePath}/matches/phase/${phase.id}`,
-        }))
-      ]
-    },
-    {
-      key: 'classement',
-      label: 'Classement final',
-      icon: '🏆',
-      path: `${basePath}/final-standings`,
-    },
-    {
-      key: 'partage',
-      label: 'Partage',
-      icon: '📤',
-      expandable: true,
-      subItems: [
-        { key: 'public', label: 'Page publique', path: `${basePath}/sharing/public` },
-        { key: 'widgets', label: 'Widgets', path: `${basePath}/sharing/widgets` },
-        { key: 'tv', label: 'Mon-Tournoi TV', path: `${basePath}/sharing/tv` },
-      ]
-    },
-    {
-      key: 'sponsors',
-      label: 'Sponsors',
-      icon: '💼',
-      path: `${basePath}/sponsors`,
-    },
-    {
-      key: 'streams',
-      label: 'Streams',
-      icon: '📺',
-      path: `${basePath}/streams`,
-    },
-  ], [basePath, phases]);
+  const subNav = getSubNav();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'ongoing': return { label: 'En cours', color: 'bg-green-500', textColor: 'text-green-400' };
+      case 'completed': return { label: 'Terminé', color: 'bg-blue-500', textColor: 'text-blue-400' };
+      default: return { label: 'Brouillon', color: 'bg-yellow-500', textColor: 'text-yellow-400' };
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-2 border-violet/30 border-t-violet rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Chargement...</p>
-        </div>
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
       </div>
     );
   }
 
+  const statusInfo = tournament ? getStatusInfo(tournament.status) : null;
+
   return (
-    <div className="min-h-screen bg-dark flex">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-[#1e2235] border-r border-white/10 z-50 flex flex-col overflow-hidden">
-        {/* Header - Logo Organizer */}
-        <div className="p-4 border-b border-white/10">
-          <Link to="/organizer/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet to-cyan flex items-center justify-center text-xl shadow-glow-sm">
-              🎯
-            </div>
-            <span className="font-display text-lg font-semibold text-white">Organizer</span>
-          </Link>
-        </div>
-
-        {/* Retour organisation */}
-        <div className="px-4 py-3 border-b border-white/10">
-          <Link 
-            to="/organizer/dashboard" 
-            className="flex items-center gap-2 text-sm text-text-secondary hover:text-white transition-colors"
-          >
-            <span>←</span>
-            <span>Fluky Boys</span>
-          </Link>
-        </div>
-
-        {/* Tournament Info */}
-        {tournament && (
-          <div className="p-4 border-b border-white/10">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-violet/20 flex items-center justify-center text-lg flex-shrink-0">
-                🏆
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="font-display font-semibold text-white text-sm truncate">
-                  {tournament.name}
-                </h2>
-                <p className="text-xs text-text-muted truncate">{tournament.game}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2">
-          {navigation.map((item) => {
-            const hasSubItems = item.expandable && item.subItems?.length > 0;
-            const isExpanded = expandedMenus[item.key];
-            const active = item.exact ? location.pathname === item.path : isActive(item.path);
-            const hasActiveChild = item.subItems?.some(sub => isActive(sub.path));
-
-            return (
-              <div key={item.key}>
-                {/* Main Menu Item */}
-                {hasSubItems ? (
-                  <button
-                    onClick={() => toggleMenu(item.key)}
-                    className={clsx(
-                      'w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors',
-                      hasActiveChild ? 'text-cyan-400' : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className="text-base">{item.icon}</span>
-                      <span>{item.label}</span>
-                    </span>
-                    <span className={clsx(
-                      'transition-transform duration-200 text-xs',
-                      isExpanded && 'rotate-180'
-                    )}>
-                      ▼
-                    </span>
-                  </button>
-                ) : (
-                  <Link
-                    to={item.path}
-                    className={clsx(
-                      'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
-                      active 
-                        ? 'text-cyan-400 bg-cyan-400/10 border-l-2 border-cyan-400' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    )}
-                  >
-                    <span className="text-base">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </Link>
-                )}
-
-                {/* Sub Items */}
-                {hasSubItems && isExpanded && (
-                  <div className="bg-black/20">
-                    {item.subItems.map((subItem) => {
-                      const subActive = isActive(subItem.path);
-                      return (
-                        <Link
-                          key={subItem.key}
-                          to={subItem.path}
-                          className={clsx(
-                            'block pl-12 pr-4 py-2 text-sm transition-colors',
-                            subActive 
-                              ? 'text-cyan-400 bg-cyan-400/10' 
-                              : 'text-gray-400 hover:text-white hover:bg-white/5'
-                          )}
-                        >
-                          {subItem.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* User Info */}
-        {session && (
-          <div className="p-4 border-t border-white/10">
-            <button 
-              onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-3 hover:bg-white/5 rounded-lg p-2 transition-colors"
+    <div className="min-h-screen bg-[#0d1117]">
+      {/* Header Fixe */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#161b22] border-b border-white/10">
+        {/* Barre supérieure */}
+        <div className="h-14 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Retour */}
+            <Link 
+              to="/organizer/dashboard" 
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet to-pink flex items-center justify-center text-sm">
-                👤
+              <span className="text-lg">←</span>
+              <span className="hidden sm:inline text-sm">Mes tournois</span>
+            </Link>
+            
+            <div className="h-6 w-px bg-white/10" />
+            
+            {/* Nom du tournoi */}
+            {tournament && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-sm">
+                  🏆
+                </div>
+                <div>
+                  <h1 className="font-display font-semibold text-white text-sm leading-tight truncate max-w-[200px] md:max-w-[300px]">
+                    {tournament.name}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{tournament.game}</span>
+                    <span className={clsx('w-1.5 h-1.5 rounded-full', statusInfo?.color)} />
+                    <span className={clsx('text-xs', statusInfo?.textColor)}>{statusInfo?.label}</span>
+                  </div>
+                </div>
               </div>
-              <span className="text-sm text-gray-300 truncate">
-                {session.user.user_metadata?.username || session.user.email?.split('@')[0]}
-              </span>
-              <span className="ml-auto text-xs text-gray-500">▼</span>
+            )}
+          </div>
+
+          {/* Actions droite */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.open(`/tournament/${tournamentId}`, '_blank')}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <span>👁️</span>
+              <span>Voir public</span>
+            </button>
+            
+            <Link
+              to={`${basePath}/settings/general`}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <span>⚙️</span>
+            </Link>
+
+            {/* Menu mobile */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden p-2 text-gray-400 hover:text-white"
+            >
+              ☰
             </button>
           </div>
-        )}
-      </aside>
+        </div>
 
-      {/* Main Content */}
-      <main className="flex-1 ml-64">
-        <div className="p-8">
+        {/* Navigation par onglets */}
+        <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide">
+          {mainTabs.map(tab => {
+            const active = isTabActive(tab);
+            return (
+              <Link
+                key={tab.id}
+                to={tab.path}
+                className={clsx(
+                  'flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+                  active
+                    ? 'border-cyan-500 text-white'
+                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600'
+                )}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/10 rounded-full">
+                    {tab.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Sous-navigation contextuelle */}
+        {subNav && (
+          <div className="px-6 py-2 bg-[#0d1117] border-t border-white/5 flex gap-1 overflow-x-auto">
+            {subNav.map(item => {
+              const active = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={clsx(
+                    'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap',
+                    active
+                      ? 'bg-cyan-500/20 text-cyan-400'
+                      : 'text-gray-500 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </header>
+
+      {/* Menu mobile overlay */}
+      {showMobileMenu && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setShowMobileMenu(false)} />
+          <div className="fixed top-14 right-0 w-64 h-[calc(100%-3.5rem)] bg-[#161b22] border-l border-white/10 z-50 overflow-y-auto">
+            <nav className="p-4 space-y-2">
+              {mainTabs.map(tab => (
+                <Link
+                  key={tab.id}
+                  to={tab.path}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={clsx(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm',
+                    isTabActive(tab)
+                      ? 'bg-cyan-500/20 text-cyan-400'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  )}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </>
+      )}
+
+      {/* Contenu principal */}
+      <main className={clsx(
+        'pt-[7rem]', // header + tabs
+        subNav && 'pt-[9rem]' // + sub nav
+      )}>
+        <div className="max-w-7xl mx-auto px-6 py-8">
           <Outlet context={{ tournament, phases, session, refreshPhases: () => {} }} />
         </div>
       </main>
+
+      {/* Quick Actions Bar (fixe en bas sur desktop) */}
+      <div className="hidden lg:block fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+        <div className="flex items-center gap-2 px-4 py-2 bg-[#1e2235] rounded-full border border-white/10 shadow-xl">
+          <QuickAction 
+            icon="▶️" 
+            label="Démarrer" 
+            onClick={() => {}} 
+            disabled={tournament?.status === 'ongoing'}
+          />
+          <div className="w-px h-6 bg-white/10" />
+          <QuickAction 
+            icon="👥" 
+            label="Ajouter participant" 
+            onClick={() => navigate(`${basePath}/participants`)} 
+          />
+          <QuickAction 
+            icon="📊" 
+            label="Générer matchs" 
+            onClick={() => navigate(`${basePath}/structure`)} 
+          />
+          <div className="w-px h-6 bg-white/10" />
+          <QuickAction 
+            icon="🔗" 
+            label="Partager" 
+            onClick={() => navigate(`${basePath}/sharing/public`)} 
+          />
+        </div>
+      </div>
     </div>
+  );
+}
+
+function QuickAction({ icon, label, onClick, disabled = false }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={clsx(
+        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+        disabled
+          ? 'text-gray-600 cursor-not-allowed'
+          : 'text-gray-300 hover:text-white hover:bg-white/10'
+      )}
+    >
+      <span>{icon}</span>
+      <span className="hidden xl:inline">{label}</span>
+    </button>
   );
 }
