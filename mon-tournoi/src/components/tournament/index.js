@@ -16,3 +16,4 @@ export { default as SwissStandings } from './SwissStandings';
 export { default as RoundRobinStandings } from './RoundRobinStandings';
 export { default as TeamsList } from './TeamsList';
 export { default as WaitlistSection } from './WaitlistSection';
+export { default as ScoreModal } from './ScoreModal';

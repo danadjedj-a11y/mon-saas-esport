@@ -33,6 +33,7 @@ export default function MatchEdit() {
 
   useEffect(() => {
     fetchMatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
   const fetchMatch = async () => {

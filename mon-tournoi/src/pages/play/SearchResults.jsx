@@ -2,7 +2,7 @@
  * SearchResults - Page de résultats de recherche
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
@@ -11,7 +11,7 @@ import { Button, Tabs } from '../../shared/components/ui';
 import { TournamentCardSkeleton } from '../../components/Skeleton';
 
 export default function SearchResults({ session }) {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
@@ -25,6 +25,7 @@ export default function SearchResults({ session }) {
     if (query) {
       searchAll();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   const searchAll = async () => {

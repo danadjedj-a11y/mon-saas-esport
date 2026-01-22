@@ -5,7 +5,7 @@ import clsx from 'clsx';
 /**
  * PhaseStatsCard - Affiche les statistiques d'une phase
  */
-export default function PhaseStatsCard({ phase, tournamentId }) {
+export default function PhaseStatsCard({ phase, tournamentId: _tournamentId }) {
   const [stats, setStats] = useState({
     totalTeams: 0,
     placedTeams: 0,
@@ -17,6 +17,7 @@ export default function PhaseStatsCard({ phase, tournamentId }) {
 
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase?.id]);
 
   const fetchStats = async () => {

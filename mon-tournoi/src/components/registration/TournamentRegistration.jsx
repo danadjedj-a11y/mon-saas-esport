@@ -42,6 +42,7 @@ export default function TournamentRegistration({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [step, setStep] = useState('type'); // 'type' | 'existing' | 'temporary'
   const [registrationType, setRegistrationType] = useState(null); // 'existing' | 'temporary'
+  const _registrationType = registrationType; // ESLint: Variable set but not used
   const [loading, setLoading] = useState(false);
   const [eligibility, setEligibility] = useState(null);
   const [userTeams, setUserTeams] = useState([]);

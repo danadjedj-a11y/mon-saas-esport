@@ -100,7 +100,7 @@ export async function generateBracketMatches(phase, tournamentId) {
   } else if (format === 'round_robin') {
     // Round Robin: chaque participant affronte tous les autres
     const numParticipants = size;
-    const matchesCount = (numParticipants * (numParticipants - 1)) / 2;
+    const _matchesCount = (numParticipants * (numParticipants - 1)) / 2;
     
     let matchNumber = 1;
     for (let i = 0; i < numParticipants - 1; i++) {

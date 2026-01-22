@@ -23,6 +23,7 @@ export default function TournamentBracket() {
     if (allPhases.length > 0 && !selectedPhase) {
       setSelectedPhase(allPhases[0]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allPhases]);
 
   // Charger les matchs et participants

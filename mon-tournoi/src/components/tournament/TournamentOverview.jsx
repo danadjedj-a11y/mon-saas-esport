@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { TournamentRegistration } from '../registration';
-import { getFormatLabel } from './TournamentHeader';
+import { getFormatLabel } from '../../utils/tournamentHelpers';
 
 export default function TournamentOverview({ 
   tournoi, 
@@ -10,7 +10,7 @@ export default function TournamentOverview({
   tournamentId, 
   onRefetch 
 }) {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
 
   return (
     <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">

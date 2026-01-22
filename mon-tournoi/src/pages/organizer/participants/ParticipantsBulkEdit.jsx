@@ -12,7 +12,7 @@ export default function ParticipantsBulkEdit() {
   const { id: tournamentId } = useParams();
   const navigate = useNavigate();
   const context = useOutletContext();
-  const tournament = context?.tournament;
+  const _tournament = context?.tournament;
 
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +23,7 @@ export default function ParticipantsBulkEdit() {
 
   useEffect(() => {
     fetchParticipants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchParticipants = async () => {

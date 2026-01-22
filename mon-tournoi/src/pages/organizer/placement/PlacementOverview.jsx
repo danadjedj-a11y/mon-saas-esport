@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { toast } from '../../../utils/toast';
 
 // Icons for phase types
 const PHASE_TYPE_ICONS = {
@@ -31,6 +30,7 @@ export default function PlacementOverview() {
 
   useEffect(() => {
     fetchPhases();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchPhases = async () => {

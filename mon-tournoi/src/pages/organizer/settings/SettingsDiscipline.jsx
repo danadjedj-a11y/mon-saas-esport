@@ -87,7 +87,7 @@ export default function SettingsDiscipline() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
   
-  const [game, setGame] = useState('');
+  const [_game, setGame] = useState('');
   const [gameConfig, setGameConfig] = useState(null);
   const [formData, setFormData] = useState({
     integration_enabled: false,
@@ -116,6 +116,7 @@ export default function SettingsDiscipline() {
     } else {
       fetchTournament();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context?.tournament, tournamentId]);
 
   const fetchTournament = async () => {

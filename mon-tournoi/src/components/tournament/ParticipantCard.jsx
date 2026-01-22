@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-export default function ParticipantCard({ participant, tournamentId }) {
+export default function ParticipantCard({ participant, tournamentId: _tournamentId }) {
   const navigate = useNavigate();
   const p = participant;
   

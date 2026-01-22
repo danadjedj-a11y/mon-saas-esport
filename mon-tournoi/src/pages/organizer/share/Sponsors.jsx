@@ -6,7 +6,7 @@ import { toast } from '../../../utils/toast';
 
 export default function Sponsors() {
   const { id: tournamentId } = useParams();
-  const context = useOutletContext();
+  const _context = useOutletContext();
 
   const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +25,7 @@ export default function Sponsors() {
 
   useEffect(() => {
     fetchSponsors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchSponsors = async () => {
@@ -65,7 +66,7 @@ export default function Sponsors() {
     const fileExt = logoFile.name.split('.').pop();
     const fileName = `${tournamentId}/sponsors/${Date.now()}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
+    const { data: _data, error } = await supabase.storage
       .from('tournament-assets')
       .upload(fileName, logoFile);
 

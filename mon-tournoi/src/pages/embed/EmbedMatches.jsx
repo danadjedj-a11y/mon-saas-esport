@@ -26,6 +26,7 @@ export default function EmbedMatches() {
     // Rafraîchir toutes les 30 secondes
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId, filter]);
 
   const fetchData = async () => {

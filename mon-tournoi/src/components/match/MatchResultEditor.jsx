@@ -58,7 +58,7 @@ export default function MatchResultEditor({
   };
 
   // Vérifier si le match est terminé (pour Best-of)
-  const isMatchComplete = () => {
+  const _isMatchComplete = () => {
     if (matchFormat === 'best_of') {
       const { team1, team2 } = calculateTotalScore();
       const winsNeeded = Math.ceil(bestOf / 2);

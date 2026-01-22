@@ -132,6 +132,30 @@ const AuthLoadingSpinner = () => (
   </div>
 );
 
+// Composant pour l'écran de déconnexion
+const LoggingOutSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-dark relative overflow-hidden">
+    {/* Background effects */}
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-violet/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+    </div>
+    
+    <div className="relative z-10 text-center">
+      <div className="w-20 h-20 mx-auto mb-8 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-4xl shadow-glow-lg float">
+        👋
+      </div>
+      <h2 className="font-display text-xl font-semibold text-text mb-2">
+        Déconnexion
+      </h2>
+      <p className="font-body text-text-muted mb-6">
+        À bientôt !
+      </p>
+      <div className="w-10 h-10 border-3 border-glass-border border-t-violet rounded-full animate-spin mx-auto" />
+    </div>
+  </div>
+);
+
 // Composant placeholder pour les pages en cours de développement
 const PlaceholderPage = ({ title }) => (
   <div className="text-center py-16">
@@ -197,6 +221,7 @@ function App() {
   const [session, setSession] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [loading, setLoading] = useState(true) // État de chargement pour la vérification initiale
+  const [loggingOut, setLoggingOut] = useState(false) // État de déconnexion en cours
   const [redirectTo, setRedirectTo] = useState(null); // État pour déclencher une redirection
   const monitoringInitialized = useRef(false);
   const authStateChangeHandled = useRef(false); // Protection contre les boucles
@@ -397,6 +422,10 @@ function App() {
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('🔴 [App] SIGNED_OUT détecté');
+        
+        // Afficher l'écran de déconnexion AVANT de mettre la session à null
+        setLoggingOut(true);
+        
         setSession(null);
         setUserRole(null);
         monitoring.setUser(null);
@@ -417,6 +446,12 @@ function App() {
           // Cela nettoie tous les états et évite les fuites mémoire
           const timeoutId = setTimeout(() => {
             window.location.href = '/';
+          }, 100);
+          timeoutIdsRef.current.push(timeoutId);
+        } else {
+          // Si pas sur une route protégée, juste réinitialiser l'état de déconnexion
+          const timeoutId = setTimeout(() => {
+            setLoggingOut(false);
           }, 100);
           timeoutIdsRef.current.push(timeoutId);
         }
@@ -466,6 +501,15 @@ function App() {
     return (
       <ErrorBoundary>
         <AuthLoadingSpinner />
+      </ErrorBoundary>
+    );
+  }
+
+  // Afficher l'écran de déconnexion pour éviter les erreurs pendant le SIGNED_OUT
+  if (loggingOut) {
+    return (
+      <ErrorBoundary>
+        <LoggingOutSpinner />
       </ErrorBoundary>
     );
   }

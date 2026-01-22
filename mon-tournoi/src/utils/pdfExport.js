@@ -1,5 +1,5 @@
 // Utilitaire pour l'export PDF des résultats de tournoi
-import jsPDF from 'jspdf';
+// jsPDF est chargé dynamiquement pour réduire le bundle initial (~380KB)
 
 /**
  * Exporte les résultats d'un tournoi en PDF
@@ -8,7 +8,9 @@ import jsPDF from 'jspdf';
  * @param {Array} matches - Liste des matchs
  * @param {Array} standings - Classement (optionnel, pour Round Robin/Swiss)
  */
-export function exportTournamentToPDF(tournament, participants, matches, standings = null) {
+export async function exportTournamentToPDF(tournament, participants, matches, standings = null) {
+  // Lazy load jsPDF uniquement quand l'utilisateur exporte
+  const { default: jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   
   // Couleurs

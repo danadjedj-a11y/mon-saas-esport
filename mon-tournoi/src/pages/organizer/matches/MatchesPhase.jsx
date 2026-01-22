@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { toast } from '../../../utils/toast';
 
 export default function MatchesPhase() {
   const { id: tournamentId, phaseId } = useParams();
@@ -18,6 +17,7 @@ export default function MatchesPhase() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId, phaseId]);
 
   const fetchData = async () => {
@@ -223,7 +223,7 @@ export default function MatchesPhase() {
                 className="space-y-4"
                 style={{ paddingTop: roundIdx > 0 ? `${Math.pow(2, roundIdx) * 16}px` : 0 }}
               >
-                {round.matches.map((match, matchIdx) => (
+                {round.matches.map((match, _matchIdx) => (
                   <div
                     key={match.id}
                     onClick={() => match.id && !match.id.startsWith('wb-') && navigate(`/organizer/tournament/${tournamentId}/matches/${match.id}`)}

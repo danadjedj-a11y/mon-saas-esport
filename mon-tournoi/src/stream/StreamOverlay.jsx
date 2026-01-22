@@ -110,6 +110,7 @@ export default function StreamOverlay() {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
 
     // Temps réel pour les overlays

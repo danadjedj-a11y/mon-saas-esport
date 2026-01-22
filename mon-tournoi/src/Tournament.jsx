@@ -12,7 +12,6 @@ import SeedingModal from './SeedingModal';
 import SchedulingModal from './SchedulingModal';
 import { notifyMatchResult } from './notificationUtils';
 import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores } from './swissUtils';
-import { exportTournamentToPDF } from './utils/pdfExport';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { useTournament } from './shared/hooks';
@@ -21,7 +20,8 @@ import {
   SwissStandings, 
   RoundRobinStandings,
   TeamsList, 
-  WaitlistSection 
+  WaitlistSection,
+  ScoreModal
 } from './components/tournament';
 
 export default function Tournament({ session }) {
@@ -499,7 +499,7 @@ export default function Tournament({ session }) {
     });
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     if (!tournoi || !participants || !matches) {
       toast.error('Données incomplètes pour l\'export PDF');
       return;
@@ -566,7 +566,9 @@ export default function Tournament({ session }) {
       });
     }
     
-    exportTournamentToPDF(tournoi, participants, matches, standings);
+    // Lazy load du module PDF uniquement quand l'utilisateur clique
+    const { exportTournamentToPDF } = await import('./utils/pdfExport');
+    await exportTournamentToPDF(tournoi, participants, matches, standings);
   };
 
   // Générer le round suivant pour le système suisse
@@ -1024,20 +1026,16 @@ export default function Tournament({ session }) {
       </div>
 
       {/* MODALES */}
-      {isModalOpen && currentMatch && (
-        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999}}>
-            <div style={{background:'#2a2a2a', padding:'30px', borderRadius:'12px', width:'300px', border:'1px solid #444'}}>
-                <h3 style={{textAlign:'center'}}>Score Admin</h3>
-                <div style={{display:'flex', justifyContent:'space-between', margin:'20px 0'}}>
-                    <input type="number" value={scoreA} onChange={e=>setScoreA(e.target.value)} aria-label="Score équipe 1" style={{width:'50px', padding:'10px', background:'#111', color:'white', border:'none'}} />
-                    <span>-</span>
-                    <input type="number" value={scoreB} onChange={e=>setScoreB(e.target.value)} aria-label="Score équipe 2" style={{width:'50px', padding:'10px', background:'#111', color:'white', border:'none'}} />
-                </div>
-                <button onClick={saveScore} style={{width:'100%', padding:'10px', background:'#4ade80', border:'none', cursor:'pointer'}}>Valider & Avancer</button>
-                <button onClick={()=>setIsModalOpen(false)} style={{width:'100%', padding:'10px', background:'transparent', border:'none', color:'#ccc', marginTop:'10px', cursor:'pointer'}}>Annuler</button>
-            </div>
-        </div>
-      )}
+      <ScoreModal
+        isOpen={isModalOpen}
+        match={currentMatch}
+        scoreA={scoreA}
+        scoreB={scoreB}
+        onScoreAChange={setScoreA}
+        onScoreBChange={setScoreB}
+        onSave={saveScore}
+        onClose={() => setIsModalOpen(false)}
+      />
 
         <SeedingModal isOpen={isSeedingModalOpen} onClose={() => setIsSeedingModalOpen(false)} participants={participants} tournamentId={id} supabase={supabase} onSave={() => refetch()} />
         

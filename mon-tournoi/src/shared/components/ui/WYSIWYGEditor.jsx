@@ -74,6 +74,7 @@ export default function WYSIWYGEditor({
     <div className={`wysiwyg-editor ${className}`}>
       {/* Toolbar */}
       <div className="toolbar bg-[#1a1a1a] border border-white/10 rounded-t-lg p-2 flex flex-wrap gap-1">
+        {/* eslint-disable-next-line react-hooks/refs */}
         {toolbarButtons.map((button, index) => {
           if (button.type === 'separator') {
             return (

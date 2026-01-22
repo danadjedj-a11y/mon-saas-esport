@@ -12,7 +12,7 @@ const LOCATION_TYPES = [
 
 export default function SettingsLocations() {
   const { id: tournamentId } = useParams();
-  const context = useOutletContext();
+  const _context = useOutletContext();
   
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +32,7 @@ export default function SettingsLocations() {
 
   useEffect(() => {
     fetchLocations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchLocations = async () => {

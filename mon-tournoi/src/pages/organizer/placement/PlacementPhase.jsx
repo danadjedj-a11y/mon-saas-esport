@@ -6,7 +6,7 @@ import { toast } from '../../../utils/toast';
 
 export default function PlacementPhase() {
   const { id: tournamentId, phaseId } = useParams();
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const context = useOutletContext();
   const tournament = context?.tournament;
 
@@ -21,6 +21,7 @@ export default function PlacementPhase() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId, phaseId]);
 
   const fetchData = async () => {

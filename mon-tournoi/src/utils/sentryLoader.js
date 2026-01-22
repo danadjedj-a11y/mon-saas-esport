@@ -30,7 +30,7 @@ export async function loadSentry() {
     }
     
     return null;
-  } catch (_error) {
+  } catch {
     // Le package n'est pas installé
     return null;
   }

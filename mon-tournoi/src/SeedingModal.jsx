@@ -39,8 +39,7 @@ export default function SeedingModal({ isOpen, onClose, participants, tournament
   useEffect(() => {
     if (isOpen && participants) {
       // Charger l'ordre de seeding existant ou utiliser l'ordre actuel
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      loadSeeding();
+      queueMicrotask(loadSeeding);
     }
   }, [isOpen, participants, loadSeeding]);
 

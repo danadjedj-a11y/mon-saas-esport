@@ -19,7 +19,7 @@ const LANGUAGES = [
 
 export default function Streams() {
   const { id: tournamentId } = useParams();
-  const context = useOutletContext();
+  const _context = useOutletContext();
 
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +27,7 @@ export default function Streams() {
 
   useEffect(() => {
     fetchStreams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchStreams = async () => {
@@ -143,7 +144,7 @@ export default function Streams() {
 
         <div className="space-y-4">
           {streams.map((stream, index) => {
-            const platform = extractPlatform(stream.url);
+            const _platform = extractPlatform(stream.url);
             return (
               <div 
                 key={stream.id} 

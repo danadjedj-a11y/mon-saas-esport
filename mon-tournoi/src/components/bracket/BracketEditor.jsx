@@ -204,7 +204,7 @@ function BracketRound({ round, teams, onPlaceTeam }) {
 export default function BracketEditor() {
   const { id: tournamentId, phaseId } = useParams();
   const navigate = useNavigate();
-  const context = useOutletContext();
+  const _context = useOutletContext();
   
   const [phase, setPhase] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -216,6 +216,7 @@ export default function BracketEditor() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId, phaseId]);
 
   const fetchData = async () => {

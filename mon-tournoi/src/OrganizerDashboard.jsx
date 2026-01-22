@@ -20,6 +20,7 @@ export default function OrganizerDashboard({ session }) {
       fetchData();
       fetchPendingRequestsCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const fetchData = async () => {
@@ -50,7 +51,7 @@ export default function OrganizerDashboard({ session }) {
       if (!error) {
         setPendingRequestsCount(count || 0);
       }
-    } catch (error) {
+    } catch {
       // Table might not exist yet
       console.log('Table gaming_account_change_requests not found');
     }

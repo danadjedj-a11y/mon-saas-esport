@@ -16,19 +16,20 @@ import { openCookieSettings } from '../../components/CookieConsent';
  */
 export default function PrivacySettings({ session }) {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [_loading, _setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userData, setUserData] = useState(null);
-  const [consents, setConsents] = useState(null);
+  const [_consents, setConsents] = useState(null);
 
   useEffect(() => {
     if (session?.user) {
       loadUserData();
       loadConsents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const loadUserData = async () => {
@@ -57,7 +58,7 @@ export default function PrivacySettings({ session }) {
       if (!error) {
         setConsents(data || []);
       }
-    } catch (error) {
+    } catch {
       // Table might not exist yet
       console.log('Consents table not found');
     }

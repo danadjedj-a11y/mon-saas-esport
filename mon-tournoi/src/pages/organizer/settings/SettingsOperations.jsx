@@ -81,7 +81,7 @@ export default function SettingsOperations() {
       if (fetchError) throw fetchError;
 
       // Créer une copie sans certains champs
-      const { id, created_at, updated_at, ...tournamentData } = originalTournament;
+      const { id: _id, created_at: _created_at, updated_at: _updated_at, ...tournamentData } = originalTournament;
       
       const { data: newTournament, error: createError } = await supabase
         .from('tournaments')

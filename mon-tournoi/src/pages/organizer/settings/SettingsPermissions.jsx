@@ -20,16 +20,17 @@ export default function SettingsPermissions() {
   const context = useOutletContext();
   
   const [users, setUsers] = useState([]);
-  const [groups, setGroups] = useState([]);
+  const [_groups, _setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [_showAddGroupModal, _setShowAddGroupModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPermissions, setNewUserPermissions] = useState([]);
 
   useEffect(() => {
     fetchPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchPermissions = async () => {
@@ -257,7 +258,7 @@ export default function SettingsPermissions() {
             Permissions du groupe
           </h2>
           <button
-            onClick={() => setShowAddGroupModal(true)}
+            onClick={() => _setShowAddGroupModal(true)}
             className="text-cyan hover:text-cyan/80 text-sm font-medium"
           >
             Ajouter un groupe

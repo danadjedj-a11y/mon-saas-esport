@@ -66,7 +66,7 @@ const CATEGORIES = ['Tous', 'FPS', 'MOBA', 'Battle Royale', 'Sports', 'Fighting'
 
 export default function GamesDirectory({ session }) {
   const { t } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, _setSearchParams] = useSearchParams();
   
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);

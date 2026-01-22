@@ -80,6 +80,7 @@ export default function StreamDashboard() {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
 
     const channel = supabase.channel('stream-dashboard-updates')

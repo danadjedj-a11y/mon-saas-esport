@@ -24,7 +24,6 @@ const sendToMakeWebhook = async (data) => {
   if (!MAKE_WEBHOOK_URL) {
     // En développement, on log les données email au lieu d'envoyer
     if (import.meta.env?.DEV) {
-      // eslint-disable-next-line no-console
       console.log('📧 [DEV] Données email:', data);
     }
     return { success: true, mode: 'dev' };

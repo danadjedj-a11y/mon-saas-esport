@@ -1,0 +1,517 @@
+﻿
+> mon-tournoi@0.0.0 lint
+> eslint .
+
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\App.jsx
+  497:6  warning  React Hook useEffect has a missing dependency: 'loading'. Either include it or remove the dependency array                                                                                                                                react-hooks/exhaustive-deps
+  549:8  warning  React Hook useEffect has an unnecessary dependency: 'redirectTo'. Either exclude it or remove the dependency array. Outer scope values like 'redirectTo' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\CheckInButton.jsx
+  112:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\MatchLobby.jsx
+  488:13  error  'opponentName' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\MyTeam.jsx
+  130:6  warning  React Hook useEffect has a missing dependency: 'allTeams'. Either include it or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setSelectedTeamId' needs the current value of 'allTeams'  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\NotificationCenter.jsx
+  15:9   error    'lastNotificationIdRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-unused-vars
+  43:5   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+  76:27  error    Error: Cannot access variable before it is declared
+
+`getIconForType` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  74 |             console.log('­ƒöö Showing toast...');
+  75 |             addToast({
+> 76 |               message: `${getIconForType(newNotification.type)} ${newNotification.title}: ${newNotification.message}`,
+     |                           ^^^^^^^^^^^^^^ `getIconForType` accessed before it is declared
+  77 |               variant: getToastVariant(newNotification.type),
+  78 |               duration: 6000,
+  79 |             });
+
+  140 |
+  141 |   // Fonction pour obtenir l'ic├┤ne selon le type
+> 142 |   const getIconForType = (type) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 143 |     switch (type) {
+      | ^^^^^^^^^^^^^^^^^^^
+> 144 |       case 'match_scheduled': return '­ƒôà';
+      ÔÇª
+      | ^^^^^^^^^^^^^^^^^^^
+> 156 |     }
+      | ^^^^^^^^^^^^^^^^^^^
+> 157 |   };
+      | ^^^^^ `getIconForType` is declared here
+  158 |
+  159 |   // Fonction pour obtenir la variante du toast
+  160 |   const getToastVariant = (type) => {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/immutability
+  77:24  error    Error: Cannot access variable before it is declared
+
+`getToastVariant` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  75 |             addToast({
+  76 |               message: `${getIconForType(newNotification.type)} ${newNotification.title}: ${newNotification.message}`,
+> 77 |               variant: getToastVariant(newNotification.type),
+     |                        ^^^^^^^^^^^^^^^ `getToastVariant` accessed before it is declared
+  78 |               duration: 6000,
+  79 |             });
+  80 |
+
+  158 |
+  159 |   // Fonction pour obtenir la variante du toast
+> 160 |   const getToastVariant = (type) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 161 |     switch (type) {
+      | ^^^^^^^^^^^^^^^^^^^
+> 162 |       case 'match_result': return 'success';
+      ÔÇª
+      | ^^^^^^^^^^^^^^^^^^^
+> 170 |     }
+      | ^^^^^^^^^^^^^^^^^^^
+> 171 |   };
+      | ^^^^^ `getToastVariant` is declared here
+  172 |
+  173 |   // Jouer un son de notification
+  174 |   const playNotificationSound = () => {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/immutability
+  83:13  error    Error: Cannot access variable before it is declared
+
+`playNotificationSound` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  81 |             // Jouer un son de notification
+  82 |             console.log('­ƒöö Playing sound...');
+> 83 |             playNotificationSound();
+     |             ^^^^^^^^^^^^^^^^^^^^^ `playNotificationSound` accessed before it is declared
+  84 |             
+  85 |             // Notification navigateur si autoris├®
+  86 |             showBrowserNotification(newNotification);
+
+  172 |
+  173 |   // Jouer un son de notification
+> 174 |   const playNotificationSound = () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 175 |     try {
+      | ^^^^^^^^^
+> 176 |       // Son de notification simple (beep)
+      ÔÇª
+      | ^^^^^^^^^
+> 195 |     }
+      | ^^^^^^^^^
+> 196 |   };
+      | ^^^^^ `playNotificationSound` is declared here
+  197 |
+  198 |   // Notification navigateur
+  199 |   const showBrowserNotification = (notification) => {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/immutability
+  86:13  error    Error: Cannot access variable before it is declared
+
+`showBrowserNotification` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  84 |             
+  85 |             // Notification navigateur si autoris├®
+> 86 |             showBrowserNotification(newNotification);
+     |             ^^^^^^^^^^^^^^^^^^^^^^^ `showBrowserNotification` accessed before it is declared
+  87 |           } else if (payload.eventType === 'UPDATE' && payload.new?.user_id === session.user.id) {
+  88 |             fetchNotifications();
+  89 |           } else if (payload.eventType === 'DELETE' && payload.old?.user_id === session.user.id) {
+
+  197 |
+  198 |   // Notification navigateur
+> 199 |   const showBrowserNotification = (notification) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 200 |     if ('Notification' in window && Notification.permission === 'granted') {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 201 |       new Notification(notification.title, {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 202 |         body: notification.message,
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 203 |         icon: '/Logo.png',
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 204 |         tag: notification.id,
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 205 |         requireInteraction: false,
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 206 |       });
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 207 |     }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 208 |   };
+      | ^^^^^ `showBrowserNotification` is declared here
+  209 |
+  210 |   // Fermer le dropdown si on clique en dehors
+  211 |   useEffect(() => {  react-hooks/immutability
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\OrganizerDashboard.jsx
+  23:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  53:14  error    'error' is defined but never used                                                                             no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\PlayerDashboard.jsx
+   28:6   warning  React Hook useEffect has a missing dependency: 'fetchPlayerData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  477:39  error    'myTournaments' is defined but never used. Allowed unused args must match /^_/u                                     no-unused-vars
+  549:44  error    'expanded' is assigned a value but never used. Allowed unused args must match /^_/u                                 no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\SeedingModal.jsx
+  42:7  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\api\TournamentAPI.jsx
+   18:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array                    react-hooks/exhaustive-deps
+  351:10  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  351:31  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  351:45  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  351:61  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\CookieConsent.jsx
+   30:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  28 |       try {
+  29 |         const savedPrefs = JSON.parse(consent);
+> 30 |         setPreferences(savedPrefs.preferences || preferences);
+     |         ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  31 |       } catch (e) {
+  32 |         console.error('Erreur lecture consentement:', e);
+  33 |       }  react-hooks/set-state-in-effect
+   35:6   warning  React Hook useEffect has a missing dependency: 'preferences'. Either include it or remove the dependency array. You can also do a functional update 'setPreferences(p => ...)' if you only need 'preferences' in the 'setPreferences' call                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  236:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  react-refresh/only-export-components
+  248:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  246 |       try {
+  247 |         const data = JSON.parse(stored);
+> 248 |         setConsent(data.preferences || consent);
+      |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  249 |       } catch (e) {
+  250 |         console.error('Erreur lecture consentement:', e);
+  251 |       }                    react-hooks/set-state-in-effect
+  253:6   warning  React Hook useEffect has a missing dependency: 'consent'. Either include it or remove the dependency array. You can also do a functional update 'setConsent(c => ...)' if you only need 'consent' in the 'setConsent' call                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  261:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  react-refresh/only-export-components
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\bracket\BracketEditor.jsx
+  207:9  error    'context' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                       no-unused-vars
+  219:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\match\MapVetoSystem.jsx
+   98:6   warning  React Hook useEffect has a missing dependency: 'fetchVetoState'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  282:19  error    'currentAction' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                      no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\match\MatchQuickView.jsx
+   1:10  error  'useState' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  14:3   error  'onRefresh' is defined but never used. Allowed unused args must match /^_/u      no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\match\MatchResultEditor.jsx
+  61:9  error  'isMatchComplete' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\phases\GroupConfigEditor.jsx
+  3:10  error  'toast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\phases\PhaseStatsCard.jsx
+   8:49  error    'tournamentId' is defined but never used. Allowed unused args must match /^_/u                                 no-unused-vars
+  20:6   warning  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\phases\PlacementManager.jsx
+   1:31  error    'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+  15:3   error    'format' is defined but never used. Allowed unused args must match /^_/u                                      no-unused-vars
+  29:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\registration\PlayerFieldsRepeater.jsx
+  108:3  error  'requiredPlatform' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\registration\TournamentRegistration.jsx
+  44:10  error  'registrationType' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\tournament\ParticipantCard.jsx
+  3:56  error  'tournamentId' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\tournament\TournamentHeader.jsx
+  61:10  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  61:26  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\tournament\TournamentOverview.jsx
+  13:9  error  'navigate' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\components\tournament\TournamentTabs.jsx
+  22:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\features\teams\hooks\useTeam.js
+  70:6  warning  React Hook useCallback has an unnecessary dependency: 'enabled'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\embed\EmbedBracket.jsx
+  25:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\embed\EmbedMatches.jsx
+  29:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\embed\EmbedParticipants.jsx
+  24:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\embed\EmbedStandings.jsx
+  24:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\FinalStandings.jsx
+   10:9   error    'tournament' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+   19:6   warning  React Hook useEffect has a missing dependency: 'fetchStandings'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/exhaustive-deps
+  116:39  error    'index' is defined but never used. Allowed unused args must match /^_/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+  219:5   error    Error: Cannot access variable before it is declared
+
+`fetchParticipants` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  217 |
+  218 |   useEffect(() => {
+> 219 |     fetchParticipants();
+      |     ^^^^^^^^^^^^^^^^^ `fetchParticipants` accessed before it is declared
+  220 |   }, []);
+  221 |
+  222 |   const fetchParticipants = async () => {
+
+  220 |   }, []);
+  221 |
+> 222 |   const fetchParticipants = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 223 |     const { data } = await supabase
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 224 |       .from('participants')
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 225 |       .select(`*, team:team_id (id, name)`)
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 226 |       .eq('tournament_id', tournamentId)
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 227 |       .is('final_rank', null);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 228 |     
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 229 |     setParticipants(data?.filter(p => !existingIds.includes(p.id)) || []);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 230 |     setLoading(false);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 231 |   };
+      | ^^^^^ `fetchParticipants` is declared here
+  232 |
+  233 |   const handleSubmit = (e) => {
+  234 |     e.preventDefault();  react-hooks/immutability
+  220:6   warning  React Hook useEffect has a missing dependency: 'fetchParticipants'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\TournamentBracket.jsx
+  26:6  warning  React Hook useEffect has a missing dependency: 'selectedPhase'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\TournamentOverview.jsx
+  74:10  error    'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                        no-unused-vars
+  75:10  error    'recentActivity' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                 no-unused-vars
+  75:26  error    'setRecentActivity' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u              no-unused-vars
+  79:6   warning  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\TournamentStructure.jsx
+  218:9  error    'tournament' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                      no-unused-vars
+  227:6  warning  React Hook useEffect has a missing dependency: 'fetchPhases'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\matches\MatchEdit.jsx
+  36:6  warning  React Hook useEffect has a missing dependency: 'fetchMatch'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\matches\MatchesOverview.jsx
+   4:10  error    'toast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                  no-unused-vars
+  21:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\matches\MatchesPhase.jsx
+    4:10  error    'toast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                  no-unused-vars
+   21:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  226:44  error    'matchIdx' is defined but never used. Allowed unused args must match /^_/u                                    no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\participants\ParticipantCreate.jsx
+   1:20  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+  31:42  error  'i' is defined but never used. Allowed unused args must match /^_/u                   no-unused-vars
+  68:13  error  'data' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\participants\ParticipantDetails.jsx
+   6:62  error    'formatGamertag' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                no-unused-vars
+  20:6   warning  React Hook useEffect has a missing dependency: 'fetchParticipant'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\participants\ParticipantsBulkEdit.jsx
+  15:9  error    'tournament' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+  26:6  warning  React Hook useEffect has a missing dependency: 'fetchParticipants'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\participants\ParticipantsExport.jsx
+   18:10  error    'exportFormat' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                          no-unused-vars
+   18:24  error    'setExportFormat' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                       no-unused-vars
+   31:6   warning  React Hook useEffect has a missing dependency: 'fetchParticipants'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  229:49  error    'i' is defined but never used. Allowed unused args must match /^_/u                                                   no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\participants\ParticipantsList.jsx
+  23:6  warning  React Hook useEffect has a missing dependency: 'fetchParticipants'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\placement\PlacementOverview.jsx
+   4:10  error    'toast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                    no-unused-vars
+  34:6   warning  React Hook useEffect has a missing dependency: 'fetchPhases'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\placement\PlacementPhase.jsx
+   9:9  error    'navigate' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                      no-unused-vars
+  24:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsAppearance.jsx
+  32:6  warning  React Hook useEffect has a missing dependency: 'fetchTournament'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsCustomFields.jsx
+   2:21  error    'useOutletContext' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                               no-unused-vars
+  37:6   warning  React Hook useEffect has a missing dependency: 'fetchCustomFields'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsDiscipline.jsx
+   90:10  error    'game' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                no-unused-vars
+  119:6   warning  React Hook useEffect has a missing dependency: 'fetchTournament'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsGeneral.jsx
+  97:6  warning  React Hook useEffect has a missing dependency: 'fetchTournament'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsLocations.jsx
+  15:9  error    'context' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+  35:6  warning  React Hook useEffect has a missing dependency: 'fetchLocations'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsMatch.jsx
+  40:6  warning  React Hook useEffect has a missing dependency: 'fetchTournament'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsOperations.jsx
+  84:15  error  'id' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u          no-unused-vars
+  84:19  error  'created_at' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  84:31  error  'updated_at' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsParticipant.jsx
+  34:6  warning  React Hook useEffect has a missing dependency: 'fetchTournament'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsPermissions.jsx
+  23:10  error    'groups' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                               no-unused-vars
+  23:18  error    'setGroups' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+  26:10  error    'showAddGroupModal' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                    no-unused-vars
+  33:6   warning  React Hook useEffect has a missing dependency: 'fetchPermissions'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\settings\SettingsRegistration.jsx
+  42:6  warning  React Hook useEffect has a missing dependency: 'fetchTournament'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\share\Sponsors.jsx
+   9:9   error    'context' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                           no-unused-vars
+  28:6   warning  React Hook useEffect has a missing dependency: 'fetchSponsors'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  68:13  error    'data' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                              no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\share\Streams.jsx
+   22:9   error    'context' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                          no-unused-vars
+   30:6   warning  React Hook useEffect has a missing dependency: 'fetchStreams'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  146:19  error    'platform' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                         no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\share\Widgets.jsx
+   1:20  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u            no-unused-vars
+   3:10  error  'supabase' is defined but never used. Allowed unused vars must match /^[A-Z_]/u             no-unused-vars
+  36:9   error  'tournament' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\sharing\SharingPublic.jsx
+  27:6  warning  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\sharing\SharingTV.jsx
+  18:10  error    'phases' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                        no-unused-vars
+  31:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\organizer\structure\PhaseSettings.jsx
+   70:6   warning  React Hook useEffect has a missing dependency: 'fetchPhaseData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  819:43  error    'parentFormat' is defined but never used. Allowed unused args must match /^_/u                                     no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\play\GamePage.jsx
+  127:6   warning  React Hook useEffect has a missing dependency: 'fetchTournaments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  537:52  error    'detailed' is assigned a value but never used. Allowed unused args must match /^_/u                                  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\play\GamesDirectory.jsx
+  69:24  error  'setSearchParams' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\play\PlayHome.jsx
+  32:7  error    'gameToSlug' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                     no-unused-vars
+  67:6  warning  React Hook useEffect has a missing dependency: 'featuredTournaments.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\play\SearchResults.jsx
+   5:38  error    'useMemo' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                no-unused-vars
+  14:11  error    't' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                             no-unused-vars
+  28:6   warning  React Hook useEffect has a missing dependency: 'searchAll'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\profile\PrivacySettings.jsx
+  19:10  error    'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                               no-unused-vars
+  19:19  error    'setLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                            no-unused-vars
+  25:10  error    'consents' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                              no-unused-vars
+  32:6   warning  React Hook useEffect has missing dependencies: 'loadConsents' and 'loadUserData'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  60:14  error    'error' is defined but never used                                                                                                     no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\pages\tournament\TournamentRegister.jsx
+  27:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\shared\components\ui\WYSIWYGEditor.jsx
+  77:10  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  75 |       {/* Toolbar */}
+  76 |       <div className="toolbar bg-[#1a1a1a] border border-white/10 rounded-t-lg p-2 flex flex-wrap gap-1">
+> 77 |         {toolbarButtons.map((button, index) => {
+     |          ^^^^^^^^^^^^^^ Cannot access ref value during render
+  78 |           if (button.type === 'separator') {
+  79 |             return (
+  80 |               <div       react-hooks/refs
+  77:10  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+  75 |       {/* Toolbar */}
+  76 |       <div className="toolbar bg-[#1a1a1a] border border-white/10 rounded-t-lg p-2 flex flex-wrap gap-1">
+> 77 |         {toolbarButtons.map((button, index) => {
+     |          ^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  78 |           if (button.type === 'separator') {
+  79 |             return (
+  80 |               <div   react-hooks/refs
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\shared\services\emailService.js
+  27:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\stream\StreamDashboard.jsx
+  83:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  81 |
+  82 |   useEffect(() => {
+> 83 |     fetchData();
+     |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  84 |
+  85 |     const channel = supabase.channel('stream-dashboard-updates')
+  86 |       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())  react-hooks/set-state-in-effect
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\stream\StreamOverlay.jsx
+  113:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  111 |
+  112 |   useEffect(() => {
+> 113 |     fetchData();
+      |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  114 |
+  115 |     // Temps r├®el pour les overlays
+  116 |     const channel = supabase.channel('stream-overlay-updates')  react-hooks/set-state-in-effect
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\utils\matchGenerator.js
+  103:11  error  'matchesCount' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Sylvie\Documents\site\mon-saas-esport\mon-tournoi\src\utils\sentryLoader.js
+  33:12  error  '_error' is defined but never used  no-unused-vars
+
+Ô£û 140 problems (86 errors, 54 warnings)
+  0 errors and 4 warnings potentially fixable with the `--fix` option.
+

@@ -5,6 +5,75 @@ import Skeleton from './components/Skeleton';
 import { EmptyNotifications } from './components/EmptyState';
 import useUIStore from './stores/uiStore';
 
+// Fonction pour obtenir l'icône selon le type (en dehors du composant pour stabilité)
+const getIconForType = (type) => {
+  switch (type) {
+    case 'match_scheduled': return '📅';
+    case 'match_upcoming': return '⏰';
+    case 'match_result': return '🏆';
+    case 'score_declared': return '📝';
+    case 'score_dispute': return '⚠️';
+    case 'admin_message': return '📢';
+    case 'tournament_update': return '📊';
+    case 'team_invite': return '👥';
+    case 'team_invitation': return '👥';
+    case 'comment_like': return '👍';
+    case 'comment_reply': return '💬';
+    default: return '🔔';
+  }
+};
+
+// Fonction pour obtenir la variante du toast
+const getToastVariant = (type) => {
+  switch (type) {
+    case 'match_result': return 'success';
+    case 'score_dispute': return 'error';
+    case 'match_scheduled': return 'info';
+    case 'match_upcoming': return 'warning';
+    case 'score_declared': return 'warning';
+    case 'team_invite': return 'info';
+    case 'team_invitation': return 'info';
+    default: return 'info';
+  }
+};
+
+// Jouer un son de notification
+const playNotificationSound = () => {
+  try {
+    // Son de notification simple (beep)
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800; // Fréquence en Hz
+    oscillator.type = 'sine';
+    gainNode.gain.value = 0.3;
+    
+    oscillator.start();
+    
+    // Fade out
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (e) {
+    console.log('Could not play notification sound:', e);
+  }
+};
+
+// Notification navigateur
+const showBrowserNotification = (notification) => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(notification.title, {
+      body: notification.message,
+      icon: '/Logo.png',
+      tag: notification.id,
+      requireInteraction: false,
+    });
+  }
+};
+
 export default function NotificationCenter({ session }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -12,7 +81,6 @@ export default function NotificationCenter({ session }) {
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-  const lastNotificationIdRef = useRef(null);
   const notifiedIdsRef = useRef(new Set()); // IDs déjà notifiés (son/toast)
   const sessionStartRef = useRef(new Date().toISOString()); // Moment de connexion
   const addToast = useUIStore((state) => state.addToast);
@@ -137,75 +205,6 @@ export default function NotificationCenter({ session }) {
       clearInterval(pollInterval);
     };
   }, [session, fetchNotifications, addToast]);
-
-  // Fonction pour obtenir l'icône selon le type
-  const getIconForType = (type) => {
-    switch (type) {
-      case 'match_scheduled': return '📅';
-      case 'match_upcoming': return '⏰';
-      case 'match_result': return '🏆';
-      case 'score_declared': return '📝';
-      case 'score_dispute': return '⚠️';
-      case 'admin_message': return '📢';
-      case 'tournament_update': return '📊';
-      case 'team_invite': return '👥';
-      case 'team_invitation': return '👥';
-      case 'comment_like': return '👍';
-      case 'comment_reply': return '💬';
-      default: return '🔔';
-    }
-  };
-
-  // Fonction pour obtenir la variante du toast
-  const getToastVariant = (type) => {
-    switch (type) {
-      case 'match_result': return 'success';
-      case 'score_dispute': return 'error';
-      case 'match_scheduled': return 'info';
-      case 'match_upcoming': return 'warning';
-      case 'score_declared': return 'warning';
-      case 'team_invite': return 'info';
-      case 'team_invitation': return 'info';
-      default: return 'info';
-    }
-  };
-
-  // Jouer un son de notification
-  const playNotificationSound = () => {
-    try {
-      // Son de notification simple (beep)
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 800; // Fréquence en Hz
-      oscillator.type = 'sine';
-      gainNode.gain.value = 0.3;
-      
-      oscillator.start();
-      
-      // Fade out
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (e) {
-      console.log('Could not play notification sound:', e);
-    }
-  };
-
-  // Notification navigateur
-  const showBrowserNotification = (notification) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(notification.title, {
-        body: notification.message,
-        icon: '/Logo.png',
-        tag: notification.id,
-        requireInteraction: false,
-      });
-    }
-  };
 
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {

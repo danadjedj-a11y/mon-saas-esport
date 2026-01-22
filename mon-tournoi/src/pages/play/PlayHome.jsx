@@ -29,7 +29,7 @@ const POPULAR_GAMES = [
 ];
 
 // Mapping des noms de jeux vers les slugs
-const gameToSlug = (game) => {
+const _gameToSlug = (game) => {
   const mapping = {
     'Valorant': 'valorant',
     'League of Legends': 'league-of-legends',
@@ -64,6 +64,7 @@ export default function PlayHome({ session }) {
       setFeaturedIndex(prev => (prev + 1) % Math.max(1, featuredTournaments.length));
     }, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournaments]);
 
   const fetchTournaments = async () => {

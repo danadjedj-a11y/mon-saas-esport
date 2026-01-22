@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
 import { toast } from '../../../utils/toast';
 
 const WIDGET_TYPES = [
@@ -32,8 +31,8 @@ const WIDGET_TYPES = [
 
 export default function Widgets() {
   const { id: tournamentId } = useParams();
-  const context = useOutletContext();
-  const tournament = context?.tournament;
+  const _context = useOutletContext();
+  const _tournament = _context?.tournament;
 
   const [selectedWidget, setSelectedWidget] = useState(null);
   const [embedCode, setEmbedCode] = useState('');

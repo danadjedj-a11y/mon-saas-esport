@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button, Input } from '../../shared/components/ui';
-import { toast } from '../../utils/toast';
 import clsx from 'clsx';
 
 /**

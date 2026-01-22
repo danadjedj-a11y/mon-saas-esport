@@ -105,7 +105,7 @@ function PlayerFieldGroup({
   onRemove, 
   canRemove,
   error,
-  requiredPlatform,
+  requiredPlatform: _requiredPlatform,
   platformName,
   roles
 }) {

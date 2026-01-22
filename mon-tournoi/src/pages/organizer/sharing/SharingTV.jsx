@@ -15,7 +15,7 @@ export default function SharingTV() {
   const [mode, setMode] = useState('bracket'); // bracket, matches, standings
   const [matches, setMatches] = useState([]);
   const [standings, setStandings] = useState([]);
-  const [phases, setPhases] = useState([]);
+  const [_phases, setPhases] = useState([]);
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -28,6 +28,7 @@ export default function SharingTV() {
     // Auto-refresh toutes les 30 secondes
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   useEffect(() => {

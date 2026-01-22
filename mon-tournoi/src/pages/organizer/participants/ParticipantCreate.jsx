@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
 import { Button, Input } from '../../../shared/components/ui';
@@ -28,7 +28,7 @@ export default function ParticipantCreate() {
   const teamSize = tournament?.team_size_max || 5;
   
   const [players, setPlayers] = useState(
-    Array.from({ length: teamSize }, (_, i) => ({
+    Array.from({ length: teamSize }, (_) => ({
       name: '',
       email: '',
       game_id: '',
@@ -65,7 +65,7 @@ export default function ParticipantCreate() {
     const fileExt = logoFile.name.split('.').pop();
     const fileName = `${tournamentId}/participants/${Date.now()}.${fileExt}`;
 
-    const { data, error } = await supabase.storage
+    const { data: _data, error } = await supabase.storage
       .from('tournament-assets')
       .upload(fileName, logoFile);
 

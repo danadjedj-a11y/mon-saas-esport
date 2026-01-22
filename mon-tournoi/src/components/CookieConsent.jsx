@@ -2,6 +2,46 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
+ * Fonction pour réouvrir le bandeau de cookies
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function openCookieSettings() {
+  localStorage.removeItem('cookie_consent');
+  window.location.reload();
+}
+
+/**
+ * Hook pour vérifier si un type de cookie est accepté
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useCookieConsent() {
+  const [consent, setConsent] = useState({
+    essential: true,
+    analytics: false,
+    marketing: false,
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem('cookie_consent');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setConsent(data.preferences || {
+          essential: true,
+          analytics: false,
+          marketing: false,
+        });
+      } catch (_e) {
+        console.error('Erreur lecture consentement:', _e);
+      }
+    }
+  }, []);
+
+  return consent;
+}
+
+/**
  * CookieConsent - Bandeau de consentement cookies RGPD
  * 
  * Ce composant gère le consentement aux cookies conformément au RGPD.
@@ -27,9 +67,14 @@ export default function CookieConsent() {
       // Charger les préférences existantes
       try {
         const savedPrefs = JSON.parse(consent);
-        setPreferences(savedPrefs.preferences || preferences);
-      } catch (e) {
-        console.error('Erreur lecture consentement:', e);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreferences(savedPrefs.preferences || {
+          essential: true,
+          analytics: false,
+          marketing: false,
+        });
+      } catch (_e) {
+        console.error('Erreur lecture consentement:', _e);
       }
     }
   }, []);
@@ -228,39 +273,6 @@ export default function CookieConsent() {
       </div>
     </>
   );
-}
-
-/**
- * Hook pour vérifier si un type de cookie est accepté
- */
-export function useCookieConsent() {
-  const [consent, setConsent] = useState({
-    essential: true,
-    analytics: false,
-    marketing: false,
-  });
-
-  useEffect(() => {
-    const stored = localStorage.getItem('cookie_consent');
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        setConsent(data.preferences || consent);
-      } catch (e) {
-        console.error('Erreur lecture consentement:', e);
-      }
-    }
-  }, []);
-
-  return consent;
-}
-
-/**
- * Fonction pour réouvrir le bandeau de cookies
- */
-export function openCookieSettings() {
-  localStorage.removeItem('cookie_consent');
-  window.location.reload();
 }
 
 // Exposer globalement pour le footer

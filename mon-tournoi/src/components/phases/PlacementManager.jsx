@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Button, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
@@ -12,7 +12,7 @@ export default function PlacementManager({
   phaseId, 
   tournamentId, 
   size,
-  format,
+  format: _format,
   onPlacementChange 
 }) {
   const [slots, setSlots] = useState([]);
@@ -26,6 +26,7 @@ export default function PlacementManager({
   // Charger les données
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseId, tournamentId]);
 
   const fetchData = async () => {

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 
@@ -11,7 +10,7 @@ export default function MatchQuickView({
   phase, 
   tournamentId, 
   onClose,
-  onRefresh 
+  onRefresh: _onRefresh 
 }) {
   const navigate = useNavigate();
 

@@ -71,11 +71,12 @@ export default function TournamentOverview() {
     matches: 0,
     completedMatches: 0,
   });
-  const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [_loading, setLoading] = useState(true);
+  const [_recentActivity, _setRecentActivity] = useState([]);
 
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchStats = async () => {

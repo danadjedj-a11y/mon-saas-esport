@@ -485,7 +485,7 @@ export default function MatchLobby({ session }) {
 
       // Notifier l'équipe adverse qu'un score a été déclaré
       const opponentTeamId = isTeam1 ? match.player2_id : match.player1_id;
-      const opponentName = isTeam1 ? (match.team2?.name || 'Équipe 2') : (match.team1?.name || 'Équipe 1');
+      const _opponentName = isTeam1 ? (match.team2?.name || 'Équipe 2') : (match.team1?.name || 'Équipe 1');
       const myTeamName = isTeam1 ? (match.team1?.name || 'Équipe 1') : (match.team2?.name || 'Équipe 2');
       
       // Notifier seulement si c'est la première déclaration (l'autre équipe n'a pas encore déclaré)

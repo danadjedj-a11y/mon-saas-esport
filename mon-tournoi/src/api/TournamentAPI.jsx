@@ -15,6 +15,7 @@ export default function TournamentAPI() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, endpoint]);
 
   const fetchData = async () => {
@@ -346,7 +347,4 @@ async function fetchResults(tournamentId) {
     results
   };
 }
-
-// Fonction utilitaire pour exporter les données (utilisable depuis l'extérieur)
-export { fetchTournamentInfo, fetchBracket, fetchStandings, fetchResults };
 

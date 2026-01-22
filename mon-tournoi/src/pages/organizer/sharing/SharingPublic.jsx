@@ -24,6 +24,7 @@ export default function SharingPublic() {
 
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchStats = async () => {

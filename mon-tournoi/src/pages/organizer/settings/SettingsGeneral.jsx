@@ -94,6 +94,7 @@ export default function SettingsGeneral() {
     } else {
       fetchTournament();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context?.tournament, tournamentId]);
 
   const populateForm = (tournament) => {

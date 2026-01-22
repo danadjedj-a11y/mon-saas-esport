@@ -1,3 +1,14 @@
+// Configuration des onglets par défaut
+// eslint-disable-next-line react-refresh/only-export-components
+export const defaultTabs = [
+  { id: 'overview', label: '📋 Présentation', icon: '📋' },
+  { id: 'participants', label: '👥 Participants', icon: '👥' },
+  { id: 'bracket', label: '🏆 Arbre / Classement', icon: '🏆' },
+  { id: 'schedule', label: '📅 Planning', icon: '📅' },
+  { id: 'results', label: '📊 Résultats', icon: '📊' },
+  { id: 'comments', label: '💬 Commentaires', icon: '💬' }
+];
+
 export default function TournamentTabs({ tabs, activeTab, setActiveTab }) {
   return (
     <div className="flex gap-3 mb-8 border-b-4 border-cyan-500 overflow-x-auto pb-3">
@@ -18,12 +29,3 @@ export default function TournamentTabs({ tabs, activeTab, setActiveTab }) {
     </div>
   );
 }
-
-export const defaultTabs = [
-  { id: 'overview', label: '📋 Présentation', icon: '📋' },
-  { id: 'participants', label: '👥 Participants', icon: '👥' },
-  { id: 'bracket', label: '🏆 Arbre / Classement', icon: '🏆' },
-  { id: 'schedule', label: '📅 Planning', icon: '📅' },
-  { id: 'results', label: '📊 Résultats', icon: '📊' },
-  { id: 'comments', label: '💬 Commentaires', icon: '💬' }
-];

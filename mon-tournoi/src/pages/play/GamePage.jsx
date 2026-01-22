@@ -124,6 +124,7 @@ export default function GamePage({ session }) {
     if (gameSlug) {
       fetchTournaments();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameSlug]);
 
   const fetchTournaments = async () => {
@@ -534,7 +535,7 @@ function TournamentsTab({
 }
 
 // Composant ligne tournoi
-function TournamentListItem({ tournament, onClick, detailed = false }) {
+function TournamentListItem({ tournament, onClick, _detailed = false }) {
   const statusConfig = {
     draft: { label: 'En préparation', color: 'bg-gray-500/20 text-gray-400' },
     open: { label: 'Inscriptions', color: 'bg-green-500/20 text-green-400' },

@@ -29,6 +29,7 @@ export default function SettingsAppearance() {
     } else {
       fetchTournament();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context?.tournament, tournamentId]);
 
   const fetchTournament = async () => {

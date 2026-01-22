@@ -7,7 +7,7 @@ import { toast } from '../../utils/toast';
 export default function FinalStandings() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
-  const tournament = context?.tournament;
+  const _tournament = context?.tournament;
 
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +16,7 @@ export default function FinalStandings() {
 
   useEffect(() => {
     fetchStandings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchStandings = async () => {
@@ -113,7 +114,7 @@ export default function FinalStandings() {
       <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
         {standings.length > 0 ? (
           <div className="space-y-2">
-            {standings.map((standing, index) => (
+            {standings.map((standing, _index) => (
               <div
                 key={standing.id}
                 className="flex items-center justify-between bg-[#1a1d2e] rounded-lg p-4 border border-white/5"
@@ -215,10 +216,6 @@ function AddStandingModal({ tournamentId, existingIds, onAdd, onClose }) {
   const [rank, setRank] = useState(existingIds.length + 1);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchParticipants();
-  }, []);
-
   const fetchParticipants = async () => {
     const { data } = await supabase
       .from('participants')
@@ -229,6 +226,11 @@ function AddStandingModal({ tournamentId, existingIds, onAdd, onClose }) {
     setParticipants(data?.filter(p => !existingIds.includes(p.id)) || []);
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchParticipants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();

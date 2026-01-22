@@ -21,6 +21,7 @@ export default function EmbedStandings() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchData = async () => {

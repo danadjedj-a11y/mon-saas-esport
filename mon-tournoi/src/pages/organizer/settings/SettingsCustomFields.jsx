@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
 import { Button, Input, Select, Modal } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
@@ -34,6 +34,7 @@ export default function SettingsCustomFields() {
 
   useEffect(() => {
     fetchCustomFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchCustomFields = async () => {

@@ -20,6 +20,7 @@ export default function ParticipantsList() {
 
   useEffect(() => {
     fetchParticipants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchParticipants = async () => {

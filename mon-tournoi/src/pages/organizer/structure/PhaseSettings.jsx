@@ -67,6 +67,7 @@ export default function PhaseSettings() {
   // Charger les données de la phase
   useEffect(() => {
     fetchPhaseData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseId]);
 
   // Tracker les changements
@@ -816,7 +817,7 @@ function MatchFormatSettings({ format, bestOf, fixedGames, onChange }) {
 /**
  * RoundSettings - Configuration d'un tour spécifique
  */
-function RoundSettings({ round, onChange, parentFormat }) {
+function RoundSettings({ round, onChange, _parentFormat }) {
   const [localFormat, setLocalFormat] = useState(round.matchFormat || 'inherited');
   
   return (

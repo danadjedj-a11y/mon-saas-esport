@@ -95,6 +95,7 @@ export default function MapVetoSystem({
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
   const fetchVetoState = async () => {
@@ -279,7 +280,7 @@ export default function MapVetoSystem({
             const isBanned = status?.type === 'ban';
             const isPicked = status?.type === 'pick';
             
-            const currentAction = vetoFormat[vetoState.step];
+            const _currentAction = vetoFormat[vetoState.step];
             const canSelect = isAvailable && !vetoState.completed && !isSpectator && actionInfo.isOurTurn;
 
             return (

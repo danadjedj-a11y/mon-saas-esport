@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { toast } from '../../../utils/toast';
 import MatchQuickView from '../../../components/match/MatchQuickView';
 
 export default function MatchesOverview() {
@@ -18,6 +17,7 @@ export default function MatchesOverview() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchData = async () => {

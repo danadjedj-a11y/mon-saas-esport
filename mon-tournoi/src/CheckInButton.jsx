@@ -109,7 +109,6 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     checkStatus();
     
     const interval = setInterval(() => {

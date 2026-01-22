@@ -15,7 +15,7 @@ export default function ParticipantsExport() {
 
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [exportFormat, setExportFormat] = useState('csv');
+  const [_exportFormat, _setExportFormat] = useState('csv');
   const [includeFields, setIncludeFields] = useState({
     position: true,
     name: true,
@@ -28,6 +28,7 @@ export default function ParticipantsExport() {
 
   useEffect(() => {
     fetchParticipants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const fetchParticipants = async () => {
@@ -226,7 +227,7 @@ export default function ParticipantsExport() {
             </h2>
             
             <div className="bg-black/30 rounded-lg p-4 max-h-64 overflow-auto font-mono text-xs">
-              {participants.slice(0, 5).map((p, i) => (
+              {participants.slice(0, 5).map((p, _i) => (
                 <div key={p.id} className="text-text-secondary mb-1">
                   {includeFields.seed && <span className="text-violet">#{p.seed || '?'}</span>}
                   {includeFields.name && <span className="text-white ml-2">{p.team?.name || p.name || 'Sans nom'}</span>}

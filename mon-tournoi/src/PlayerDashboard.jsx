@@ -25,6 +25,7 @@ export default function PlayerDashboard({ session }) {
 
   useEffect(() => {
     if (session) fetchPlayerData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const fetchPlayerData = async () => {
@@ -474,7 +475,7 @@ function MatchesTab({ upcomingMatches, recentResults, navigate }) {
   );
 }
 
-function ActivityTab({ recentResults, myTournaments }) {
+function ActivityTab({ recentResults, myTournaments: _myTournaments }) {
   // Combine et trie les événements par date
   const activities = useMemo(() => {
     const items = [];
@@ -546,7 +547,7 @@ function StatCard({ value, label, icon, color, highlight = false }) {
   );
 }
 
-function MatchRow({ match, navigate, type, expanded = false }) {
+function MatchRow({ match, navigate, type, expanded: _expanded = false }) {
   return (
     <div
       onClick={() => navigate(`/match/${match.id}`)}

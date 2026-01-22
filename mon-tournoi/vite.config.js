@@ -38,6 +38,16 @@ export default defineConfig({
     conditions: ['import', 'module', 'browser', 'default']
   },
   build: {
+    // Désactiver les sourcemaps en production pour réduire la taille
+    sourcemap: false,
+    // Utiliser terser pour une meilleure minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Supprimer console.log en production
+        drop_debugger: true
+      }
+    },
     commonjsOptions: {
       // Convertir les modules CommonJS en ESM
       transformMixedEsModules: true
@@ -53,10 +63,12 @@ export default defineConfig({
           'vendor-pdf': ['jspdf'],
           'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
           'vendor-sentry': ['@sentry/react'],
+          'vendor-state': ['zustand'],
+          'vendor-utils': ['zod', 'clsx'],
         }
       }
     },
-    // Augmenter la limite d'avertissement pour les gros chunks
-    chunkSizeWarningLimit: 500
+    // Limite plus stricte pour les chunks
+    chunkSizeWarningLimit: 300
   }
 })

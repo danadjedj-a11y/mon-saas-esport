@@ -3,7 +3,7 @@ import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom
 import { supabase } from '../../../supabaseClient';
 import { Button, Card, Input } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
-import { PLATFORM_NAMES, PLATFORM_LOGOS, getPlatformForGame, formatGamertag } from '../../../utils/gamePlatforms';
+import { PLATFORM_NAMES, PLATFORM_LOGOS, getPlatformForGame } from '../../../utils/gamePlatforms';
 
 export default function ParticipantDetails() {
   const { id: tournamentId, participantId } = useParams();
@@ -17,6 +17,7 @@ export default function ParticipantDetails() {
 
   useEffect(() => {
     fetchParticipant();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participantId]);
 
   const fetchParticipant = async () => {
