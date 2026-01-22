@@ -84,6 +84,12 @@ Une plateforme SaaS de gestion de tournois esport permettant :
 | **Éditeur de bracket** | BracketEditor.jsx | Drag & drop limité |
 | **Système de rôles co-org** | tournament_roles table | UI limitée |
 
+### ✅ Fonctionnalités Récemment Ajoutées (22/01/2026)
+
+| Fonctionnalité | Composants | Notes |
+|----------------|------------|-------|
+| **Check-in par round** | RoundCheckIn.jsx, useRoundCheckIn.js | Check-in obligatoire par round avec deadline configurable |
+
 ### ❌ Fonctionnalités Non Implémentées (Documentées)
 
 | Fonctionnalité | Document source | Priorité |
@@ -92,7 +98,6 @@ Une plateforme SaaS de gestion de tournois esport permettant :
 | **Groupes d'arbres** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟡 Basse |
 | **Arbre personnalisé** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟡 Basse |
 | **Système de ligue** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟡 Basse |
-| **Check-in par round** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟠 Moyenne |
 | **Gestion reports/forfaits automatiques** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟠 Moyenne |
 | **Paiements intégrés** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟡 Future |
 | **API publique REST** | ANALYSE_AMELIORATIONS_TOORNAMENT.md | 🟡 Future |

@@ -156,6 +156,56 @@ export async function generateBracketMatches(phase, tournamentId) {
         created_at: new Date().toISOString(),
       });
     }
+  } else if (format === 'group_stage' || format === 'groups') {
+    // Phase de groupes avec round robin dans chaque groupe
+    const numGroups = config?.num_groups || 4;
+    const teamsPerGroup = Math.ceil(size / numGroups);
+    
+    // Pour chaque groupe, générer les matchs round robin
+    let matchNumber = 1;
+    for (let group = 1; group <= numGroups; group++) {
+      // Round robin dans le groupe: chaque équipe affronte toutes les autres
+      const matchesInGroup = (teamsPerGroup * (teamsPerGroup - 1)) / 2;
+      
+      for (let m = 0; m < matchesInGroup; m++) {
+        matches.push({
+          tournament_id: tournamentId,
+          phase_id: phaseId,
+          round_number: Math.floor(m / Math.ceil(teamsPerGroup / 2)) + 1,
+          match_number: matchNumber++,
+          bracket_type: `group_${String.fromCharCode(64 + group)}`, // group_A, group_B, etc.
+          player1_id: null,
+          player2_id: null,
+          status: 'pending',
+          group_number: group,
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+    
+    // Playoffs après la phase de groupes (optionnel)
+    if (config?.include_playoffs !== false) {
+      const qualifiedPerGroup = config?.qualified_per_group || 2;
+      const playoffSize = numGroups * qualifiedPerGroup;
+      const playoffRounds = Math.ceil(Math.log2(playoffSize));
+      
+      for (let round = 1; round <= playoffRounds; round++) {
+        const matchesInRound = Math.pow(2, playoffRounds - round);
+        for (let m = 0; m < matchesInRound; m++) {
+          matches.push({
+            tournament_id: tournamentId,
+            phase_id: phaseId,
+            round_number: round,
+            match_number: matchNumber++,
+            bracket_type: 'playoff',
+            player1_id: null,
+            player2_id: null,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
   }
 
   // Insérer tous les matchs
@@ -221,6 +271,19 @@ export function calculateMatchCount(format, size, config = {}) {
     return numRounds * Math.floor(size / 2);
   } else if (format === 'gauntlet') {
     return size - 1;
+  } else if (format === 'group_stage' || format === 'groups') {
+    const numGroups = config.num_groups || 4;
+    const teamsPerGroup = Math.ceil(size / numGroups);
+    // Matchs dans les groupes (round robin)
+    const groupMatches = numGroups * ((teamsPerGroup * (teamsPerGroup - 1)) / 2);
+    // Playoffs
+    if (config.include_playoffs !== false) {
+      const qualifiedPerGroup = config.qualified_per_group || 2;
+      const playoffSize = numGroups * qualifiedPerGroup;
+      const playoffMatches = playoffSize - 1;
+      return groupMatches + playoffMatches;
+    }
+    return groupMatches;
   }
   return 0;
 }

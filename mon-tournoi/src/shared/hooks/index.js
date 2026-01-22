@@ -13,6 +13,7 @@ export { useTournamentActions, triggerConfetti } from './useTournamentActions';
 export { useMatchProgression } from './useMatchProgression';
 export { useScoreReporting } from './useScoreReporting';
 export { useTournamentAdmin } from './useTournamentAdmin';
+export { useRoundCheckIn } from './useRoundCheckIn';
 
 // Hooks features
 export { useTournament } from '../../features/tournaments/hooks/useTournament';

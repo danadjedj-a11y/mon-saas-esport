@@ -1,4 +1,6 @@
 import React from 'react';
+import GauntletBracket from './GauntletBracket';
+import GroupStage from './GroupStage';
 
 /**
  * Carte de match simple pour les brackets Tournament.jsx
@@ -164,6 +166,62 @@ export default function TournamentBracket({
           )}
         </div>
       </div>
+    );
+  }
+
+  // Gauntlet Format
+  if (format === 'gauntlet') {
+    // Extraire les données gauntlet depuis les métadonnées des matches
+    const gauntletData = matches.length > 0 && matches[0].tournament?.gauntlet_data 
+      ? matches[0].tournament.gauntlet_data 
+      : {
+          champion: null,
+          challengers: [],
+          matches: matches.map((m, idx) => ({
+            id: m.id,
+            round: m.round_number,
+            position: idx + 1,
+            currentChampion: m.player1_id,
+            challenger: m.player2_id,
+            championName: m.p1_name,
+            challengerName: m.p2_name,
+            winner: m.status === 'completed' 
+              ? (m.score_p1 > m.score_p2 ? m.player1_id : m.player2_id)
+              : null,
+            scores: { champion: m.score_p1 || 0, challenger: m.score_p2 || 0 },
+            status: m.status === 'completed' ? 'completed' : 'pending',
+          })),
+        };
+    
+    return (
+      <GauntletBracket
+        gauntletData={gauntletData}
+        matches={matches}
+        participants={[]}
+        onMatchClick={onMatchClick}
+      />
+    );
+  }
+
+  // Group Stage Format
+  if (format === 'group_stage') {
+    // Extraire les données de groupes depuis les métadonnées
+    const groupData = matches.length > 0 && matches[0].tournament?.group_data
+      ? matches[0].tournament.group_data
+      : {
+          groups: [],
+          standings: {},
+          qualifiedTeams: [],
+          matches: matches,
+        };
+    
+    return (
+      <GroupStage
+        groupData={groupData}
+        matches={matches}
+        participants={[]}
+        onMatchClick={onMatchClick}
+      />
     );
   }
 

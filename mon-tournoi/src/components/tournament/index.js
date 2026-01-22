@@ -17,3 +17,10 @@ export { default as RoundRobinStandings } from './RoundRobinStandings';
 export { default as TeamsList } from './TeamsList';
 export { default as WaitlistSection } from './WaitlistSection';
 export { default as ScoreModal } from './ScoreModal';
+
+// Round check-in components
+export { RoundCheckInButton, RoundCheckInPanel, RoundCheckInAdminList } from './RoundCheckIn';
+
+// Advanced formats
+export { default as GauntletBracket } from './GauntletBracket';
+export { default as GroupStage, PlayoffBracketPreview } from './GroupStage';

@@ -55,7 +55,9 @@ export default function CreateTournament() {
 
   const formatOptions = [
     { value: 'elimination', label: '🏆 Arbre à Élimination Directe' },
-    { value: 'double_elimination', label: '⚔️ Double Elimination' },
+    { value: 'double_elimination', label: '⚔️ Double Élimination' },
+    { value: 'gauntlet', label: '👑 Gauntlet (Défi progressif)' },
+    { value: 'group_stage', label: '👥 Phase de Groupes' },
     { value: 'round_robin', label: '🔄 Championnat (Round Robin)' },
     { value: 'swiss', label: '🇨🇭 Système Suisse' },
   ];
