@@ -160,10 +160,25 @@ export default function CreateTournament() {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = async (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     
+    // Sur toutes les étapes sauf la dernière, on passe à la suivante
+    if (currentStep < totalSteps) {
+      nextStep();
+      return;
+    }
+    
+    // À la dernière étape, on crée le tournoi
+    handleCreateTournament();
+  };
+
+  const handleCreateTournament = async () => {
     if (!validateStep(currentStep)) return;
+    
+    // Éviter les doubles soumissions
+    if (loading) return;
     
     setLoading(true);
     setErrors({});
@@ -640,7 +655,7 @@ export default function CreateTournament() {
           {renderStepIndicator()}
 
           {/* Form */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleFormSubmit}>
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
