@@ -27,10 +27,10 @@ const Tabs = ({
 
   const tabStyles = {
     default: {
-      container: 'border-b border-white/10',
-      tab: 'px-6 py-3 font-body text-base transition-all duration-200 border-b-2 -mb-px',
-      active: 'border-violet-500 text-cyan-400',
-      inactive: 'border-transparent text-gray-400 hover:text-white hover:border-violet-500/50',
+      container: 'border-b border-white/10 overflow-visible',
+      tab: 'px-6 py-3 font-body text-base transition-all duration-200 border-b-2 relative top-[1px]',
+      active: 'border-violet-500 text-cyan-400 bg-transparent',
+      inactive: 'border-transparent text-gray-400 hover:text-white hover:border-violet-500/50 bg-transparent',
     },
     pills: {
       container: 'bg-black/30 p-1 rounded-lg',

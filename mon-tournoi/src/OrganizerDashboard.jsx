@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
+import { AdminGamingAccountRequests } from './components/admin';
 import clsx from 'clsx';
 
 export default function OrganizerDashboard({ session }) {
@@ -10,11 +11,14 @@ export default function OrganizerDashboard({ session }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [showGamingRequests, setShowGamingRequests] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (session) {
       fetchData();
+      fetchPendingRequestsCount();
     }
   }, [session]);
 
@@ -33,6 +37,22 @@ export default function OrganizerDashboard({ session }) {
       console.error('Erreur:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingRequestsCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('gaming_account_change_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (!error) {
+        setPendingRequestsCount(count || 0);
+      }
+    } catch (error) {
+      // Table might not exist yet
+      console.log('Table gaming_account_change_requests not found');
     }
   };
 
@@ -119,13 +139,39 @@ export default function OrganizerDashboard({ session }) {
             {stats.total} tournoi{stats.total > 1 ? 's' : ''} • {stats.active} en cours
           </p>
         </div>
-        <button
-          onClick={() => navigate('/create-tournament')}
-          className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-white rounded-lg font-medium transition-all shadow-lg shadow-cyan-500/20"
-        >
-          + Nouveau tournoi
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Gaming account requests button */}
+          <button
+            onClick={() => setShowGamingRequests(!showGamingRequests)}
+            className={clsx(
+              'relative px-4 py-2.5 rounded-lg font-medium transition-all',
+              showGamingRequests
+                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
+                : 'bg-[#161b22] text-gray-400 hover:text-white border border-white/10 hover:border-violet-500/30'
+            )}
+          >
+            🎮 Demandes Gaming
+            {pendingRequestsCount > 0 && (
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {pendingRequestsCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/create-tournament')}
+            className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-white rounded-lg font-medium transition-all shadow-lg shadow-cyan-500/20"
+          >
+            + Nouveau tournoi
+          </button>
+        </div>
       </div>
+
+      {/* Gaming Account Requests Section */}
+      {showGamingRequests && (
+        <div className="mb-8 p-6 bg-[#161b22] rounded-xl border border-violet-500/30">
+          <AdminGamingAccountRequests session={session} />
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

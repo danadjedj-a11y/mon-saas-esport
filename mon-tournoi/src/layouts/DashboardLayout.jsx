@@ -291,10 +291,55 @@ export default function DashboardLayout({ children, session = null }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-56 min-h-screen pt-14 lg:pt-0">
-        <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+      <main className="flex-1 lg:ml-56 min-h-screen pt-14 lg:pt-0 flex flex-col">
+        <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
           {children}
         </div>
+        
+        {/* Footer avec liens légaux */}
+        <footer className="border-t border-white/10 bg-[#0d1117] py-6 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                <span>© {new Date().getFullYear()} Fluky Boys</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="hidden sm:inline">Tous droits réservés</span>
+              </div>
+              
+              <nav className="flex flex-wrap items-center justify-center gap-4 text-sm">
+                <Link 
+                  to="/legal/privacy" 
+                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                >
+                  Confidentialité
+                </Link>
+                <Link 
+                  to="/legal/terms" 
+                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                >
+                  CGU
+                </Link>
+                <Link 
+                  to="/legal/mentions" 
+                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                >
+                  Mentions légales
+                </Link>
+                <button
+                  onClick={() => {
+                    // Ouvrir les paramètres de cookies
+                    if (typeof window !== 'undefined' && window.openCookieSettings) {
+                      window.openCookieSettings();
+                    }
+                  }}
+                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                >
+                  Gérer les cookies
+                </button>
+              </nav>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   );

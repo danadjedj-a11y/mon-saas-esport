@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { toast } from '../../utils/toast';
+import { getPlatformForGame, PLATFORM_NAMES, PLATFORM_LOGOS } from '../../utils/gamePlatforms';
 
 /**
  * TournamentRegister - Page d'inscription à un tournoi
@@ -17,6 +18,9 @@ export default function TournamentRegister({ session }) {
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState('');
   const [registrationType, setRegistrationType] = useState('solo'); // 'solo' ou 'team'
+  const [userProfile, setUserProfile] = useState(null);
+  const [hasRequiredGamingAccount, setHasRequiredGamingAccount] = useState(false);
+  const [requiredPlatform, setRequiredPlatform] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -34,11 +38,34 @@ export default function TournamentRegister({ session }) {
       if (tournamentError) throw tournamentError;
       setTournament(tournamentData);
 
+      // Déterminer la plateforme gaming requise pour ce jeu
+      const platform = getPlatformForGame(tournamentData.game);
+      setRequiredPlatform(platform);
+
       // Déterminer le type d'inscription
       const teamSize = tournamentData.team_size || 1;
       setRegistrationType(teamSize > 1 ? 'team' : 'solo');
 
       if (session?.user) {
+        // Charger le profil utilisateur avec les comptes gaming
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*, gaming_accounts')
+          .eq('id', session.user.id)
+          .single();
+        
+        setUserProfile(profileData);
+
+        // Vérifier si l'utilisateur a le compte gaming requis
+        if (platform && profileData?.gaming_accounts) {
+          const gamingAccounts = profileData.gaming_accounts;
+          const hasAccount = gamingAccounts[platform] && gamingAccounts[platform].trim() !== '';
+          setHasRequiredGamingAccount(hasAccount);
+        } else if (!platform) {
+          // Si aucune plateforme n'est requise, on permet l'inscription
+          setHasRequiredGamingAccount(true);
+        }
+
         // Vérifier si déjà inscrit
         const { data: existingReg } = await supabase
           .from('participants')
@@ -76,6 +103,12 @@ export default function TournamentRegister({ session }) {
 
     if (isRegistered) {
       toast.info('Vous êtes déjà inscrit à ce tournoi');
+      return;
+    }
+
+    // Vérifier si le compte gaming est configuré
+    if (requiredPlatform && !hasRequiredGamingAccount) {
+      toast.error(`Vous devez configurer votre compte ${PLATFORM_NAMES[requiredPlatform]} dans votre profil pour vous inscrire à ce tournoi`);
       return;
     }
 
@@ -249,6 +282,56 @@ export default function TournamentRegister({ session }) {
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">Confirmer votre inscription</h3>
                 
+                {/* Gaming account required warning */}
+                {requiredPlatform && !hasRequiredGamingAccount && (
+                  <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      {PLATFORM_LOGOS[requiredPlatform] && (
+                        <img 
+                          src={PLATFORM_LOGOS[requiredPlatform]} 
+                          alt={PLATFORM_NAMES[requiredPlatform]}
+                          className="w-8 h-8 flex-shrink-0 mt-0.5"
+                        />
+                      )}
+                      <div>
+                        <p className="text-red-400 font-medium mb-1">
+                          ⚠️ Compte {PLATFORM_NAMES[requiredPlatform]} requis
+                        </p>
+                        <p className="text-gray-400 text-sm mb-3">
+                          Ce tournoi est sur <strong>{tournament.game}</strong>. Vous devez configurer votre pseudo {PLATFORM_NAMES[requiredPlatform]} dans votre profil pour vous inscrire.
+                        </p>
+                        <Link 
+                          to="/profile" 
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg text-sm hover:bg-cyan-500/30 transition-colors"
+                        >
+                          <span>⚙️</span>
+                          Configurer mon profil
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gaming account configured indicator */}
+                {requiredPlatform && hasRequiredGamingAccount && userProfile?.gaming_accounts?.[requiredPlatform] && (
+                  <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {PLATFORM_LOGOS[requiredPlatform] && (
+                        <img 
+                          src={PLATFORM_LOGOS[requiredPlatform]} 
+                          alt={PLATFORM_NAMES[requiredPlatform]}
+                          className="w-6 h-6"
+                        />
+                      )}
+                      <div>
+                        <p className="text-green-400 text-sm">
+                          ✓ Compte {PLATFORM_NAMES[requiredPlatform]} : <span className="font-medium text-white">{userProfile.gaming_accounts[requiredPlatform]}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Team selection if needed */}
                 {registrationType === 'team' && (
                   <div className="mb-6">
@@ -296,13 +379,18 @@ export default function TournamentRegister({ session }) {
                 {/* Submit button */}
                 <button
                   onClick={handleRegister}
-                  disabled={registering || (registrationType === 'team' && !selectedTeam)}
+                  disabled={registering || (registrationType === 'team' && !selectedTeam) || (requiredPlatform && !hasRequiredGamingAccount)}
                   className="w-full py-4 bg-gradient-to-r from-violet-500 to-cyan-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {registering ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Inscription en cours...
+                    </>
+                  ) : (requiredPlatform && !hasRequiredGamingAccount) ? (
+                    <>
+                      <span>🔒</span>
+                      Compte {PLATFORM_NAMES[requiredPlatform]} requis
                     </>
                   ) : (
                     <>

@@ -13,6 +13,8 @@ export default function Auth() {
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [avatarFile, setAvatarFile] = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [mode, setMode] = useState('login') // 'login' ou 'signup'
   const [errors, setErrors] = useState({})
   const navigate = useNavigate()
@@ -100,6 +102,17 @@ export default function Auth() {
       return
     }
     
+    // Vérifier les consentements pour l'inscription
+    if (mode === 'signup') {
+      if (!acceptTerms || !acceptPrivacy) {
+        setErrors({
+          consent: 'Vous devez accepter les conditions d\'utilisation et la politique de confidentialité pour vous inscrire'
+        })
+        setLoading(false)
+        return
+      }
+    }
+    
     // Données validées
     const validatedData = result.data
     
@@ -146,6 +159,8 @@ export default function Auth() {
             pseudonym: validatedData.username,
             date_of_birth: validatedData.dateOfBirth,
             avatar_url: avatarUrl,
+            terms_accepted_at: new Date().toISOString(),
+            privacy_accepted_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
         
@@ -323,6 +338,65 @@ export default function Auth() {
               </p>
             )}
           </div>
+          
+          {/* Consentements RGPD pour l'inscription */}
+          {mode === 'signup' && (
+            <div className="space-y-3 mt-2">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => {
+                    setAcceptTerms(e.target.checked)
+                    if (errors.consent) setErrors(prev => ({ ...prev, consent: undefined }))
+                  }}
+                  className="mt-1 w-4 h-4 rounded border-glass-border bg-dark-50 text-violet focus:ring-violet/30 focus:ring-2 cursor-pointer"
+                />
+                <span className="text-sm text-text-secondary font-body">
+                  J'accepte les{' '}
+                  <a 
+                    href="/legal/terms" 
+                    target="_blank" 
+                    className="text-violet-light hover:text-violet underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    conditions générales d'utilisation
+                  </a>
+                  {' '}*
+                </span>
+              </label>
+              
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptPrivacy}
+                  onChange={(e) => {
+                    setAcceptPrivacy(e.target.checked)
+                    if (errors.consent) setErrors(prev => ({ ...prev, consent: undefined }))
+                  }}
+                  className="mt-1 w-4 h-4 rounded border-glass-border bg-dark-50 text-violet focus:ring-violet/30 focus:ring-2 cursor-pointer"
+                />
+                <span className="text-sm text-text-secondary font-body">
+                  J'accepte la{' '}
+                  <a 
+                    href="/legal/privacy" 
+                    target="_blank" 
+                    className="text-violet-light hover:text-violet underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    politique de confidentialité
+                  </a>
+                  {' '}et le traitement de mes données personnelles *
+                </span>
+              </label>
+              
+              {errors.consent && (
+                <p className="text-danger text-sm font-body flex items-center gap-1">
+                  <span>⚠</span> {errors.consent}
+                </p>
+              )}
+            </div>
+          )}
           
           <button 
             type="submit"

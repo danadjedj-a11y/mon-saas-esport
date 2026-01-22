@@ -686,19 +686,18 @@ export default function Profile({ session }) {
             </div>
           </Card>
 
-          <Card variant="outlined" padding="lg" className="border-red-500/30">
-            <h3 className="font-display text-xl text-red-500 mb-4">
-              ⚠️ Zone Danger
+          <Card variant="outlined" padding="lg" className="border-violet-500/30">
+            <h3 className="font-display text-xl text-violet-400 mb-4">
+              🔐 Données Personnelles & Confidentialité
             </h3>
             <p className="text-sm text-gray-500 mb-4">
-              Les actions suivantes sont irréversibles
+              Gérez vos données, exportez vos informations ou supprimez votre compte
             </p>
             <Button
-              variant="danger"
-              size="sm"
-              onClick={() => toast.info('Fonctionnalité bientôt disponible')}
+              variant="outline"
+              onClick={() => navigate('/profile/privacy')}
             >
-              🗑️ Supprimer Mon Compte
+              ⚙️ Gérer mes données
             </Button>
           </Card>
         </div>

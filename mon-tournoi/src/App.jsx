@@ -8,6 +8,7 @@ import { getUserRole } from './utils/userRole';
 import { toast } from './utils/toast';
 import analytics from './utils/analytics';
 import monitoring from './utils/monitoring';
+import CookieConsent from './components/CookieConsent';
 import './i18n/config'; // Initialiser i18n
 
 // Lazy loading des composants pour améliorer les performances
@@ -35,6 +36,12 @@ const PublicTeam = lazy(() => import('./pages/PublicTeam'));
 const TournamentRegister = lazy(() => import('./pages/tournament/TournamentRegister'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
+// Pages légales (RGPD)
+const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/legal/TermsOfService'));
+const LegalNotice = lazy(() => import('./pages/legal/LegalNotice'));
+const PrivacySettings = lazy(() => import('./pages/profile/PrivacySettings'));
+
 // Pages Play (côté joueur public)
 const PlayHome = lazy(() => import('./pages/play/PlayHome'));
 const GamesDirectory = lazy(() => import('./pages/play/GamesDirectory'));
@@ -60,6 +67,7 @@ const SettingsOperations = lazy(() => import('./pages/organizer/settings/Setting
 // Participants
 const ParticipantsList = lazy(() => import('./pages/organizer/participants/ParticipantsList'));
 const ParticipantCreate = lazy(() => import('./pages/organizer/participants/ParticipantCreate'));
+const ParticipantDetails = lazy(() => import('./pages/organizer/participants/ParticipantDetails'));
 const ParticipantsBulkEdit = lazy(() => import('./pages/organizer/participants/ParticipantsBulkEdit'));
 const ParticipantsExport = lazy(() => import('./pages/organizer/participants/ParticipantsExport'));
 // Placement
@@ -499,6 +507,12 @@ function App() {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+        {/* PAGES LÉGALES (Accessibles sans authentification) */}
+        <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+        <Route path="/legal/terms" element={<TermsOfService />} />
+        <Route path="/legal/mentions" element={<LegalNotice />} />
+        <Route path="/profile/privacy" element={<PrivacySettings session={session} />} />
+        
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
         <Route path="/tournament/:id/register" element={<TournamentRegister session={session} />} />
@@ -576,6 +590,7 @@ function App() {
           {/* Participants */}
           <Route path="participants" element={<ParticipantsList />} />
           <Route path="participants/create" element={<ParticipantCreate />} />
+          <Route path="participants/:participantId" element={<ParticipantDetails />} />
           <Route path="participants/bulk-edit" element={<ParticipantsBulkEdit />} />
           <Route path="participants/export" element={<ParticipantsExport />} />
           
@@ -708,6 +723,7 @@ function App() {
         {!isOnline && <OfflineBanner />}
         <AppRoutes />
         <ToastContainer />
+        <CookieConsent />
       </Router>
     </ErrorBoundary>
   )
