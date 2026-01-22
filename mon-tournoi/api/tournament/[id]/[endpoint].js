@@ -295,9 +295,32 @@ async function fetchResults(supabase, tournamentId) {
   };
 }
 
+// Liste des origines autorisées en production
+const ALLOWED_ORIGINS = [
+  'https://mon-tournoi.vercel.app',
+  'https://mon-saas-esport.vercel.app',
+  process.env.VITE_APP_URL,
+  'http://localhost:5173', // Dev uniquement
+  'http://localhost:3000',
+].filter(Boolean);
+
+// Validation UUID v4
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(str) {
+  return UUID_REGEX.test(str);
+}
+
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS headers - Restreindre aux origines autorisées
+  const origin = req.headers.origin;
+  const isAllowed = !origin || ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV === 'development';
+  
+  if (isAllowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -315,6 +338,11 @@ export default async function handler(req, res) {
 
   if (!tournamentId || !endpoint) {
     return res.status(400).json({ error: 'ID et endpoint requis' });
+  }
+
+  // Validation UUID pour éviter les injections
+  if (!isValidUUID(tournamentId)) {
+    return res.status(400).json({ error: 'ID de tournoi invalide' });
   }
 
   try {

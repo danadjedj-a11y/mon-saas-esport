@@ -165,10 +165,28 @@ export default function TournamentRegistration({
     try {
       // Vérifier si le tournoi est plein
       if (eligibility?.isFull) {
-        // Pour une équipe temporaire, on doit d'abord la créer puis l'ajouter à la waitlist
-        // Pour l'instant, on refuse simplement
-        toast.warning('Le tournoi est complet. Créez une équipe temporaire quand même pour rejoindre la liste d\'attente ?');
-        // TODO: Implémenter waitlist pour équipes temporaires
+        // Tournoi plein : proposer la waitlist
+        const confirmWaitlist = window.confirm(
+          'Le tournoi est complet. Voulez-vous créer votre équipe et rejoindre la liste d\'attente ?\n\n' +
+          'Vous serez automatiquement inscrit si une place se libère.'
+        );
+        
+        if (!confirmWaitlist) {
+          setLoading(false);
+          return;
+        }
+        
+        // Créer l'équipe temporaire puis l'ajouter à la waitlist
+        const { registerTemporaryTeamToWaitlist } = await import('../../shared/services/api/registration');
+        const result = await registerTemporaryTeamToWaitlist(tournamentId, teamData, players);
+        
+        if (result.success) {
+          toast.success(`✅ Équipe créée ! Vous êtes en position ${result.position} sur la liste d'attente.`);
+          setIsModalOpen(false);
+          onSuccess?.();
+        } else {
+          toast.error(result.error);
+        }
         setLoading(false);
         return;
       }

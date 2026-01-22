@@ -20,7 +20,8 @@ export async function handleSingleEliminationProgression(supabase, tournamentId,
     const nextMatch = nextRoundMatches[nextMatchIndex];
     if (nextMatch) {
       const updateField = currentMatchIndexInRound % 2 === 0 ? 'player1_id' : 'player2_id';
-      await supabase.from('matches').update({ [updateField]: winnerId }).eq('id', nextMatch.id);
+      const { error } = await supabase.from('matches').update({ [updateField]: winnerId }).eq('id', nextMatch.id);
+      if (error) console.error('Erreur progression Single Elim:', error);
     }
   } else {
     // C'est la finale
@@ -63,12 +64,14 @@ export async function handleDoubleEliminationProgression(supabase, tournamentId,
       const nextMatch = nextRoundWinnersMatches[nextMatchIndex];
       if (nextMatch) {
         const slot = matchIndexInRound % 2 === 0 ? 'player1_id' : 'player2_id';
-        await supabase.from('matches').update({ [slot]: winnerId }).eq('id', nextMatch.id);
+        const { error } = await supabase.from('matches').update({ [slot]: winnerId }).eq('id', nextMatch.id);
+        if (error) console.error('Erreur progression Winners:', error);
       }
     } else {
       // Winners Final → Gagnant va en Grande Finale
       if (grandFinal) {
-        await supabase.from('matches').update({ player1_id: winnerId }).eq('id', grandFinal.id);
+        const { error } = await supabase.from('matches').update({ player1_id: winnerId }).eq('id', grandFinal.id);
+        if (error) console.error('Erreur progression vers Grand Final:', error);
       }
     }
 
@@ -80,10 +83,12 @@ export async function handleDoubleEliminationProgression(supabase, tournamentId,
       // Trouver le premier slot vide
       for (const losersMatch of targetLosersRound) {
         if (!losersMatch.player1_id) {
-          await supabase.from('matches').update({ player1_id: loserId }).eq('id', losersMatch.id);
+          const { error } = await supabase.from('matches').update({ player1_id: loserId }).eq('id', losersMatch.id);
+          if (error) console.error('Erreur drop vers Losers:', error);
           break;
         } else if (!losersMatch.player2_id) {
-          await supabase.from('matches').update({ player2_id: loserId }).eq('id', losersMatch.id);
+          const { error } = await supabase.from('matches').update({ player2_id: loserId }).eq('id', losersMatch.id);
+          if (error) console.error('Erreur drop vers Losers:', error);
           break;
         }
       }
@@ -112,12 +117,14 @@ export async function handleDoubleEliminationProgression(supabase, tournamentId,
       
       const nextMatch = nextRoundLosersMatches[nextMatchIndex];
       if (nextMatch) {
-        await supabase.from('matches').update({ [slot]: winnerId }).eq('id', nextMatch.id);
+        const { error } = await supabase.from('matches').update({ [slot]: winnerId }).eq('id', nextMatch.id);
+        if (error) console.error('Erreur progression Losers:', error);
       }
     } else {
       // Losers Final → Gagnant va en Grande Finale (player2)
       if (grandFinal) {
-        await supabase.from('matches').update({ player2_id: winnerId }).eq('id', grandFinal.id);
+        const { error } = await supabase.from('matches').update({ player2_id: winnerId }).eq('id', grandFinal.id);
+        if (error) console.error('Erreur progression vers Grand Final:', error);
       }
     }
   }
@@ -130,10 +137,11 @@ export async function handleDoubleEliminationProgression(supabase, tournamentId,
     } 
     // Si le joueur du Losers gagne → Reset match
     else if (resetMatch) {
-      await supabase.from('matches').update({ 
+      const { error } = await supabase.from('matches').update({ 
         player1_id: match.player1_id, 
         player2_id: winnerId 
       }).eq('id', resetMatch.id);
+      if (error) console.error('Erreur création Reset match:', error);
     }
   }
   

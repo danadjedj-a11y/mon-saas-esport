@@ -427,6 +427,88 @@ export async function cancelTemporaryTeamRegistration(tempTeamId) {
 }
 
 /**
+ * Crée une équipe temporaire et l'ajoute à la liste d'attente
+ * (quand le tournoi est complet)
+ * @param {string} tournamentId - ID du tournoi
+ * @param {object} teamData - Données de l'équipe temporaire
+ * @param {Array} players - Liste des joueurs
+ * @returns {Promise<{success: boolean, position?: number, error?: string}>}
+ */
+export async function registerTemporaryTeamToWaitlist(tournamentId, teamData, players) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'Vous devez être connecté' };
+    }
+
+    // 1. Créer l'équipe temporaire (sans l'inscrire comme participant)
+    const { data: tempTeam, error: tempTeamError } = await supabase
+      .from('temporary_teams')
+      .insert([{
+        tournament_id: tournamentId,
+        name: teamData.name,
+        tag: teamData.tag || null,
+        logo_url: teamData.logoUrl || null,
+        captain_id: user.id,
+        captain_email: teamData.captainEmail || user.email,
+        discord_contact: teamData.discordContact || null,
+        status: 'waitlisted'
+      }])
+      .select()
+      .single();
+
+    if (tempTeamError) {
+      if (tempTeamError.code === '23505') {
+        return { success: false, error: 'Vous avez déjà créé une équipe pour ce tournoi' };
+      }
+      return { success: false, error: tempTeamError.message };
+    }
+
+    // 2. Ajouter les joueurs
+    if (players && players.length > 0) {
+      const playersToInsert = players.map((player, index) => ({
+        temporary_team_id: tempTeam.id,
+        player_name: player.name,
+        player_email: player.email || null,
+        game_account: player.gameAccount || null,
+        game_account_platform: player.gameAccountPlatform || null,
+        role: player.role || null,
+        user_id: player.userId || null,
+        position: index
+      }));
+
+      const { error: playersError } = await supabase
+        .from('temporary_team_players')
+        .insert(playersToInsert);
+
+      if (playersError) {
+        // Rollback : supprimer l'équipe temporaire
+        await supabase.from('temporary_teams').delete().eq('id', tempTeam.id);
+        return { success: false, error: `Erreur ajout joueurs: ${playersError.message}` };
+      }
+    }
+
+    // 3. Ajouter à la waitlist
+    const waitlistResult = await addToWaitlist(tournamentId, tempTeam.id, true);
+    
+    if (!waitlistResult.success) {
+      // Rollback
+      await supabase.from('temporary_teams').delete().eq('id', tempTeam.id);
+      return waitlistResult;
+    }
+
+    return { 
+      success: true, 
+      position: waitlistResult.position,
+      temporaryTeamId: tempTeam.id
+    };
+  } catch (error) {
+    console.error('Erreur création équipe temporaire waitlist:', error);
+    return { success: false, error: 'Erreur lors de la création de l\'équipe' };
+  }
+}
+
+/**
  * Convertit une équipe temporaire en équipe permanente
  * @param {string} tempTeamId - ID de l'équipe temporaire
  * @returns {Promise<{success: boolean, teamId?: string, error?: string}>}

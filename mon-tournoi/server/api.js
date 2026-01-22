@@ -321,10 +321,33 @@ async function fetchResults(tournamentId) {
   };
 }
 
+// Liste des origines autorisées
+const ALLOWED_ORIGINS = [
+  'https://mon-tournoi.vercel.app',
+  'https://mon-saas-esport.vercel.app',
+  process.env.VITE_APP_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
+// Validation UUID v4
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(str) {
+  return UUID_REGEX.test(str);
+}
+
 // Middleware Connect (compatible avec Vite)
 export default function apiRouter(req, res, next) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS headers - Restreindre aux origines autorisées
+  const origin = req.headers.origin;
+  const isAllowed = !origin || ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV === 'development';
+  
+  if (isAllowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -342,6 +365,14 @@ export default function apiRouter(req, res, next) {
   }
 
   const [, id, endp] = match;
+
+  // Validation UUID
+  if (!isValidUUID(id)) {
+    res.statusCode = 400;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: 'ID de tournoi invalide' }));
+    return;
+  }
 
   // Gérer les différentes routes
   const handleRequest = async () => {
