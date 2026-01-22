@@ -22,17 +22,24 @@ export default function TeamDisplay({
       />
       <h3 className="mt-2.5 font-handwriting text-white">{team.name}</h3>
       
-      {/* Compte gaming */}
+      {/* Compte gaming - Affiché en gris sombre, italique sous le pseudo du site */}
       {gamingAccount && tournamentGame && (
-        <div className="flex items-center justify-center gap-1.5 mt-2 text-sm text-gray-400 italic font-body">
+        <div className="flex items-center justify-center gap-1.5 mt-1.5">
           <img 
             src={PLATFORM_LOGOS[gamingAccount.platform]} 
-            alt=""
-            className="w-4 h-4"
+            alt={gamingAccount.platform}
+            className="w-4 h-4 opacity-70"
           />
-          <span>
+          <span className="text-xs text-gray-500 italic font-body">
             {formatGamertag(gamingAccount.game_username, gamingAccount.game_tag, gamingAccount.platform)}
           </span>
+        </div>
+      )}
+      
+      {/* Avertissement si pas de compte gaming configuré */}
+      {!gamingAccount && tournamentGame && (
+        <div className="mt-1.5 text-xs text-yellow-500/70 italic font-body">
+          ⚠️ Compte gaming non configuré
         </div>
       )}
       

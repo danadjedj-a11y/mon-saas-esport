@@ -91,9 +91,7 @@ export default function NotificationCenter({ session }) {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('🔔 Channel subscription status:', status);
-      });
+      .subscribe();
 
     // FALLBACK: Polling toutes les 5 secondes si le Realtime ne marche pas
     const pollInterval = setInterval(async () => {

@@ -65,12 +65,19 @@ export const getTournamentById = async (tournamentId) => {
 };
 
 /**
- * Récupérer les participants d'un tournoi
+ * Récupérer les participants d'un tournoi (équipes permanentes ET temporaires)
  */
 export const getTournamentParticipants = async (tournamentId) => {
   const { data, error } = await supabase
     .from('participants')
-    .select('*, teams(*)')
+    .select(`
+      *,
+      teams(*),
+      temporary_teams(
+        *,
+        temporary_team_players(*)
+      )
+    `)
     .eq('tournament_id', tournamentId)
     .order('seed_order', { ascending: true, nullsLast: true });
 

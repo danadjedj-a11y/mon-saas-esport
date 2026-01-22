@@ -8,6 +8,7 @@ import { getUserRole } from './utils/userRole';
 import { toast } from './utils/toast';
 import analytics from './utils/analytics';
 import monitoring from './utils/monitoring';
+import CookieConsent from './components/CookieConsent';
 import './i18n/config'; // Initialiser i18n
 
 // Lazy loading des composants pour améliorer les performances
@@ -32,7 +33,67 @@ const StreamDashboard = lazy(() => import('./stream/StreamDashboard'));
 const TournamentAPI = lazy(() => import('./api/TournamentAPI'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const PublicTeam = lazy(() => import('./pages/PublicTeam'));
+const TournamentRegister = lazy(() => import('./pages/tournament/TournamentRegister'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+
+// Pages légales (RGPD)
+const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/legal/TermsOfService'));
+const LegalNotice = lazy(() => import('./pages/legal/LegalNotice'));
+const PrivacySettings = lazy(() => import('./pages/profile/PrivacySettings'));
+
+// Pages Play (côté joueur public)
+const PlayHome = lazy(() => import('./pages/play/PlayHome'));
+const GamesDirectory = lazy(() => import('./pages/play/GamesDirectory'));
+const GamePage = lazy(() => import('./pages/play/GamePage'));
+const SearchResults = lazy(() => import('./pages/play/SearchResults'));
+
+// Pages Organizer (nouvelle interface organisateur)
+const OrganizerLayout = lazy(() => import('./layouts/OrganizerLayout'));
+const TournamentOverview = lazy(() => import('./pages/organizer/TournamentOverview'));
+const TournamentStructure = lazy(() => import('./pages/organizer/TournamentStructure'));
+const BracketEditor = lazy(() => import('./components/bracket/BracketEditor'));
+const PhaseSettings = lazy(() => import('./pages/organizer/structure/PhaseSettings'));
+const SettingsGeneral = lazy(() => import('./pages/organizer/settings/SettingsGeneral'));
+const SettingsAppearance = lazy(() => import('./pages/organizer/settings/SettingsAppearance'));
+const SettingsDiscipline = lazy(() => import('./pages/organizer/settings/SettingsDiscipline'));
+const SettingsMatch = lazy(() => import('./pages/organizer/settings/SettingsMatch'));
+const SettingsRegistration = lazy(() => import('./pages/organizer/settings/SettingsRegistration'));
+const SettingsParticipant = lazy(() => import('./pages/organizer/settings/SettingsParticipant'));
+const SettingsCustomFields = lazy(() => import('./pages/organizer/settings/SettingsCustomFields'));
+const SettingsLocations = lazy(() => import('./pages/organizer/settings/SettingsLocations'));
+const SettingsPermissions = lazy(() => import('./pages/organizer/settings/SettingsPermissions'));
+const SettingsOperations = lazy(() => import('./pages/organizer/settings/SettingsOperations'));
+// Participants
+const ParticipantsList = lazy(() => import('./pages/organizer/participants/ParticipantsList'));
+const ParticipantCreate = lazy(() => import('./pages/organizer/participants/ParticipantCreate'));
+const ParticipantDetails = lazy(() => import('./pages/organizer/participants/ParticipantDetails'));
+const ParticipantsBulkEdit = lazy(() => import('./pages/organizer/participants/ParticipantsBulkEdit'));
+const ParticipantsExport = lazy(() => import('./pages/organizer/participants/ParticipantsExport'));
+// Placement
+const PlacementOverview = lazy(() => import('./pages/organizer/placement/PlacementOverview'));
+const PlacementPhase = lazy(() => import('./pages/organizer/placement/PlacementPhase'));
+// Matches
+const MatchesOverview = lazy(() => import('./pages/organizer/matches/MatchesOverview'));
+const MatchesPhase = lazy(() => import('./pages/organizer/matches/MatchesPhase'));
+const MatchEdit = lazy(() => import('./pages/organizer/matches/MatchEdit'));
+// Bracket
+const TournamentBracket = lazy(() => import('./pages/organizer/TournamentBracket'));
+// Final Standings
+const FinalStandings = lazy(() => import('./pages/organizer/FinalStandings'));
+// Share
+const Widgets = lazy(() => import('./pages/organizer/share/Widgets'));
+const Sponsors = lazy(() => import('./pages/organizer/share/Sponsors'));
+const Streams = lazy(() => import('./pages/organizer/share/Streams'));
+const SharingPublic = lazy(() => import('./pages/organizer/sharing/SharingPublic'));
+const SharingTV = lazy(() => import('./pages/organizer/sharing/SharingTV'));
+// Embed Widgets
+const EmbedTournament = lazy(() => import('./pages/embed/EmbedTournament'));
+const EmbedBracket = lazy(() => import('./pages/embed/EmbedBracket'));
+const EmbedParticipants = lazy(() => import('./pages/embed/EmbedParticipants'));
+const EmbedStandings = lazy(() => import('./pages/embed/EmbedStandings'));
+const EmbedMatches = lazy(() => import('./pages/embed/EmbedMatches'));
+const EmbedCalendar = lazy(() => import('./pages/embed/EmbedCalendar'));
 
 // Composant de chargement pour Suspense
 const LoadingFallback = () => (
@@ -68,6 +129,18 @@ const AuthLoadingSpinner = () => (
       </p>
       <div className="w-10 h-10 border-3 border-glass-border border-t-violet rounded-full animate-spin mx-auto" />
     </div>
+  </div>
+);
+
+// Composant placeholder pour les pages en cours de développement
+const PlaceholderPage = ({ title }) => (
+  <div className="text-center py-16">
+    <div className="w-20 h-20 mx-auto mb-6 bg-violet/20 rounded-2xl flex items-center justify-center text-4xl">
+      🚧
+    </div>
+    <h1 className="text-2xl font-display font-bold text-white mb-2">{title}</h1>
+    <p className="text-gray-400 mb-6">Cette fonctionnalité est en cours de développement</p>
+    <p className="text-sm text-gray-500">Revenez bientôt pour découvrir les nouvelles fonctionnalités !</p>
   </div>
 );
 
@@ -434,8 +507,15 @@ function App() {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+        {/* PAGES LÉGALES (Accessibles sans authentification) */}
+        <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+        <Route path="/legal/terms" element={<TermsOfService />} />
+        <Route path="/legal/mentions" element={<LegalNotice />} />
+        <Route path="/profile/privacy" element={<PrivacySettings session={session} />} />
+        
         {/* ROUTES PUBLIQUES (Accessibles sans authentification) */}
         <Route path="/tournament/:id/public" element={<PublicTournament />} />
+        <Route path="/tournament/:id/register" element={<TournamentRegister session={session} />} />
         <Route path="/player/:userId" element={<PublicProfile session={session} />} />
         <Route path="/team/:teamId" element={<PublicTeam session={session} />} />
         
@@ -444,8 +524,22 @@ function App() {
         <Route path="/stream/dashboard/:id" element={<StreamDashboard />} />
         <Route path="/api/tournament/:id/:endpoint" element={<TournamentAPI />} />
         
+        {/* EMBED WIDGETS (Accessibles sans authentification) */}
+        <Route path="/embed/tournament/:id" element={<EmbedTournament />} />
+        <Route path="/embed/tournament/:id/bracket" element={<EmbedBracket />} />
+        <Route path="/embed/tournament/:id/participants" element={<EmbedParticipants />} />
+        <Route path="/embed/tournament/:id/standings" element={<EmbedStandings />} />
+        <Route path="/embed/tournament/:id/matches" element={<EmbedMatches />} />
+        <Route path="/embed/tournament/:id/calendar" element={<EmbedCalendar />} />
+        
         {/* Route racine - Page publique d'accueil */}
         <Route path="/" element={<HomePage />} />
+        
+        {/* ROUTES PLAY - Navigation joueur public */}
+        <Route path="/play" element={<PlayHome session={session} />} />
+        <Route path="/play/games" element={<GamesDirectory session={session} />} />
+        <Route path="/play/games/:gameSlug" element={<GamePage session={session} />} />
+        <Route path="/play/search" element={<SearchResults session={session} />} />
         
         {/* Route de connexion/authentification */}
         <Route path="/auth" element={<Auth />} />
@@ -461,7 +555,69 @@ function App() {
             </OrganizerRoute>
           ) : <Navigate to="/auth" />
         } />
+        
+        {/* NOUVELLE Interface Organizer avec OrganizerLayout */}
         <Route path="/organizer/tournament/:id" element={
+          session ? (
+            <OrganizerRoute session={session}>
+              <OrganizerLayout session={session} />
+            </OrganizerRoute>
+          ) : <Navigate to="/auth" />
+        }>
+          {/* Vue d'ensemble */}
+          <Route index element={<TournamentOverview />} />
+          
+          {/* Structure */}
+          <Route path="structure" element={<TournamentStructure />} />
+          <Route path="structure/:phaseId/bracket" element={<BracketEditor />} />
+          <Route path="structure/:phaseId/settings" element={<PhaseSettings />} />
+          
+          {/* Bracket */}
+          <Route path="bracket" element={<TournamentBracket />} />
+          
+          {/* Settings */}
+          <Route path="settings/general" element={<SettingsGeneral />} />
+          <Route path="settings/appearance" element={<SettingsAppearance />} />
+          <Route path="settings/discipline" element={<SettingsDiscipline />} />
+          <Route path="settings/match" element={<SettingsMatch />} />
+          <Route path="settings/registration" element={<SettingsRegistration />} />
+          <Route path="settings/participant" element={<SettingsParticipant />} />
+          <Route path="settings/custom-fields" element={<SettingsCustomFields />} />
+          <Route path="settings/locations" element={<SettingsLocations />} />
+          <Route path="settings/permissions" element={<SettingsPermissions />} />
+          <Route path="settings/operations" element={<SettingsOperations />} />
+          
+          {/* Participants */}
+          <Route path="participants" element={<ParticipantsList />} />
+          <Route path="participants/create" element={<ParticipantCreate />} />
+          <Route path="participants/:participantId" element={<ParticipantDetails />} />
+          <Route path="participants/bulk-edit" element={<ParticipantsBulkEdit />} />
+          <Route path="participants/export" element={<ParticipantsExport />} />
+          
+          {/* Placement */}
+          <Route path="placement" element={<PlacementOverview />} />
+          <Route path="placement/:phaseId" element={<PlacementPhase />} />
+          
+          {/* Matchs */}
+          <Route path="matches" element={<MatchesOverview />} />
+          <Route path="matches/phase/:phaseId" element={<MatchesPhase />} />
+          <Route path="matches/:matchId" element={<MatchEdit />} />
+          
+          {/* Classement final */}
+          <Route path="final-standings" element={<FinalStandings />} />
+          
+          {/* Partage */}
+          <Route path="sharing/public" element={<SharingPublic />} />
+          <Route path="sharing/widgets" element={<Widgets />} />
+          <Route path="sharing/tv" element={<SharingTV />} />
+          
+          {/* Sponsors & Streams */}
+          <Route path="sponsors" element={<Sponsors />} />
+          <Route path="streams" element={<Streams />} />
+        </Route>
+        
+        {/* Route legacy pour Tournament (ancien système) */}
+        <Route path="/organizer/tournament/:id/legacy" element={
           session ? (
             <OrganizerRoute session={session}>
               <Tournament session={session} />
@@ -567,6 +723,7 @@ function App() {
         {!isOnline && <OfflineBanner />}
         <AppRoutes />
         <ToastContainer />
+        <CookieConsent />
       </Router>
     </ErrorBoundary>
   )

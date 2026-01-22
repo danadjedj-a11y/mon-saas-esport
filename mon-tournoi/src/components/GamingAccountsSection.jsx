@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Card, Input } from '../shared/components/ui';
 import { toast } from '../utils/toast';
+import { supabase } from '../supabaseClient';
 import {
   getUserGamingAccounts,
   addGamingAccount,
@@ -13,6 +14,7 @@ import {
   PLATFORM_GAMES,
   platformRequiresTag,
   formatGamertag,
+  getPlatformForGame,
 } from '../utils/gamePlatforms';
 
 export default function GamingAccountsSection({ session }) {
@@ -21,10 +23,14 @@ export default function GamingAccountsSection({ session }) {
   const [editingPlatform, setEditingPlatform] = useState(null);
   const [formData, setFormData] = useState({ username: '', tag: '' });
   const [saving, setSaving] = useState(false);
+  const [registeredTournaments, setRegisteredTournaments] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
 
   useEffect(() => {
     if (session?.user?.id) {
       loadAccounts();
+      loadRegisteredTournaments();
+      loadPendingRequests();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
@@ -40,6 +46,67 @@ export default function GamingAccountsSection({ session }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Charger les tournois où l'utilisateur est inscrit (avec statut actif)
+  const loadRegisteredTournaments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('participants')
+        .select(`
+          tournament_id,
+          tournaments:tournament_id (
+            id,
+            name,
+            game,
+            status
+          )
+        `)
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      // Filtrer les tournois actifs (pas terminés)
+      const activeTournaments = (data || [])
+        .filter(p => p.tournaments && !['completed', 'cancelled'].includes(p.tournaments.status))
+        .map(p => p.tournaments);
+
+      setRegisteredTournaments(activeTournaments);
+    } catch (error) {
+      console.error('Erreur chargement tournois:', error);
+    }
+  };
+
+  // Charger les demandes de modification en attente
+  const loadPendingRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('gaming_account_change_requests')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('status', 'pending');
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setPendingRequests(data || []);
+    } catch (error) {
+      console.error('Erreur chargement demandes:', error);
+      // La table n'existe peut-être pas encore
+    }
+  };
+
+  // Vérifier si une plateforme est utilisée dans un tournoi actif
+  const isPlatformUsedInActiveTournament = (platform) => {
+    return registeredTournaments.some(t => getPlatformForGame(t.game) === platform);
+  };
+
+  // Obtenir les tournois qui utilisent cette plateforme
+  const getTournamentsUsingPlatform = (platform) => {
+    return registeredTournaments.filter(t => getPlatformForGame(t.game) === platform);
+  };
+
+  // Vérifier si une demande de modification est en attente pour cette plateforme
+  const hasPendingRequest = (platform) => {
+    return pendingRequests.some(r => r.platform === platform);
   };
 
   const handleEdit = (platform) => {
@@ -75,8 +142,43 @@ export default function GamingAccountsSection({ session }) {
     try {
       const existingAccount = accounts.find(acc => acc.platform === editingPlatform);
       
-      if (existingAccount) {
-        // Update existing
+      // Vérifier si la modification doit passer par une demande admin
+      if (existingAccount && isPlatformUsedInActiveTournament(editingPlatform)) {
+        // Créer une demande de modification
+        const { error } = await supabase
+          .from('gaming_account_change_requests')
+          .insert({
+            user_id: session.user.id,
+            platform: editingPlatform,
+            old_username: existingAccount.game_username,
+            old_tag: existingAccount.game_tag,
+            new_username: formData.username,
+            new_tag: formData.tag || null,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          });
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('Une demande de modification est déjà en cours pour ce compte');
+          } else if (error.code === '42P01') {
+            // La table n'existe pas encore, on fait la modification directe
+            console.warn('Table gaming_account_change_requests non trouvée, modification directe');
+            await updateGamingAccount(
+              existingAccount.id,
+              formData.username,
+              formData.tag || null
+            );
+            toast.success('✅ Compte mis à jour avec succès !');
+          } else {
+            throw error;
+          }
+        } else {
+          toast.success('📝 Demande de modification envoyée ! Un admin validera votre changement.');
+          await loadPendingRequests();
+        }
+      } else if (existingAccount) {
+        // Update existing (pas inscrit à un tournoi actif avec ce jeu)
         await updateGamingAccount(
           existingAccount.id,
           formData.username,
@@ -112,6 +214,13 @@ export default function GamingAccountsSection({ session }) {
   };
 
   const handleDelete = async (accountId, platform) => {
+    // Vérifier si la suppression est bloquée par un tournoi actif
+    if (isPlatformUsedInActiveTournament(platform)) {
+      const tournaments = getTournamentsUsingPlatform(platform);
+      toast.error(`Impossible de supprimer ce compte car vous êtes inscrit à : ${tournaments.map(t => t.name).join(', ')}`);
+      return;
+    }
+
     if (!confirm(`Êtes-vous sûr de vouloir supprimer ce compte ${PLATFORM_NAMES[platform]} ?`)) {
       return;
     }
@@ -129,6 +238,9 @@ export default function GamingAccountsSection({ session }) {
   const renderPlatformCard = (platform) => {
     const account = accounts.find(acc => acc.platform === platform);
     const isEditing = editingPlatform === platform;
+    const isLockedByTournament = account && isPlatformUsedInActiveTournament(platform);
+    const tournamentsUsingThis = getTournamentsUsingPlatform(platform);
+    const hasRequest = hasPendingRequest(platform);
 
     return (
       <Card key={platform} variant="glass" padding="md" className="hover:border-violet-500/50 transition-all">
@@ -158,9 +270,35 @@ export default function GamingAccountsSection({ session }) {
                 </div>
               )}
 
+              {/* Warning if locked by active tournament */}
+              {isLockedByTournament && !isEditing && (
+                <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-400 text-xs">
+                    ⚠️ Vous êtes inscrit à un tournoi actif ({tournamentsUsingThis.map(t => t.name).join(', ')}). 
+                    La modification nécessite l'approbation d'un administrateur.
+                  </p>
+                </div>
+              )}
+
+              {/* Pending request indicator */}
+              {hasRequest && !isEditing && (
+                <div className="mt-2 p-2 bg-violet-500/10 border border-violet-500/30 rounded-lg">
+                  <p className="text-violet-400 text-xs">
+                    📝 Demande de modification en attente de validation par un admin
+                  </p>
+                </div>
+              )}
+
               {/* Edit Form */}
               {isEditing && (
                 <div className="mt-3 space-y-2">
+                  {isLockedByTournament && (
+                    <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg mb-2">
+                      <p className="text-yellow-400 text-xs">
+                        ⚠️ Cette modification sera soumise à validation car vous êtes inscrit au tournoi : {tournamentsUsingThis.map(t => t.name).join(', ')}
+                      </p>
+                    </div>
+                  )}
                   <Input
                     placeholder="Nom d'utilisateur"
                     value={formData.username}
@@ -180,9 +318,9 @@ export default function GamingAccountsSection({ session }) {
                       variant="primary"
                       size="sm"
                       onClick={handleSave}
-                      disabled={saving}
+                      disabled={saving || hasRequest}
                     >
-                      {saving ? '💾 Enregistrement...' : '💾 Enregistrer'}
+                      {saving ? '💾 Enregistrement...' : isLockedByTournament ? '📝 Demander la modification' : '💾 Enregistrer'}
                     </Button>
                     <Button
                       variant="ghost"

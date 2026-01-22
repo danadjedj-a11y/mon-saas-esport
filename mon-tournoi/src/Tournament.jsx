@@ -70,7 +70,12 @@ export default function Tournament({ session }) {
   const matches = useMemo(() => {
     if (!rawMatches || !participants || rawMatches.length === 0) return [];
     
-    const participantsMap = new Map(participants.map(p => [p.team_id, p]));
+    // Supporter équipes permanentes ET temporaires
+    const participantsMap = new Map();
+    participants.forEach(p => {
+      if (p.team_id) participantsMap.set(p.team_id, p);
+      if (p.temporary_team_id) participantsMap.set(p.temporary_team_id, p);
+    });
     
     return rawMatches.map(match => {
       const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
@@ -81,15 +86,27 @@ export default function Tournament({ session }) {
       const p1NotCheckedIn = p1 && !p1.checked_in;
       const p2NotCheckedIn = p2 && !p2.checked_in;
       
+      // Helper pour récupérer les infos de l'équipe (permanente ou temporaire)
+      const getTeamData = (p) => {
+        if (!p) return null;
+        const isTemp = !!p.temporary_team_id && !p.team_id;
+        return isTemp ? p.temporary_teams : p.teams;
+      };
+      
       const getTeamName = (p, isDQ, notCI) => {
         if (!p) return 'En attente';
-        let name = `${p.teams?.name || 'Inconnu'} [${p.teams?.tag || '?'}]`;
+        const team = getTeamData(p);
+        let name = `${team?.name || 'Inconnu'} [${team?.tag || '?'}]`;
         if (isDQ) name += ' ❌ DQ';
         if (notCI && !isDQ) name += ' ⏳';
         return name;
       };
       
-      const getTeamLogo = (p) => p?.teams?.logo_url || `https://ui-avatars.com/api/?name=${p?.teams?.tag || '?'}&background=random&size=64`;
+      const getTeamLogo = (p) => {
+        const team = getTeamData(p);
+        const isTemp = p && !!p.temporary_team_id && !p.team_id;
+        return team?.logo_url || `https://ui-avatars.com/api/?name=${team?.tag || '?'}&background=${isTemp ? '06B6D4' : '8B5CF6'}&size=64`;
+      };
 
       return {
         ...match,

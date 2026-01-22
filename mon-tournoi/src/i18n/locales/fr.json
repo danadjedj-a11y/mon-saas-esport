@@ -98,6 +98,47 @@
     "noTeam": "Aucune équipe",
     "noTeamDesc": "Créez votre première équipe ou rejoignez une équipe existante pour commencer à jouer !"
   },
+  "registration": {
+    "title": "Inscription au Tournoi",
+    "chooseType": "Comment souhaitez-vous vous inscrire ?",
+    "chooseTypeDesc": "Choisissez le mode d'inscription qui vous convient",
+    "existingTeam": "Équipe existante",
+    "existingTeamDesc": "Inscrivez une équipe dont vous êtes le capitaine",
+    "temporaryTeam": "Équipe temporaire",
+    "temporaryTeamDesc": "Créez une équipe uniquement pour ce tournoi",
+    "selectTeam": "Sélectionnez votre équipe",
+    "createTemporary": "Créer une équipe temporaire",
+    "noTeam": "Vous n'avez pas d'équipe",
+    "createPermanent": "Créer une équipe permanente",
+    "teamInfo": "Informations de l'équipe",
+    "teamName": "Nom de l'équipe",
+    "teamTag": "Tag (optionnel)",
+    "contactEmail": "Email de contact",
+    "discordContact": "Discord (optionnel)",
+    "logoUrl": "URL du logo (optionnel)",
+    "players": "Joueurs de l'équipe",
+    "addPlayer": "Ajouter un joueur",
+    "playerName": "Pseudo",
+    "playerEmail": "Email (optionnel)",
+    "gameAccount": "Compte en jeu",
+    "role": "Rôle",
+    "temporaryInfo": "Cette équipe existe uniquement pour ce tournoi. Après le tournoi, vous pourrez la convertir en équipe permanente si vous le souhaitez.",
+    "confirmRegistration": "Confirmer l'inscription",
+    "createAndRegister": "Créer et s'inscrire",
+    "spotsLeft": "{{count}} place(s) restante(s)",
+    "tournamentFull": "Complet",
+    "joinWaitlist": "Rejoindre la liste d'attente",
+    "alreadyRegistered": "Vous êtes inscrit !",
+    "registrationsClosed": "Inscriptions fermées",
+    "features": {
+      "configured": "Équipe déjà configurée",
+      "permanentMembers": "Membres permanents",
+      "existingInfo": "Logo et informations existants",
+      "quick": "Rapide et simple",
+      "oneTime": "Parfait pour les équipes ponctuelles",
+      "convertible": "Peut être convertie en équipe permanente"
+    }
+  },
   "match": {
     "title": "Match",
     "vs": "VS",
@@ -229,6 +270,129 @@
     "updated": "Mis à jour avec succès",
     "joined": "Rejoint avec succès",
     "left": "Quitté avec succès"
+  },
+  "play": {
+    "home": {
+      "title": "Trouvez votre prochain tournoi",
+      "subtitle": "Découvrez et participez aux meilleurs tournois esport",
+      "searchPlaceholder": "Rechercher un jeu, tournoi ou équipe...",
+      "featured": "Tournois en vedette",
+      "popularGames": "Jeux populaires",
+      "viewAllGames": "Voir tous les jeux",
+      "upcomingTournaments": "Tournois à venir",
+      "viewAllTournaments": "Voir tous les tournois",
+      "viewTournament": "Voir le tournoi",
+      "noTournaments": "Aucun tournoi à venir",
+      "noTournamentsDesc": "Revenez bientôt pour découvrir de nouveaux tournois !",
+      "cta": {
+        "title": "Prêt à rejoindre la compétition ?",
+        "subtitle": "Inscrivez-vous gratuitement et participez aux meilleurs tournois esport",
+        "register": "Créer un compte",
+        "browse": "Explorer les jeux"
+      }
+    },
+    "games": {
+      "title": "Tous les jeux",
+      "searchPlaceholder": "Rechercher un jeu...",
+      "noResults": "Aucun jeu trouvé",
+      "noResultsDesc": "Essayez de modifier vos filtres de recherche",
+      "requestTitle": "Votre jeu n'est pas dans la liste ?",
+      "requestDesc": "Contactez-nous pour ajouter un nouveau jeu à la plateforme"
+    },
+    "game": {
+      "overview": "Vue d'ensemble",
+      "tournaments": "Tournois"
+    }
+  },
+  "organizer": {
+    "title": "Organizer",
+    "overview": "Vue d'ensemble",
+    "settings": {
+      "title": "Paramètres",
+      "general": "Général",
+      "appearance": "Apparence",
+      "discipline": "Discipline",
+      "match": "Match",
+      "registration": "Inscriptions",
+      "participant": "Participant",
+      "customFields": "Champs personnalisés",
+      "locations": "Emplacements de match",
+      "languages": "Langues",
+      "permissions": "Permissions",
+      "operations": "Opérations globales"
+    },
+    "structure": {
+      "title": "Structure",
+      "createPhase": "Créer une nouvelle phase",
+      "configure": "Configurer",
+      "editBracket": "Modifier l'arbre",
+      "deletePhase": "Supprimer la phase",
+      "chooseMatchType": "Choisir un type de match",
+      "choosePhaseType": "Choisir un type de phase",
+      "configurePhase": "Configurez la phase",
+      "duel": "Duel",
+      "duelDesc": "Les matchs impliquant deux participants (joueurs ou équipes)",
+      "ffa": "FFA",
+      "ffaDesc": "Les matchs impliquant plus de deux participants",
+      "elimination": "Élimination directe",
+      "eliminationDesc": "Arbre dans lequel les participants sont éliminés après une défaite.",
+      "doubleElimination": "Double élimination",
+      "doubleEliminationDesc": "Arbre dans lequel un participant doit perdre deux matchs pour être éliminé.",
+      "gauntlet": "Gauntlet",
+      "gauntletDesc": "Les participants moins bien classés rencontrent progressivement des adversaires mieux classés.",
+      "groups": "Groupes d'arbres",
+      "groupsDesc": "Groupes dans lesquels les participants jouent dans de petits arbres.",
+      "custom": "Arbre personnalisé",
+      "customDesc": "Arbre dans lequel la progression des participants peut être personnalisée.",
+      "roundRobin": "Groupes round-robin",
+      "roundRobinDesc": "Petits groupes où les participants affrontent tous les adversaires.",
+      "league": "Système de ligue",
+      "leagueDesc": "Grandes divisions avec plusieurs journées.",
+      "swiss": "Système suisse",
+      "swissDesc": "Les participants affrontent des adversaires avec des résultats similaires.",
+      "phaseNumber": "Numéro",
+      "phaseSize": "Taille",
+      "phaseName": "Nom",
+      "grandFinal": "Activer la Grande Finale ?",
+      "grandFinalSimple": "Simple",
+      "grandFinalDouble": "Double",
+      "grandFinalNone": "Aucune",
+      "skipFirstRound": "Passer le premier tour ?",
+      "general": "Général",
+      "advanced": "Avancé",
+      "placement": "Placement",
+      "matchSettings": "Paramètres de match"
+    },
+    "participants": {
+      "title": "Participants",
+      "list": "Liste",
+      "bulkEdit": "Éditer tous",
+      "export": "Exporter"
+    },
+    "placement": {
+      "title": "Placement",
+      "overview": "Vue d'ensemble",
+      "autoPlace": "Auto-placer selon seeding",
+      "reset": "Réinitialiser"
+    },
+    "matches": {
+      "title": "Matchs",
+      "overview": "Vue d'ensemble"
+    },
+    "standings": {
+      "title": "Classement final"
+    },
+    "sharing": {
+      "title": "Partage",
+      "public": "Page publique",
+      "widgets": "Widgets",
+      "tv": "Mon-Tournoi TV"
+    },
+    "sponsors": {
+      "title": "Sponsors"
+    },
+    "streams": {
+      "title": "Streams"
+    }
   }
 }
-

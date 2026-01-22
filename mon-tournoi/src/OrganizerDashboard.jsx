@@ -1,52 +1,65 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import { Button, Card, Badge, Tabs, Pagination } from './shared/components/ui';
-import TournamentMetrics from './features/tournaments/components/TournamentMetrics';
-import NotificationCenter from './NotificationCenter';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
+import { AdminGamingAccountRequests } from './components/admin';
+import clsx from 'clsx';
 
 export default function OrganizerDashboard({ session }) {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9; // 3 colonnes x 3 lignes
+  const [showGamingRequests, setShowGamingRequests] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchMyTournaments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (session) {
+      fetchData();
+      fetchPendingRequestsCount();
+    }
   }, [session]);
 
-  const fetchMyTournaments = async () => {
-    if (!session) return;
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: tournamentsData, error: tError } = await supabase
         .from('tournaments')
         .select('*')
         .eq('owner_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erreur chargement:', error);
-        setTournaments([]);
-      } else {
-        setTournaments(data || []);
-      }
+      if (tError) throw tError;
+      setTournaments(tournamentsData || []);
     } catch (error) {
-      console.error('Erreur lors du chargement:', error);
-      setTournaments([]);
+      console.error('Erreur:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchPendingRequestsCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('gaming_account_change_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      if (!error) {
+        setPendingRequestsCount(count || 0);
+      }
+    } catch (error) {
+      // Table might not exist yet
+      console.log('Table gaming_account_change_requests not found');
+    }
+  };
+
   const deleteTournament = async (e, id) => {
     e.stopPropagation();
-    if (!confirm("⚠️ Supprimer ce tournoi et tous ses matchs ? C'est irréversible.")) return;
+    e.preventDefault();
+    if (!confirm("⚠️ Supprimer ce tournoi définitivement ?")) return;
 
     const { error } = await supabase
       .from('tournaments')
@@ -54,88 +67,61 @@ export default function OrganizerDashboard({ session }) {
       .eq('id', id);
 
     if (error) {
-      toast.error("Impossible de supprimer: " + error.message);
-      console.error(error);
+      toast.error("Erreur: " + error.message);
     } else {
-      toast.success("Tournoi supprimé avec succès");
+      toast.success("Tournoi supprimé");
       setTournaments(tournaments.filter(t => t.id !== id));
     }
   };
 
-  const duplicateTournament = async (e, tournament) => {
-    e.stopPropagation();
-    if (!confirm("Dupliquer ce tournoi ?")) return;
+  // Stats
+  const stats = useMemo(() => ({
+    total: tournaments.length,
+    active: tournaments.filter(t => t.status === 'ongoing' || t.status === 'active').length,
+    draft: tournaments.filter(t => t.status === 'draft').length,
+    completed: tournaments.filter(t => t.status === 'completed').length,
+  }), [tournaments]);
 
-    try {
-      const { id: _id, created_at: _created_at, updated_at: _updated_at, ...tournamentData } = tournament;
-      const newTournament = {
-        ...tournamentData,
-        name: `${tournament.name} (Copie)`,
-        status: 'draft',
-      };
-
-      const { data: _data, error } = await supabase
-        .from('tournaments')
-        .insert([newTournament])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast.success("Tournoi dupliqué avec succès");
-      fetchMyTournaments();
-    } catch (error) {
-      toast.error("Erreur lors de la duplication: " + error.message);
-      console.error(error);
-    }
-  };
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'draft': return { bg: 'bg-amber-500', text: 'Brouillon', icon: '📝' };
-      case 'completed': return { bg: 'bg-gradient-to-r from-pink-500 to-rose-500', text: 'Terminé', icon: '🏁' };
-      default: return { bg: 'bg-gradient-to-r from-violet-600 to-cyan-500', text: 'En cours', icon: '⚔️' };
-    }
-  };
-
-  const getFormatLabel = (format) => {
-    switch (format) {
-      case 'elimination': return 'Élimination';
-      case 'double_elimination': return 'Double Élimination';
-      case 'round_robin': return 'Round Robin';
-      case 'swiss': return 'Système Suisse';
-      default: return format;
-    }
-  };
-
-  // Filtrer les tournois
+  // Filter tournaments
   const filteredTournaments = useMemo(() => {
-    return activeFilter === 'all' 
-      ? tournaments 
-      : tournaments.filter(t => t.status === activeFilter);
-  }, [tournaments, activeFilter]);
+    let filtered = tournaments;
+    
+    if (activeFilter !== 'all') {
+      if (activeFilter === 'active') {
+        filtered = filtered.filter(t => t.status === 'ongoing' || t.status === 'active');
+      } else {
+        filtered = filtered.filter(t => t.status === activeFilter);
+      }
+    }
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.name?.toLowerCase().includes(q) || 
+        t.game?.toLowerCase().includes(q)
+      );
+    }
+    
+    return filtered;
+  }, [tournaments, searchQuery, activeFilter]);
 
-  // Réinitialiser la page quand le filtre change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeFilter]);
-
-  // Calculer les tournois paginés
-  const paginatedTournaments = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredTournaments.slice(startIndex, endIndex);
-  }, [filteredTournaments, currentPage, itemsPerPage]);
-
-  // Calculer le nombre total de pages
-  const totalPages = Math.ceil(filteredTournaments.length / itemsPerPage);
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'ongoing':
+      case 'active':
+        return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">En cours</span>;
+      case 'completed':
+        return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">Terminé</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">Brouillon</span>;
+    }
+  };
 
   if (loading) {
     return (
       <DashboardLayout session={session}>
-        <div className="text-white font-body text-center py-20">
-          <div className="text-6xl mb-4 animate-pulse">⏳</div>
-          <p>Chargement...</p>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-10 h-10 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
         </div>
       </DashboardLayout>
     );
@@ -143,195 +129,234 @@ export default function OrganizerDashboard({ session }) {
 
   return (
     <DashboardLayout session={session}>
-      {/* HEADER */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
-            🎯 Dashboard Organisateur
+          <h1 className="text-3xl font-display font-bold text-white">
+            Mes Tournois
           </h1>
-          <p className="font-body text-gray-400">
-            Gérez vos tournois et suivez leurs performances
+          <p className="text-gray-400 mt-1">
+            {stats.total} tournoi{stats.total > 1 ? 's' : ''} • {stats.active} en cours
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <NotificationCenter session={session} />
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => navigate('/create-tournament')}
-            className="font-display"
+        <div className="flex items-center gap-3">
+          {/* Gaming account requests button */}
+          <button
+            onClick={() => setShowGamingRequests(!showGamingRequests)}
+            className={clsx(
+              'relative px-4 py-2.5 rounded-lg font-medium transition-all',
+              showGamingRequests
+                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
+                : 'bg-[#161b22] text-gray-400 hover:text-white border border-white/10 hover:border-violet-500/30'
+            )}
           >
-            ➕ Créer un Tournoi
-          </Button>
+            🎮 Demandes Gaming
+            {pendingRequestsCount > 0 && (
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {pendingRequestsCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/create-tournament')}
+            className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-white rounded-lg font-medium transition-all shadow-lg shadow-cyan-500/20"
+          >
+            + Nouveau tournoi
+          </button>
         </div>
       </div>
 
-      {/* MÉTRIQUES */}
-      <div className="mb-8">
-        <TournamentMetrics tournaments={tournaments} />
+      {/* Gaming Account Requests Section */}
+      {showGamingRequests && (
+        <div className="mb-8 p-6 bg-[#161b22] rounded-xl border border-violet-500/30">
+          <AdminGamingAccountRequests session={session} />
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={clsx(
+            'p-4 rounded-xl border transition-all text-left',
+            activeFilter === 'all'
+              ? 'bg-white/10 border-cyan-500/50'
+              : 'bg-[#161b22] border-white/10 hover:border-white/20'
+          )}
+        >
+          <div className="text-3xl font-bold text-white">{stats.total}</div>
+          <div className="text-sm text-gray-400">Total</div>
+        </button>
+        <button
+          onClick={() => setActiveFilter('active')}
+          className={clsx(
+            'p-4 rounded-xl border transition-all text-left',
+            activeFilter === 'active'
+              ? 'bg-green-500/10 border-green-500/50'
+              : 'bg-[#161b22] border-white/10 hover:border-green-500/30'
+          )}
+        >
+          <div className="text-3xl font-bold text-green-400">{stats.active}</div>
+          <div className="text-sm text-gray-400">En cours</div>
+        </button>
+        <button
+          onClick={() => setActiveFilter('draft')}
+          className={clsx(
+            'p-4 rounded-xl border transition-all text-left',
+            activeFilter === 'draft'
+              ? 'bg-yellow-500/10 border-yellow-500/50'
+              : 'bg-[#161b22] border-white/10 hover:border-yellow-500/30'
+          )}
+        >
+          <div className="text-3xl font-bold text-yellow-400">{stats.draft}</div>
+          <div className="text-sm text-gray-400">Brouillons</div>
+        </button>
+        <button
+          onClick={() => setActiveFilter('completed')}
+          className={clsx(
+            'p-4 rounded-xl border transition-all text-left',
+            activeFilter === 'completed'
+              ? 'bg-blue-500/10 border-blue-500/50'
+              : 'bg-[#161b22] border-white/10 hover:border-blue-500/30'
+          )}
+        >
+          <div className="text-3xl font-bold text-blue-400">{stats.completed}</div>
+          <div className="text-sm text-gray-400">Terminés</div>
+        </button>
       </div>
 
-      {/* FILTRES PAR TABS */}
-      <Card variant="glass" padding="none" className="mb-8">
-        <div className="flex border-b border-white/10 overflow-x-auto">
-          {[
-            { id: 'all', label: 'Tous', count: tournaments.length },
-            { id: 'draft', label: 'Brouillons', count: tournaments.filter(t => t.status === 'draft').length },
-            { id: 'ongoing', label: 'En cours', count: tournaments.filter(t => t.status === 'ongoing').length },
-            { id: 'completed', label: 'Terminés', count: tournaments.filter(t => t.status === 'completed').length },
-          ].map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={`px-6 py-4 font-body text-base transition-all duration-200 border-b-2 ${
-                activeFilter === filter.id
-                  ? 'border-violet-500 text-cyan-400'
-                  : 'border-transparent text-gray-400 hover:text-white hover:border-violet-500/50'
-              }`}
-            >
-              {filter.label}
-              {filter.count > 0 && (
-                <Badge variant="primary" size="sm" className="ml-2">
-                  {filter.count}
-                </Badge>
-              )}
-            </button>
+      {/* Search */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <input
+            type="text"
+            placeholder="Rechercher un tournoi..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2.5 pl-10 bg-[#161b22] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none transition-colors"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
+        </div>
+      </div>
+
+      {/* Tournaments Grid */}
+      {filteredTournaments.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredTournaments.map(tournament => (
+            <TournamentCard 
+              key={tournament.id} 
+              tournament={tournament} 
+              onDelete={deleteTournament}
+              getStatusBadge={getStatusBadge}
+            />
           ))}
         </div>
-      </Card>
-
-      {/* LISTE DES TOURNOIS */}
-      {filteredTournaments.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedTournaments.map((tournament) => {
-            const statusStyle = getStatusStyle(tournament.status);
-            return (
-              <Card
-                key={tournament.id}
-                variant="glass"
-                hover
-                clickable
-                onClick={() => navigate(`/organizer/tournament/${tournament.id}`)}
-                className="border-violet-500/30"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="font-display text-xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 line-clamp-2">
-                    {tournament.name}
-                  </h3>
-                  <Badge 
-                    variant={
-                      tournament.status === 'ongoing' ? 'success' : 
-                      tournament.status === 'completed' ? 'info' : 
-                      'warning'
-                    }
-                    size="sm"
-                  >
-                    {statusStyle.icon} {statusStyle.text}
-                  </Badge>
-                </div>
-
-                {/* Infos */}
-                <div className="space-y-2 text-sm font-body text-gray-400 mb-4">
-                  <div>🎮 {tournament.game || 'Non spécifié'}</div>
-                  <div>📊 {getFormatLabel(tournament.format)}</div>
-                  {tournament.start_date && (
-                    <div>📅 {new Date(tournament.start_date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                  )}
-                  {tournament.max_participants && (
-                    <div>👥 Max: {tournament.max_participants} équipes</div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-4 border-t border-white/10">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/organizer/tournament/${tournament.id}`);
-                    }}
-                    className="flex-1"
-                  >
-                    📊 Gérer
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => duplicateTournament(e, tournament)}
-                    className="flex-1"
-                  >
-                    📋 Dupliquer
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => deleteTournament(e, tournament.id)}
-                    className="text-red-500 hover:text-red-400"
-                  >
-                    🗑️
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8 flex flex-col items-center gap-4">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                isLoading={loading}
-              />
-              <div className="text-center text-gray-400 text-sm font-body">
-                Affichage de {(currentPage - 1) * itemsPerPage + 1} à {Math.min(currentPage * itemsPerPage, filteredTournaments.length)} sur {filteredTournaments.length} tournoi{filteredTournaments.length > 1 ? 's' : ''}
-              </div>
-            </div>
-          )}
-        </>
       ) : (
-        <Card variant="outlined" padding="xl" className="text-center">
-          <div className="text-6xl mb-4">🎯</div>
-          <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-2">
-            {activeFilter === 'all' ? 'Aucun Tournoi' : 'Aucun tournoi dans cette catégorie'}
+        <div className="bg-[#161b22] rounded-xl p-12 text-center border border-white/10">
+          <div className="text-5xl mb-4">🏆</div>
+          <h3 className="text-xl font-display font-semibold text-white mb-2">
+            {searchQuery || activeFilter !== 'all' ? 'Aucun résultat' : 'Créez votre premier tournoi'}
           </h3>
-          <p className="font-body text-gray-400 mb-6">
-            {activeFilter === 'all' 
-              ? 'Créez votre premier tournoi pour commencer !'
-              : 'Changez de filtre pour voir d\'autres tournois.'
+          <p className="text-gray-400 mb-6">
+            {searchQuery || activeFilter !== 'all'
+              ? 'Essayez avec d\'autres filtres'
+              : 'Lancez-vous et organisez votre première compétition !'
             }
           </p>
-          {activeFilter === 'all' && (
-            <Button
-              variant="primary"
-              size="lg"
+          {!searchQuery && activeFilter === 'all' && (
+            <button
               onClick={() => navigate('/create-tournament')}
+              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-violet-500 text-white rounded-lg font-medium"
             >
-              ➕ Créer Mon Premier Tournoi
-            </Button>
+              + Créer un tournoi
+            </button>
           )}
-        </Card>
-      )}
-
-      {/* QUICK TIPS */}
-      {tournaments.length > 0 && (
-        <Card variant="glass" padding="lg" className="mt-8 border-violet-500/30">
-          <h3 className="font-display text-xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
-            💡 Astuces Organisateur
-          </h3>
-          <div className="space-y-2 text-sm font-body text-gray-400">
-            <p>• Utilisez les templates pour créer rapidement des tournois similaires</p>
-            <p>• Dupliquez un tournoi existant pour gagner du temps</p>
-            <p>• Vérifiez régulièrement les conflits de scores dans le panel admin</p>
-            <p>• Activez le check-in pour éviter les absences de dernière minute</p>
-          </div>
-        </Card>
+        </div>
       )}
     </DashboardLayout>
+  );
+}
+
+// Tournament Card Component
+function TournamentCard({ tournament, onDelete, getStatusBadge }) {
+  const navigate = useNavigate();
+
+  const formatDate = (date) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <div 
+      onClick={() => navigate(`/organizer/tournament/${tournament.id}`)}
+      className="bg-[#161b22] rounded-xl p-5 border border-white/10 hover:border-cyan-500/30 cursor-pointer transition-all group"
+    >
+      <div className="flex items-start gap-4 mb-4">
+        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center text-xl flex-shrink-0">
+          {tournament.logo_url ? (
+            <img src={tournament.logo_url} alt="" className="w-full h-full rounded-lg object-cover" />
+          ) : (
+            '🏆'
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-semibold text-white truncate mb-1">{tournament.name}</h3>
+          <p className="text-sm text-gray-400">{tournament.game || 'Jeu non défini'}</p>
+        </div>
+        {getStatusBadge(tournament.status)}
+      </div>
+
+      <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+        {tournament.start_date && (
+          <span className="flex items-center gap-1">
+            📅 {formatDate(tournament.start_date)}
+          </span>
+        )}
+        {tournament.max_participants && (
+          <span className="flex items-center gap-1">
+            👥 {tournament.max_participants}
+          </span>
+        )}
+        <span className="flex items-center gap-1">
+          {tournament.format === 'double_elimination' ? '🔄' : '⚔️'} {
+            tournament.format === 'elimination' ? 'Élimination' :
+            tournament.format === 'double_elimination' ? 'Double Élim.' :
+            tournament.format === 'round_robin' ? 'Round Robin' :
+            tournament.format === 'swiss' ? 'Suisse' : tournament.format
+          }
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 pt-4 border-t border-white/10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/organizer/tournament/${tournament.id}`);
+          }}
+          className="flex-1 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg text-sm font-medium transition-colors"
+        >
+          Gérer
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(`/tournament/${tournament.id}`, '_blank');
+          }}
+          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
+        >
+          👁️
+        </button>
+        <button
+          onClick={(e) => onDelete(e, tournament.id)}
+          className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
   );
 }

@@ -8,3 +8,4 @@ export { default as AdminTeamsTab } from './AdminTeamsTab';
 export { default as AdminScheduleTab } from './AdminScheduleTab';
 export { default as AdminStatsTab } from './AdminStatsTab';
 export { default as EditScoreModal } from './EditScoreModal';
+export { default as AdminGamingAccountRequests } from './AdminGamingAccountRequests';
