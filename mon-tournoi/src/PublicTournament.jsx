@@ -18,7 +18,7 @@ import {
   ResultsTab,
   defaultTabs 
 } from './components/tournament';
-import { TournamentPageSkeleton } from './components/ui/Skeletons';
+import { TournamentPageSkeleton } from './components/Skeleton';
 
 export default function PublicTournament() {
   const { id } = useParams();

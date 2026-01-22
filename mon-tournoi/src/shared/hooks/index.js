@@ -10,6 +10,9 @@ export { useDebounce } from './useDebounce';
 export { useOnlineStatus } from './useOnlineStatus';
 export { default as useActiveMatch } from './useActiveMatch';
 export { useTournamentActions, triggerConfetti } from './useTournamentActions';
+export { useMatchProgression } from './useMatchProgression';
+export { useScoreReporting } from './useScoreReporting';
+export { useTournamentAdmin } from './useTournamentAdmin';
 
 // Hooks features
 export { useTournament } from '../../features/tournaments/hooks/useTournament';

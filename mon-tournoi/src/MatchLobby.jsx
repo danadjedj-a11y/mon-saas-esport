@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import Chat from './Chat';
-import { notifyMatchResult, notifyScoreDispute, notifyOpponentScoreDeclared } from './notificationUtils';
-import { updateSwissScores } from './swissUtils';
 import { calculateMatchWinner } from './bofUtils';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { useMatch } from './shared/hooks';
+import { useMatch, useMatchProgression, useScoreReporting } from './shared/hooks';
 import { supabase } from './supabaseClient';
 import { getPlatformForGame } from './utils/gamePlatforms';
 import { getUserGamingAccounts } from './shared/services/api/gamingAccounts';

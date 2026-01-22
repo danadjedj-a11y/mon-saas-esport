@@ -16,3 +16,4 @@ export { default as Dropdown, DropdownItem, DropdownDivider, DropdownHeader } fr
 export { default as Pagination } from './Pagination';
 export { default as ImageUploader } from './ImageUploader';
 export { default as WYSIWYGEditor } from './WYSIWYGEditor';
+export { default as SkipLink } from './SkipLink';

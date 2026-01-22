@@ -2,9 +2,32 @@ import React from 'react';
 import clsx from 'clsx';
 
 /**
- * Composant Button réutilisable
- * Variants: primary, secondary, outline, ghost, danger
- * Sizes: sm, md, lg
+ * Composant Button réutilisable avec variants et tailles configurables
+ * 
+ * @component
+ * @example
+ * // Primary button (default)
+ * <Button onClick={handleClick}>Valider</Button>
+ * 
+ * @example
+ * // Danger button avec loading
+ * <Button variant="danger" loading={isDeleting}>Supprimer</Button>
+ * 
+ * @example
+ * // Outline button full width
+ * <Button variant="outline" fullWidth>S'inscrire</Button>
+ * 
+ * @param {Object} props - Props du composant
+ * @param {React.ReactNode} props.children - Contenu du bouton
+ * @param {'primary'|'secondary'|'outline'|'ghost'|'danger'} [props.variant='primary'] - Style visuel
+ * @param {'sm'|'md'|'lg'} [props.size='md'] - Taille du bouton
+ * @param {boolean} [props.disabled=false] - Désactive le bouton
+ * @param {boolean} [props.loading=false] - Affiche un spinner de chargement
+ * @param {boolean} [props.fullWidth=false] - Bouton en pleine largeur
+ * @param {Function} [props.onClick] - Callback au clic
+ * @param {'button'|'submit'|'reset'} [props.type='button'] - Type HTML du bouton
+ * @param {string} [props.className] - Classes CSS additionnelles
+ * @returns {JSX.Element}
  */
 const Button = ({
   children,

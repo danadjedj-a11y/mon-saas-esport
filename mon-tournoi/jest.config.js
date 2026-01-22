@@ -3,7 +3,8 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^(\\.\\./)+supabaseClient(\\.js)?$': '<rootDir>/src/__mocks__/supabaseClient.js'
   },
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', {

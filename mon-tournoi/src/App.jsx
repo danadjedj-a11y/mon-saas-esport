@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer, OfflineBanner } from './shared/components/feedback';
+import { SkipLink } from './shared/components/ui';
 import { useOnlineStatus } from './shared/hooks';
 import { getUserRole } from './utils/userRole';
 import { toast } from './utils/toast';
@@ -764,8 +765,11 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <SkipLink targetId="main-content" />
         {!isOnline && <OfflineBanner />}
-        <AppRoutes />
+        <main id="main-content">
+          <AppRoutes />
+        </main>
         <ToastContainer />
         <CookieConsent />
       </Router>

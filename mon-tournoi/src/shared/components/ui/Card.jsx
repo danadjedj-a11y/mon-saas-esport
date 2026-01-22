@@ -2,8 +2,37 @@ import React from 'react';
 import clsx from 'clsx';
 
 /**
- * Composant Card réutilisable
- * Variants: default, elevated, outlined, glass
+ * Composant Card réutilisable pour afficher du contenu dans un conteneur stylisé
+ * 
+ * @component
+ * @example
+ * // Card par défaut
+ * <Card>
+ *   <h3>Titre</h3>
+ *   <p>Contenu de la card</p>
+ * </Card>
+ * 
+ * @example
+ * // Card glass avec hover effect
+ * <Card variant="glass" hover padding="lg">
+ *   <TournamentInfo />
+ * </Card>
+ * 
+ * @example
+ * // Card cliquable
+ * <Card clickable onClick={() => navigate('/details')}>
+ *   Cliquez pour voir plus
+ * </Card>
+ * 
+ * @param {Object} props - Props du composant
+ * @param {React.ReactNode} props.children - Contenu de la card
+ * @param {'default'|'elevated'|'outlined'|'glass'} [props.variant='default'] - Style visuel
+ * @param {'none'|'sm'|'md'|'lg'|'xl'} [props.padding='md'] - Padding interne
+ * @param {boolean} [props.hover=false] - Active l'effet au survol
+ * @param {boolean} [props.clickable=false] - Affiche un curseur pointer
+ * @param {Function} [props.onClick] - Callback au clic (implique clickable)
+ * @param {string} [props.className] - Classes CSS additionnelles
+ * @returns {JSX.Element}
  */
 const Card = ({
   children,
