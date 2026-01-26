@@ -57,7 +57,7 @@ function getTeamScore(swissScore) {
  * Vérifie si deux équipes ont déjà joué ensemble
  */
 function havePlayedTogether(team1Id, team2Id, allMatches) {
-  return allMatches.some(m => 
+  return allMatches.some(m =>
     (m.player1_id === team1Id && m.player2_id === team2Id) ||
     (m.player1_id === team2Id && m.player2_id === team1Id)
   );
@@ -68,10 +68,12 @@ function havePlayedTogether(team1Id, team2Id, allMatches) {
  * Apparie les équipes en fonction de leur score (wins, buchholz)
  * Évite les matchs déjà joués
  */
-export function swissPairing(swissScores, allMatches) {
+export function swissPairing(swissScores, allMatches, options = {}) {
+  const { trackByes = false } = options;
+
   // Créer une map pour accès rapide
   const _scoresMap = new Map(swissScores.map(s => [s.team_id, s]));
-  
+
   // Trier par score (wins desc, puis buchholz desc)
   const sortedTeams = [...swissScores].sort((a, b) => {
     const scoreA = getTeamScore(a);
@@ -82,6 +84,7 @@ export function swissPairing(swissScores, allMatches) {
   });
 
   const pairs = [];
+  const byes = []; // Teams that get a BYE this round
   const used = new Set();
 
   for (let i = 0; i < sortedTeams.length; i++) {
@@ -108,10 +111,16 @@ export function swissPairing(swissScores, allMatches) {
       used.add(team1.team_id);
       used.add(bestOpponent.team_id);
     } else {
-      // Pas d'adversaire trouvé (peut arriver avec nombre impair ou tous déjà joués)
-      // On laisse cette équipe sans paire (bye)
-      // Dans un vrai système suisse, on gère les byes différemment, mais pour simplifier on laisse comme ça
+      // Pas d'adversaire trouvé (nombre impair ou tous déjà joués)
+      // Cette équipe reçoit un BYE (victoire automatique)
+      byes.push(team1.team_id);
+      used.add(team1.team_id);
     }
+  }
+
+  // Return enhanced result if tracking byes
+  if (trackByes) {
+    return { pairs, byes };
   }
 
   return pairs;
@@ -191,6 +200,7 @@ export async function updateSwissScores(supabase, tournamentId, match) {
 /**
  * Recalcule les scores Buchholz pour toutes les équipes
  * Buchholz = somme des victoires de tous les adversaires rencontrés
+ * OPTIMIZED: Uses batch upsert instead of individual updates
  */
 export async function recalculateBuchholzScores(supabase, tournamentId) {
   // Récupérer tous les matchs terminés
@@ -210,28 +220,46 @@ export async function recalculateBuchholzScores(supabase, tournamentId) {
 
   if (!allSwissScores) return;
 
-  // Pour chaque équipe, calculer son Buchholz
-  for (const teamScore of allSwissScores) {
+  // Create a map for O(1) lookup
+  const scoresMap = new Map(allSwissScores.map(s => [s.team_id, s]));
+
+  // Calculate all Buchholz scores in memory
+  const updates = allSwissScores.map(teamScore => {
     let buchholz = 0;
 
-    // Trouver tous les adversaires de cette équipe
+    // Find all opponents and sum their wins
     const opponents = completedMatches
       .filter(m => m.player1_id === teamScore.team_id || m.player2_id === teamScore.team_id)
       .map(m => m.player1_id === teamScore.team_id ? m.player2_id : m.player1_id);
 
-    // Pour chaque adversaire, ajouter ses victoires au Buchholz
     for (const opponentId of opponents) {
-      const opponentScore = allSwissScores.find(s => s.team_id === opponentId);
+      const opponentScore = scoresMap.get(opponentId);
       if (opponentScore) {
         buchholz += opponentScore.wins;
       }
     }
 
-    // Mettre à jour le score Buchholz
-    await supabase
+    return {
+      id: teamScore.id,
+      tournament_id: teamScore.tournament_id,
+      team_id: teamScore.team_id,
+      wins: teamScore.wins,
+      losses: teamScore.losses,
+      draws: teamScore.draws,
+      buchholz_score: buchholz,
+      opp_wins: teamScore.opp_wins,
+    };
+  });
+
+  // Batch upsert all scores in a single query
+  if (updates.length > 0) {
+    const { error } = await supabase
       .from('swiss_scores')
-      .update({ buchholz_score: buchholz })
-      .eq('id', teamScore.id);
+      .upsert(updates, { onConflict: 'id' });
+
+    if (error) {
+      console.error('Error batch updating Buchholz scores:', error);
+    }
   }
 }
 

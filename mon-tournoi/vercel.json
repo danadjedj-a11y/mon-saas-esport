@@ -38,7 +38,7 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "https://play.flukyboys.fr"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -46,11 +46,19 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type"
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
         },
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, stale-while-revalidate=300"
         }
       ]
     }
