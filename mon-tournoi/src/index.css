@@ -13,35 +13,60 @@
    CSS VARIABLES - DESIGN TOKENS
    ============================================ */
 :root {
-  /* === Colors === */
-  --color-bg-primary: #0A0A0F;
-  --color-bg-secondary: #12121A;
-  --color-bg-tertiary: #1A1A24;
+  /* === Background Colors - Deeper, more dramatic === */
+  --color-bg-primary: #05050A;
+  --color-bg-secondary: #0D0D14;
+  --color-bg-tertiary: #15151F;
+  --color-bg-elevated: #1A1A24;
   
+  /* === Primary Gradient === */
+  --gradient-primary: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
+  --gradient-hero: linear-gradient(135deg, #6366F1 0%, #8B5CF6 33%, #EC4899 66%, #00F5FF 100%);
+  
+  /* === Accent Colors - Neon Esports === */
   --color-violet: #8B5CF6;
   --color-violet-light: #A78BFA;
   --color-violet-dark: #7C3AED;
-  --color-violet-glow: rgba(139, 92, 246, 0.4);
+  --color-violet-glow: rgba(139, 92, 246, 0.5);
   
-  --color-cyan: #06B6D4;
-  --color-cyan-light: #22D3EE;
-  --color-cyan-glow: rgba(6, 182, 212, 0.4);
+  --color-cyan: #00F5FF;
+  --color-cyan-light: #67FFFF;
+  --color-cyan-dark: #06B6D4;
+  --color-cyan-glow: rgba(0, 245, 255, 0.5);
   
-  --color-pink: #EC4899;
-  --color-pink-light: #F472B6;
-  --color-pink-glow: rgba(236, 72, 153, 0.6);
+  --color-pink: #FF3E9D;
+  --color-pink-light: #FF6BB5;
+  --color-pink-dark: #EC4899;
+  --color-pink-glow: rgba(255, 62, 157, 0.6);
   
-  --color-success: #10B981;
+  --color-gold: #FFD700;
+  --color-gold-light: #FFE44D;
+  --color-gold-glow: rgba(255, 215, 0, 0.5);
+  
+  /* === Semantic Colors === */
+  --color-success: #22C55E;
+  --color-success-light: #4ADE80;
+  --color-success-dark: #16A34A;
+  --color-success-glow: rgba(34, 197, 94, 0.5);
+  
   --color-danger: #EF4444;
-  --color-warning: #F59E0B;
+  --color-danger-light: #F87171;
+  --color-danger-dark: #DC2626;
+  --color-danger-glow: rgba(239, 68, 68, 0.5);
   
+  --color-warning: #F59E0B;
+  --color-warning-light: #FBBF24;
+  --color-warning-dark: #D97706;
+  
+  /* === Text Colors === */
   --color-text-primary: #F8FAFC;
   --color-text-secondary: #94A3B8;
   --color-text-muted: #64748B;
   
-  --color-glass-bg: rgba(255, 255, 255, 0.05);
-  --color-glass-border: rgba(255, 255, 255, 0.1);
-  --color-glass-hover: rgba(255, 255, 255, 0.08);
+  /* === Glass Effect Colors === */
+  --color-glass-bg: rgba(13, 13, 20, 0.8);
+  --color-glass-border: rgba(148, 163, 184, 0.1);
+  --color-glass-hover: rgba(139, 92, 246, 0.15);
   
   /* === Typography === */
   --font-display: 'Space Grotesk', sans-serif;
@@ -64,18 +89,21 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
   
-  /* === Shadows === */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px var(--color-violet-glow);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+  /* === Shadows - More dramatic === */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --shadow-glow-violet: 0 0 30px var(--color-violet-glow);
+  --shadow-glow-cyan: 0 0 25px var(--color-cyan-glow);
+  --shadow-glow-pink: 0 0 20px var(--color-pink-glow);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
   
   /* === Transitions === */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 
 /* ============================================
    BASE STYLES

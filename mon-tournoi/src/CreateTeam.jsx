@@ -6,12 +6,12 @@ import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth, useDebounce } from './shared/hooks';
 import { createTeam } from './shared/services/api/teams';
 import { teamSchema } from './shared/utils/schemas/team';
-import { Button, Input, Card } from './shared/components/ui';
+import { Button, Input, Card, GradientButton } from './shared/components/ui';
 
 export default function CreateTeam() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     tag: '',
@@ -35,14 +35,14 @@ export default function CreateTeam() {
     }
 
     const result = teamSchema.safeParse(debouncedFormData);
-    
+
     if (!result.success) {
       const zodErrors = {};
       result.error.issues.forEach((issue) => {
         const field = issue.path[0];
         // Ne montrer l'erreur que si le champ a une valeur
-        if ((field === 'name' && debouncedFormData.name) || 
-            (field === 'tag' && debouncedFormData.tag)) {
+        if ((field === 'name' && debouncedFormData.name) ||
+          (field === 'tag' && debouncedFormData.tag)) {
           zodErrors[field] = issue.message;
         }
       });
@@ -70,12 +70,12 @@ export default function CreateTeam() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!session?.user) {
       toast.error('Vous devez être connecté pour créer une équipe');
       return;
     }
-    
+
     setLoading(true);
     setErrors({});
 
@@ -94,7 +94,7 @@ export default function CreateTeam() {
       navigate('/player/dashboard');
     } catch (error) {
       console.error('Erreur lors de la création de l\'équipe:', error);
-      
+
       if (error.issues && Array.isArray(error.issues)) {
         // Erreurs Zod
         const zodErrors = {};
@@ -159,17 +159,15 @@ export default function CreateTeam() {
               {formData.tag.length}/{MAX_TAG_LENGTH} caractères (lettres et chiffres uniquement, automatiquement en majuscules)
             </div>
 
-            <Button 
+            <GradientButton
               type="submit"
-              variant="primary"
               size="lg"
               loading={loading}
               disabled={loading}
-              fullWidth
-              className="mt-5 uppercase tracking-wide"
+              className="mt-5 uppercase tracking-wide w-full"
             >
               {loading ? 'Création...' : 'Valider et créer l\'équipe'}
-            </Button>
+            </GradientButton>
           </form>
         </Card>
       </div>

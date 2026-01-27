@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getUserRole } from '../utils/userRole';
+import { GradientButton } from '../shared/components/ui';
+import { Menu, X, Bell, User, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function DashboardLayout({ children, session = null }) {
@@ -9,6 +11,7 @@ export default function DashboardLayout({ children, session = null }) {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
@@ -24,7 +27,7 @@ export default function DashboardLayout({ children, session = null }) {
   // Fetch notification count
   useEffect(() => {
     if (!session?.user) return;
-    
+
     const fetchNotifications = async () => {
       const { count } = await supabase
         .from('notifications')
@@ -36,6 +39,17 @@ export default function DashboardLayout({ children, session = null }) {
     fetchNotifications();
   }, [session]);
 
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isUserMenuOpen && !event.target.closest('.user-menu-container')) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isUserMenuOpen]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
@@ -46,293 +60,285 @@ export default function DashboardLayout({ children, session = null }) {
     return location.pathname.startsWith(path);
   };
 
-  // Navigation simplifiée et groupée
+  // Navigation - EXACTLY THE SAME AS BEFORE
   const mainNavLinks = [
-    { path: '/', label: 'Accueil', icon: '🏠' },
-    { path: '/play', label: 'Explorer', icon: '🔍' },
-    { path: '/leaderboard', label: 'Classement', icon: '🏆' },
+    { path: '/', label: 'Accueil' },
+    { path: '/play', label: 'Explorer' },
+    { path: '/leaderboard', label: 'Classement' },
   ];
 
-  // Les joueurs voient Mon Équipe, les organisateurs non
-  const playerNavLinks = userRole === 'organizer' 
-    ? [{ path: '/player/dashboard', label: 'Mon Espace', icon: '📊' }]
+  const playerNavLinks = userRole === 'organizer'
+    ? [{ path: '/player/dashboard', label: 'Mon Espace' }]
     : [
-        { path: '/player/dashboard', label: 'Mon Espace', icon: '📊' },
-        { path: '/my-team', label: 'Mon Équipe', icon: '👥' },
-      ];
+      { path: '/player/dashboard', label: 'Mon Espace' },
+      { path: '/my-team', label: 'Mon Équipe' },
+    ];
 
   const organizerNavLinks = [
-    { path: '/organizer/dashboard', label: 'Mes Tournois', icon: '🎯' },
+    { path: '/organizer/dashboard', label: 'Mes Tournois' },
+  ];
+
+  // Combine all nav links for display
+  const allNavLinks = [
+    ...mainNavLinks,
+    ...(session ? playerNavLinks : []),
+    ...(session && userRole === 'organizer' ? organizerNavLinks : []),
   ];
 
   return (
-    <div className="min-h-screen bg-[#0d1117] flex">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-56 bg-[#161b22] border-r border-white/10 z-50 flex-col">
+    <div className="relative min-h-screen overflow-hidden bg-[#05050A]">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-[#05050A] to-pink-900/20 animate-pulse" style={{ animationDuration: '8s' }} />
+
+      {/* Grid pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
+        }}
+      />
+
+      {/* ======== NAVIGATION HEADER ======== */}
+      <nav className="relative z-50 flex items-center justify-between px-6 py-4 lg:px-12 border-b border-[rgba(148,163,184,0.1)] backdrop-blur-sm bg-[rgba(5,5,10,0.8)]">
         {/* Logo */}
-        <div className="p-4 border-b border-white/10">
-          <Link to="/" className="flex items-center gap-3">
-            <img 
-              src="/Logo.png" 
-              alt="Fluky Boys" 
-              className="w-8 h-8 object-contain"
-            />
-            <span className="font-display text-lg font-bold text-white">
-              Fluky Boys
-            </span>
-            {notificationCount > 0 && (
-              <span className="ml-auto w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                {notificationCount > 9 ? '9+' : notificationCount}
-              </span>
-            )}
-          </Link>
-        </div>
-
-        {/* Navigation principale */}
-        <nav className="flex-1 overflow-y-auto py-4">
-          {/* Section principale */}
-          <div className="px-3 space-y-1">
-            {mainNavLinks.map((link) => (
-              <NavLink key={link.path} link={link} isActive={isActive(link.path)} />
-            ))}
+        <Link to="/" className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+            <span className="text-lg font-bold text-white">FB</span>
           </div>
-
-          {/* Section Joueur */}
-          {session && (
-            <>
-              <div className="mt-6 mb-2 px-4">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joueur
-                </span>
-              </div>
-              <div className="px-3 space-y-1">
-                {playerNavLinks.map((link) => (
-                  <NavLink key={link.path} link={link} isActive={isActive(link.path)} />
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Section Organisateur */}
-          {session && userRole === 'organizer' && (
-            <>
-              <div className="mt-6 mb-2 px-4">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Organisateur
-                </span>
-              </div>
-              <div className="px-3 space-y-1">
-                {organizerNavLinks.map((link) => (
-                  <NavLink key={link.path} link={link} isActive={isActive(link.path)} />
-                ))}
-              </div>
-            </>
-          )}
-        </nav>
-
-        {/* User Footer */}
-        <div className="p-3 border-t border-white/10">
-          {session ? (
-            <div className="space-y-2">
-              <Link
-                to="/profile"
-                className={clsx(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
-                  isActive('/profile')
-                    ? 'bg-violet/20 text-violet-400'
-                    : 'hover:bg-white/5 text-gray-400 hover:text-white'
-                )}
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet to-cyan flex items-center justify-center text-sm">
-                  {session.user.user_metadata?.username?.charAt(0)?.toUpperCase() || '👤'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    {session.user.user_metadata?.username || 'Utilisateur'}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {userRole === 'organizer' ? 'Organisateur' : 'Joueur'}
-                  </p>
-                </div>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-              >
-                <span>🚪</span>
-                <span>Déconnexion</span>
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/auth"
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet hover:bg-violet-600 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              Connexion
-            </Link>
-          )}
-        </div>
-      </aside>
-
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#161b22] border-b border-white/10 z-50 flex items-center px-4">
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-gray-400 hover:text-white"
-        >
-          <span className="text-xl">{isMobileMenuOpen ? '✕' : '☰'}</span>
-        </button>
-        
-        <Link to="/" className="flex items-center gap-2 ml-3">
-          <img src="/Logo.png" alt="" className="w-6 h-6" />
-          <span className="font-display font-bold text-white">Fluky Boys</span>
+          <span className="text-xl font-bold text-[#F8FAFC]">Fluky Boys</span>
         </Link>
 
-        {session && notificationCount > 0 && (
-          <span className="ml-auto w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-            {notificationCount > 9 ? '9+' : notificationCount}
-          </span>
-        )}
-      </div>
+        {/* ... (rest of nav code implied, but focusing on the div wrapper changes if needed) ... */}
 
-      {/* Mobile Menu */}
+        {/* Desktop Navigation Links */}
+        <div className="hidden items-center gap-8 md:flex">
+          {allNavLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={clsx(
+                "text-sm font-medium transition-colors",
+                isActive(link.path)
+                  ? "text-[#00F5FF]"
+                  : "text-[#94A3B8] hover:text-[#00F5FF]"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Right side - Auth buttons or User menu */}
+        <div className="flex items-center gap-3">
+          {/* Notifications */}
+          {session && notificationCount > 0 && (
+            <Link
+              to="/profile"
+              className="relative p-2 text-[#94A3B8] hover:text-[#F8FAFC] transition-colors hidden md:block"
+            >
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-0 right-0 w-4 h-4 bg-[#FF3E9D] rounded-full text-[10px] text-white flex items-center justify-center shadow-[0_0_10px_rgba(255,62,157,0.5)]">
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </span>
+            </Link>
+          )}
+
+          {/* User Menu or Auth Buttons */}
+          {session ? (
+            <div className="relative hidden md:block user-menu-container">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-[rgba(99,102,241,0.1)] transition-colors border border-transparent hover:border-[rgba(99,102,241,0.2)]"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#EC4899] flex items-center justify-center text-sm font-bold text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+                  {session.user.user_metadata?.username?.charAt(0)?.toUpperCase() || '👤'}
+                </div>
+                <span className="text-sm text-[#F8FAFC]">
+                  {session.user.user_metadata?.username || 'Utilisateur'}
+                </span>
+                <ChevronDown className="h-4 w-4 text-[#94A3B8]" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[rgba(13,13,20,0.98)] backdrop-blur-xl border border-[rgba(99,102,241,0.15)] shadow-[0_0_30px_rgba(0,0,0,0.5)] z-50">
+                  <div className="p-3 border-b border-[rgba(148,163,184,0.1)]">
+                    <p className="text-sm font-medium text-[#F8FAFC]">
+                      {session.user.user_metadata?.username || 'Utilisateur'}
+                    </p>
+                    <p className="text-xs text-[#94A3B8]">
+                      {userRole === 'organizer' ? '⭐ Organisateur' : '🎮 Joueur'}
+                    </p>
+                  </div>
+                  <div className="p-2">
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[rgba(99,102,241,0.1)] rounded-lg transition-colors"
+                    >
+                      <User className="h-4 w-4" />
+                      Mon Profil
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#94A3B8] hover:text-[#FF3E9D] hover:bg-[rgba(255,62,157,0.1)] rounded-lg transition-colors"
+                    >
+                      🚪 Déconnexion
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-3">
+              <GradientButton variant="secondary" size="sm" onClick={() => navigate('/auth')}>
+                Se Connecter
+              </GradientButton>
+              <GradientButton variant="primary" size="sm" onClick={() => navigate('/auth')}>
+                Créer un Compte
+              </GradientButton>
+            </div>
+          )}
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 text-[#94A3B8] hover:text-[#F8FAFC] transition-colors"
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+      </nav>
+
+      {/* ======== MOBILE MENU ======== */}
       {isMobileMenuOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="lg:hidden fixed left-0 top-14 bottom-0 w-64 bg-[#161b22] border-r border-white/10 z-50 flex flex-col overflow-y-auto">
-            <nav className="flex-1 py-4">
-              <div className="px-3 space-y-1">
-                {mainNavLinks.map((link) => (
-                  <NavLink 
-                    key={link.path} 
-                    link={link} 
-                    isActive={isActive(link.path)} 
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  />
-                ))}
-              </div>
+          <div className="md:hidden fixed top-[73px] left-0 right-0 bg-[rgba(13,13,20,0.98)] backdrop-blur-xl border-b border-[rgba(99,102,241,0.15)] z-50 max-h-[calc(100vh-73px)] overflow-y-auto">
+            <div className="p-4 space-y-2">
+              {allNavLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={clsx(
+                    "block px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    isActive(link.path)
+                      ? "bg-gradient-to-r from-[#6366F1]/20 to-[#8B5CF6]/20 text-[#00F5FF]"
+                      : "text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[rgba(99,102,241,0.1)]"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
 
-              {session && (
-                <>
-                  <div className="mt-6 mb-2 px-4">
-                    <span className="text-xs font-medium text-gray-500 uppercase">Joueur</span>
-                  </div>
-                  <div className="px-3 space-y-1">
-                    {playerNavLinks.map((link) => (
-                      <NavLink 
-                        key={link.path} 
-                        link={link} 
-                        isActive={isActive(link.path)}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {session && userRole === 'organizer' && (
-                <>
-                  <div className="mt-6 mb-2 px-4">
-                    <span className="text-xs font-medium text-gray-500 uppercase">Organisateur</span>
-                  </div>
-                  <div className="px-3 space-y-1">
-                    {organizerNavLinks.map((link) => (
-                      <NavLink 
-                        key={link.path} 
-                        link={link} 
-                        isActive={isActive(link.path)}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </nav>
-
-            {/* Mobile Footer */}
-            <div className="p-3 border-t border-white/10">
+              {/* Mobile User Section */}
               {session ? (
-                <div className="space-y-2">
+                <div className="pt-4 mt-4 border-t border-[rgba(148,163,184,0.1)] space-y-2">
                   <Link
                     to="/profile"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[rgba(99,102,241,0.1)]"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet to-cyan flex items-center justify-center text-sm">
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#EC4899] flex items-center justify-center text-sm font-bold text-white">
                       {session.user.user_metadata?.username?.charAt(0)?.toUpperCase() || '👤'}
                     </div>
-                    <span className="text-sm text-white">
-                      {session.user.user_metadata?.username || 'Profil'}
-                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-[#F8FAFC]">
+                        {session.user.user_metadata?.username || 'Profil'}
+                      </p>
+                      <p className="text-xs text-[#94A3B8]">
+                        {userRole === 'organizer' ? 'Organisateur' : 'Joueur'}
+                      </p>
+                    </div>
+                    {notificationCount > 0 && (
+                      <span className="ml-auto w-5 h-5 bg-[#FF3E9D] rounded-full text-xs text-white flex items-center justify-center">
+                        {notificationCount > 9 ? '9+' : notificationCount}
+                      </span>
+                    )}
                   </Link>
                   <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-red-400 rounded-lg"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-[#94A3B8] hover:text-[#FF3E9D] hover:bg-[rgba(255,62,157,0.1)] rounded-lg transition-colors"
                   >
-                    <span>🚪</span>
-                    <span>Déconnexion</span>
+                    🚪 Déconnexion
                   </button>
                 </div>
               ) : (
-                <Link
-                  to="/auth"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block w-full text-center px-4 py-2.5 bg-violet text-white rounded-lg text-sm font-medium"
-                >
-                  Connexion
-                </Link>
+                <div className="pt-4 mt-4 border-t border-[rgba(148,163,184,0.1)] space-y-2">
+                  <GradientButton
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => { setIsMobileMenuOpen(false); navigate('/auth'); }}
+                  >
+                    Se Connecter
+                  </GradientButton>
+                  <GradientButton
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => { setIsMobileMenuOpen(false); navigate('/auth'); }}
+                  >
+                    Créer un Compte
+                  </GradientButton>
+                </div>
               )}
             </div>
-          </aside>
+          </div>
         </>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-56 min-h-screen pt-14 lg:pt-0 flex flex-col">
-        <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
+      {/* ======== MAIN CONTENT ======== */}
+      <main className="relative z-10">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
           {children}
         </div>
-        
-        {/* Footer avec liens légaux */}
-        <footer className="border-t border-white/10 bg-[#0d1117] py-6 mt-auto">
+
+        {/* Footer with legal links */}
+        <footer className="border-t border-[rgba(148,163,184,0.1)] bg-[rgba(5,5,10,0.8)] backdrop-blur-sm py-6 mt-12">
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <div className="flex items-center gap-2 text-[#94A3B8] text-sm">
                 <span>© {new Date().getFullYear()} Fluky Boys</span>
                 <span className="hidden sm:inline">•</span>
                 <span className="hidden sm:inline">Tous droits réservés</span>
               </div>
-              
+
               <nav className="flex flex-wrap items-center justify-center gap-4 text-sm">
-                <Link 
-                  to="/legal/privacy" 
-                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                <Link
+                  to="/legal/privacy"
+                  className="text-[#94A3B8] hover:text-[#00F5FF] transition-colors"
                 >
                   Confidentialité
                 </Link>
-                <Link 
-                  to="/legal/terms" 
-                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                <Link
+                  to="/legal/terms"
+                  className="text-[#94A3B8] hover:text-[#00F5FF] transition-colors"
                 >
                   CGU
                 </Link>
-                <Link 
-                  to="/legal/mentions" 
-                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                <Link
+                  to="/legal/mentions"
+                  className="text-[#94A3B8] hover:text-[#00F5FF] transition-colors"
                 >
                   Mentions légales
                 </Link>
                 <button
                   onClick={() => {
-                    // Ouvrir les paramètres de cookies
                     if (typeof window !== 'undefined' && window.openCookieSettings) {
                       window.openCookieSettings();
                     }
                   }}
-                  className="text-gray-400 hover:text-violet-400 transition-colors"
+                  className="text-[#94A3B8] hover:text-[#00F5FF] transition-colors"
                 >
                   Gérer les cookies
                 </button>
@@ -344,23 +350,3 @@ export default function DashboardLayout({ children, session = null }) {
     </div>
   );
 }
-
-// Navigation Link Component
-function NavLink({ link, isActive, onClick }) {
-  return (
-    <Link
-      to={link.path}
-      onClick={onClick}
-      className={clsx(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-        isActive
-          ? 'bg-violet/20 text-cyan-400 border-l-2 border-cyan-400 -ml-0.5 pl-[calc(0.75rem-2px)]'
-          : 'text-gray-400 hover:text-white hover:bg-white/5'
-      )}
-    >
-      <span className="text-base">{link.icon}</span>
-      <span>{link.label}</span>
-    </Link>
-  );
-}
-

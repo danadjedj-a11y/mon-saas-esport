@@ -2,6 +2,8 @@ import React, { memo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FollowButton from './FollowButton';
 import { supabase } from '../supabaseClient';
+import { GlassCard, NeonBadge, GradientButton } from '../shared/components/ui';
+import { ArrowRight, Gamepad2, Calendar, Users } from 'lucide-react';
 
 const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => {
   const navigate = useNavigate();
@@ -21,74 +23,90 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
 
   const statusStyle = getStatusStyle(tournament.status);
 
-  // Map status to new badge classes
-  const getStatusBadgeClass = (status) => {
+  // Map status to NeonBadge variants
+  const getStatusVariant = (status) => {
     switch (status) {
-      case 'draft': return 'badge-warning';
-      case 'completed': return 'badge-success';
-      case 'ongoing': return 'badge-live';
-      default: return 'badge-violet';
+      case 'draft': return 'draft';
+      case 'completed': return 'completed';
+      case 'ongoing': return 'live';
+      case 'active': return 'live';
+      default: return 'upcoming';
     }
   };
 
+  const formatDate = (date) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   return (
-    <div
-      onClick={() => navigate(`/tournament/${tournament.id}/public`)}
-      className="group relative bg-dark-50 border border-glass-border rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-violet hover:shadow-glow-md hover:-translate-y-1 overflow-hidden"
-    >
-      {/* Subtle gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-violet/5 to-cyan/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-      
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex justify-between items-start gap-4 mb-4">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-display text-lg font-semibold text-text mb-2 truncate group-hover:text-violet-light transition-colors">
+    <div onClick={() => navigate(`/tournament/${tournament.id}/public`)}>
+      <GlassCard className="cursor-pointer">
+        <div className="flex flex-col gap-4">
+          {/* Header with icon and status */}
+          <div className="flex items-start justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-violet-400">
+              {tournament.logo_url ? (
+                <img src={tournament.logo_url} alt="" className="w-full h-full rounded-lg object-cover" />
+              ) : (
+                <Gamepad2 className="h-6 w-6" />
+              )}
+            </div>
+            <NeonBadge variant={getStatusVariant(tournament.status)}>
+              {statusStyle.icon} {statusStyle.text}
+            </NeonBadge>
+          </div>
+
+          {/* Tournament info */}
+          <div>
+            <h3 className="mb-1 text-lg font-bold text-[#F8FAFC] line-clamp-1">
               {tournament.name}
             </h3>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary font-body">
-              <span className="flex items-center gap-1.5">
-                <span className="text-base">🎮</span>
-                {tournament.game}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-glass-border" />
-              <span className="flex items-center gap-1.5">
-                <span className="text-base">📊</span>
-                {getFormatLabel(tournament.format)}
-              </span>
-            </div>
+            <span className="inline-block rounded-md bg-[#1a1a24] px-2 py-0.5 text-xs font-medium text-[#94A3B8]">
+              {tournament.game || 'Jeu non défini'}
+            </span>
           </div>
-          
-          {/* Status Badge */}
-          <span className={`badge ${getStatusBadgeClass(tournament.status)} shrink-0`}>
-            {statusStyle.icon} {statusStyle.text}
-          </span>
-        </div>
 
-        {/* Divider */}
-        <div className="h-px bg-gradient-to-r from-transparent via-glass-border to-transparent my-4" />
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2">
+            {tournament.start_date && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
+                <Calendar className="h-3 w-3" />
+                {formatDate(tournament.start_date)}
+              </span>
+            )}
+            <span className="rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
+              📊 {getFormatLabel(tournament.format)}
+            </span>
+            {tournament.max_participants && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
+                <Users className="h-3 w-3" />
+                {tournament.max_participants}
+              </span>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="flex justify-between items-center flex-wrap gap-3">
-          <span className="text-sm text-text-muted font-body">
-            Créé le {new Date(tournament.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
-          
-          <div className="flex items-center gap-3">
+          {/* Actions */}
+          <div className="flex items-center gap-2 border-t border-[rgba(148,163,184,0.1)] pt-4">
+            <GradientButton size="sm" className="flex-1">
+              <span className="flex items-center justify-center gap-2">
+                Voir le tournoi
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </GradientButton>
+
             {session && (
               <div onClick={(e) => e.stopPropagation()}>
                 <FollowButton session={session} tournamentId={tournament.id} type="tournament" />
               </div>
             )}
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet to-violet-dark text-white text-sm font-display font-medium rounded-lg shadow-glow-sm group-hover:shadow-glow-md transition-all">
-              Voir le tournoi
-              <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </span>
           </div>
         </div>
-      </div>
+      </GlassCard>
     </div>
   );
 });
@@ -96,4 +114,3 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
 TournamentCard.displayName = 'TournamentCard';
 
 export default TournamentCard;
-

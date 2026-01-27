@@ -16,3 +16,10 @@ export { default as Dropdown, DropdownItem, DropdownDivider, DropdownHeader } fr
 export { default as Pagination } from './Pagination';
 export { default as ImageUploader } from './ImageUploader';
 export { default as WYSIWYGEditor } from './WYSIWYGEditor';
+
+// Esports Design System Components (V0.dev)
+export { GlassCard, GlassCardSimple } from './GlassCard';
+export { GradientButton } from './GradientButton';
+export { NeonBadge } from './NeonBadge';
+export { StatCard } from './StatCard';
+export { GlowBorder } from './GlowBorder';

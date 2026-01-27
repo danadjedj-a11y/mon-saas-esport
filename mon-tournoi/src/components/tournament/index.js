@@ -1,5 +1,5 @@
 // Export all tournament components
-export { default as TournamentHeader, getFormatLabel, getStatusStyle } from './TournamentHeader';
+export { default as TournamentHeader, getFormatLabel } from './TournamentHeader';
 export { default as TournamentTabs, defaultTabs } from './TournamentTabs';
 export { default as TournamentOverview } from './TournamentOverview';
 export { default as TournamentFooter } from './TournamentFooter';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Badge, Tabs, Avatar, Input, ImageUploader } from './shared/components/ui';
+import { Button, Card, Badge, Tabs, Avatar, Input, ImageUploader, GradientButton } from './shared/components/ui';
 import { toast } from './utils/toast';
 import BadgeDisplay from './components/BadgeDisplay';
 import GamingAccountsSection from './components/GamingAccountsSection';
@@ -51,7 +51,7 @@ export default function Profile({ session }) {
       .select('username, avatar_url, bio, banner_url, is_public')
       .eq('id', session.user.id)
       .single();
-    
+
     if (data) {
       setUsername(data.username || '');
       setAvatarUrl(data.avatar_url || '');
@@ -67,7 +67,7 @@ export default function Profile({ session }) {
       .from('teams')
       .select('id')
       .eq('captain_id', session.user.id);
-    
+
     const { data: memberTeams } = await supabase
       .from('team_members')
       .select('team_id')
@@ -144,7 +144,7 @@ export default function Profile({ session }) {
       .from('teams')
       .select('id')
       .eq('captain_id', session.user.id);
-    
+
     const { data: memberTeams } = await supabase
       .from('team_members')
       .select('team_id')
@@ -178,7 +178,7 @@ export default function Profile({ session }) {
       .from('teams')
       .select('*')
       .eq('captain_id', session.user.id);
-    
+
     const { data: memberTeamsData } = await supabase
       .from('team_members')
       .select('team_id, teams(*)')
@@ -198,7 +198,7 @@ export default function Profile({ session }) {
       setEditing(false);
       const { error } = await supabase
         .from('profiles')
-        .update({ 
+        .update({
           username: username.trim(),
           bio: bio.trim(),
           is_public: isPublic,
@@ -217,7 +217,7 @@ export default function Profile({ session }) {
   async function uploadAvatar(file) {
     try {
       setUploading(true);
-      
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
 
@@ -316,7 +316,7 @@ export default function Profile({ session }) {
             <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
               Informations Personnelles
             </h3>
-            
+
             {editing ? (
               <div className="space-y-4">
                 <Input
@@ -338,9 +338,9 @@ export default function Profile({ session }) {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="primary" onClick={updateProfile}>
+                  <GradientButton onClick={updateProfile}>
                     💾 Enregistrer
-                  </Button>
+                  </GradientButton>
                   <Button variant="ghost" onClick={() => setEditing(false)}>
                     Annuler
                   </Button>
@@ -388,9 +388,9 @@ export default function Profile({ session }) {
             </h3>
             {bannerUrl && (
               <div className="mb-4 rounded-lg overflow-hidden">
-                <img 
-                  src={bannerUrl} 
-                  alt="Banner" 
+                <img
+                  src={bannerUrl}
+                  alt="Banner"
                   className="w-full h-32 object-cover"
                 />
               </div>
@@ -410,9 +410,9 @@ export default function Profile({ session }) {
                 </Button>
               </label>
               {bannerUrl && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={async () => {
                     try {
                       await supabase
@@ -448,8 +448,8 @@ export default function Profile({ session }) {
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={isPublic}
                     onChange={(e) => {
                       setIsPublic(e.target.checked);
@@ -607,7 +607,7 @@ export default function Profile({ session }) {
                       </p>
                     </div>
                   </div>
-                  <Badge 
+                  <Badge
                     variant={team.captain_id === session.user.id ? 'primary' : 'outline'}
                     size="sm"
                   >
@@ -626,9 +626,9 @@ export default function Profile({ session }) {
                 Créez ou rejoignez une équipe pour participer aux tournois
               </p>
               <div className="flex gap-4 justify-center">
-                <Button variant="primary" onClick={() => navigate('/create-team')}>
+                <GradientButton onClick={() => navigate('/create-team')}>
                   ➕ Créer une Équipe
-                </Button>
+                </GradientButton>
                 <Button variant="outline" onClick={() => navigate('/')}>
                   🔍 Trouver une Équipe
                 </Button>

@@ -1,20 +1,26 @@
 import { useNavigate } from 'react-router-dom';
+import { GradientButton } from '../../shared/components/ui';
+import { Home } from 'lucide-react';
 
 export default function TournamentFooter() {
   const navigate = useNavigate();
 
   return (
-    <div className="mt-10 pt-5 border-t-4 border-cyan-400 text-center text-white text-sm font-display">
-      <p>Vue publique - Les résultats sont mis à jour en temps réel</p>
-      <p className="mt-2.5">
-        <button
-          type="button"
+    <div className="mt-16 pt-8 border-t border-white/5 text-center pb-8">
+      <p className="text-gray-500 text-sm mb-6">Vue publique - Les résultats sont mis à jour en temps réel</p>
+
+      <div className="flex justify-center">
+        <GradientButton
+          variant="ghost"
           onClick={() => navigate('/')}
-          className="bg-transparent border-2 border-violet-500 text-cyan-400 px-5 py-2 rounded-lg cursor-pointer font-handwriting text-sm uppercase tracking-wider transition-all duration-300 hover:bg-violet-600 hover:border-cyan-400"
+          className="group"
         >
-          ← Retour à l'accueil
-        </button>
-      </p>
+          <span className="flex items-center gap-2">
+            <Home className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Retour à l'accueil
+          </span>
+        </GradientButton>
+      </div>
     </div>
   );
 }

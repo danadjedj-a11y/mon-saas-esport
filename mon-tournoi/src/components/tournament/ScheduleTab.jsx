@@ -1,3 +1,6 @@
+import { GlassCard } from '../../shared/components/ui';
+import { Calendar, Clock, Trophy, Skull } from 'lucide-react';
+
 export default function ScheduleTab({ matches }) {
   const scheduledMatches = matches
     .filter(m => m.scheduled_at && m.status !== 'completed')
@@ -7,60 +10,66 @@ export default function ScheduleTab({ matches }) {
     });
 
   return (
-    <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">
-      <h2 className="mt-0 text-cyan-400 font-handwriting text-3xl mb-6">
-        📅 Planning des Matchs
+    <GlassCard className="p-8">
+      <h2 className="mt-0 text-white font-bold text-2xl mb-8 flex items-center gap-2">
+        <Calendar className="w-7 h-7 text-cyan-400" />
+        Planning des Matchs
       </h2>
-      
+
       {scheduledMatches.length > 0 ? (
         <div className="flex flex-col gap-4">
           {scheduledMatches.map(m => {
             const scheduledDate = new Date(m.scheduled_at);
             const isToday = scheduledDate.toDateString() === new Date().toDateString();
             const isPast = scheduledDate < new Date();
-            
+
             return (
-              <div 
+              <GlassCard
                 key={m.id}
-                className={`p-5 rounded-xl border-2 flex justify-between items-center flex-wrap gap-4 ${
-                  isPast 
-                    ? 'bg-orange-400/20 border-orange-400' 
-                    : isToday 
-                      ? 'bg-violet-500/30 border-cyan-400' 
-                      : 'bg-gray-900/80 border-violet-500'
-                }`}
+                className={`p-5 flex justify-between items-center flex-wrap gap-4 transition-all duration-300 ${isPast
+                    ? 'border-orange-500/50 bg-orange-500/5'
+                    : isToday
+                      ? 'border-cyan-400/50 bg-cyan-400/5 shadow-[0_0_20px_rgba(0,245,255,0.2)]'
+                      : 'border-violet-500/30 hover:border-violet-400/50'
+                  }`}
               >
                 <div className="flex-1 min-w-[200px]">
-                  <div className="text-sm text-cyan-400 mb-2 font-display">
-                    Round {m.round_number} - Match #{m.match_number}
+                  <div className="text-sm text-gray-400 mb-3 font-medium flex items-center gap-2">
+                    <span className="text-cyan-400">Round {m.round_number}</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-400">Match #{m.match_number}</span>
                     {m.bracket_type && (
-                      <span className={`ml-2.5 ${m.bracket_type === 'winners' ? 'text-cyan-400' : 'text-violet-400'}`}>
-                        {m.bracket_type === 'winners' ? '🏆 Winners' : '💀 Losers'}
-                      </span>
+                      <>
+                        <span className="text-gray-600">•</span>
+                        <span className={`flex items-center gap-1 ${m.bracket_type === 'winners' ? 'text-cyan-400' : 'text-violet-400'}`}>
+                          {m.bracket_type === 'winners' ? <Trophy className="w-3 h-3" /> : <Skull className="w-3 h-3" />}
+                          {m.bracket_type === 'winners' ? 'Winners' : 'Losers'}
+                        </span>
+                      </>
                     )}
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2.5 flex-1">
-                      <img 
-                        src={m.p1_avatar} 
-                        className="w-10 h-10 rounded-full object-cover border-2 border-cyan-400"
-                        alt="" 
+                      <img
+                        src={m.p1_avatar}
+                        className="w-10 h-10 rounded-lg object-cover ring-2 ring-white/10"
+                        alt=""
                         loading="lazy"
                       />
-                      <span className="text-white font-display">
+                      <span className="text-white font-medium">
                         {m.p1_name.split(' [')[0]}
                       </span>
                     </div>
-                    <div className="text-xl font-bold text-cyan-400 font-handwriting">
+                    <div className="text-lg font-bold text-cyan-400 px-3">
                       VS
                     </div>
                     <div className="flex items-center gap-2.5 flex-1 justify-end">
-                      <span className="text-white font-display">
+                      <span className="text-white font-medium">
                         {m.p2_name.split(' [')[0]}
                       </span>
-                      <img 
-                        src={m.p2_avatar} 
-                        className="w-10 h-10 rounded-full object-cover border-2 border-cyan-400"
+                      <img
+                        src={m.p2_avatar}
+                        className="w-10 h-10 rounded-lg object-cover ring-2 ring-white/10"
                         alt=""
                         loading="lazy"
                       />
@@ -68,32 +77,38 @@ export default function ScheduleTab({ matches }) {
                   </div>
                 </div>
                 <div className="text-right min-w-[150px]">
-                  <div className={`text-lg font-bold mb-1 font-handwriting ${
-                    isPast ? 'text-orange-400' : isToday ? 'text-cyan-400' : 'text-violet-400'
-                  }`}>
-                    {isPast ? '⏰ Passé' : isToday ? '🟢 Aujourd\'hui' : '📅 À venir'}
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold mb-2 ${isPast
+                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                      : isToday
+                        ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/30'
+                        : 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
+                    }`}>
+                    <Clock className="w-3 h-3" />
+                    {isPast ? 'Passé' : isToday ? 'Aujourd\'hui' : 'À venir'}
                   </div>
-                  <div className="text-sm text-white font-display">
-                    {scheduledDate.toLocaleDateString('fr-FR', { 
-                      weekday: 'long',
-                      day: 'numeric', 
-                      month: 'long',
-                      year: 'numeric'
+                  <div className="text-sm text-gray-300 font-medium">
+                    {scheduledDate.toLocaleDateString('fr-FR', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short'
                     })}
                   </div>
-                  <div className="text-lg font-bold text-cyan-400 mt-1 font-handwriting">
+                  <div className="text-lg font-bold text-white mt-1">
                     {scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
-              </div>
+              </GlassCard>
             );
           })}
         </div>
       ) : (
-        <p className="text-center text-white mt-12 font-display">
-          Aucun match planifié pour le moment.
-        </p>
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4 opacity-30">📅</div>
+          <p className="text-gray-400 text-lg">
+            Aucun match planifié pour le moment.
+          </p>
+        </div>
       )}
-    </div>
+    </GlassCard>
   );
 }

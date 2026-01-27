@@ -7,43 +7,50 @@ export default {
   theme: {
     extend: {
       colors: {
-        // === NEON GLASS DESIGN SYSTEM ===
-        // Background
+        // === NEON ESPORTS DESIGN SYSTEM ===
+        // Background - Deeper blacks
         'dark': {
-          DEFAULT: '#0A0A0F',
-          '50': '#12121A',
-          '100': '#1A1A24',
-          '200': '#22222E',
+          DEFAULT: '#05050A',
+          '50': '#0D0D14',
+          '100': '#15151F',
+          '200': '#1A1A24',
         },
-        // Accent Colors
+        // Accent Colors - Neon
         'violet': {
           DEFAULT: '#8B5CF6',
           'light': '#A78BFA',
           'dark': '#7C3AED',
-          'glow': 'rgba(139, 92, 246, 0.4)',
+          'glow': 'rgba(139, 92, 246, 0.5)',
         },
         'cyan': {
-          DEFAULT: '#06B6D4',
-          'light': '#22D3EE',
-          'dark': '#0891B2',
-          'glow': 'rgba(6, 182, 212, 0.4)',
+          DEFAULT: '#00F5FF',
+          'light': '#67FFFF',
+          'dark': '#06B6D4',
+          'glow': 'rgba(0, 245, 255, 0.5)',
         },
         'pink': {
-          DEFAULT: '#EC4899',
-          'light': '#F472B6',
-          'dark': '#DB2777',
-          'glow': 'rgba(236, 72, 153, 0.6)',
+          DEFAULT: '#FF3E9D',
+          'light': '#FF6BB5',
+          'dark': '#EC4899',
+          'glow': 'rgba(255, 62, 157, 0.6)',
+        },
+        'gold': {
+          DEFAULT: '#FFD700',
+          'light': '#FFE44D',
+          'glow': 'rgba(255, 215, 0, 0.5)',
         },
         // Semantic Colors
         'success': {
-          DEFAULT: '#10B981',
-          'light': '#34D399',
-          'dark': '#059669',
+          DEFAULT: '#22C55E',
+          'light': '#4ADE80',
+          'dark': '#16A34A',
+          'glow': 'rgba(34, 197, 94, 0.5)',
         },
         'danger': {
           DEFAULT: '#EF4444',
           'light': '#F87171',
           'dark': '#DC2626',
+          'glow': 'rgba(239, 68, 68, 0.5)',
         },
         'warning': {
           DEFAULT: '#F59E0B',
@@ -58,21 +65,21 @@ export default {
         },
         // Glass Effect Colors
         'glass': {
-          'white': 'rgba(255, 255, 255, 0.05)',
-          'border': 'rgba(255, 255, 255, 0.1)',
-          'hover': 'rgba(255, 255, 255, 0.08)',
+          'white': 'rgba(13, 13, 20, 0.8)',
+          'border': 'rgba(148, 163, 184, 0.1)',
+          'hover': 'rgba(139, 92, 246, 0.15)',
         },
         // Legacy aliases (backwards compatibility)
-        'fluky-bg': '#0A0A0F',
+        'fluky-bg': '#05050A',
         'fluky-primary': '#8B5CF6',
-        'fluky-secondary': '#06B6D4',
+        'fluky-secondary': '#00F5FF',
         'fluky-accent-orange': '#F59E0B',
         'fluky-accent-yellow': '#FBBF24',
         'fluky-text': '#F8FAFC',
         'primary': '#8B5CF6',
-        'secondary': '#06B6D4',
-        'accent': '#EC4899',
-        'background': '#0A0A0F',
+        'secondary': '#00F5FF',
+        'accent': '#FF3E9D',
+        'background': '#05050A',
       },
       fontFamily: {
         'display': ['Space Grotesk', 'sans-serif'],

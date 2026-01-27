@@ -9,13 +9,13 @@ import InvitePlayerModal from './components/InvitePlayerModal';
 import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
 import { notifyTeamInvitation } from './notificationUtils';
 import { sendTeamInvitationEmail } from './shared/services/emailService';
-import { Card, Badge, Button } from './shared/components/ui';
+import { Card, Badge, Button, GradientButton } from './shared/components/ui';
 import MyTeamErrorBoundary from './shared/components/ErrorBoundary/MyTeamErrorBoundary';
 
 export default function MyTeam() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  
+
   // États pour toutes les équipes
   const [allTeams, setAllTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
@@ -93,7 +93,7 @@ export default function MyTeam() {
             .select('*')
             .in('id', ids)
             .order('created_at', { ascending: true });
-          
+
           if (teamsError) {
             console.error('Erreur chargement équipes membres:', teamsError);
           }
@@ -139,7 +139,7 @@ export default function MyTeam() {
 
   const loadPendingInvitations = async () => {
     if (!selectedTeamId) return;
-    
+
     try {
       const invitations = await getPendingInvitations(selectedTeamId);
       setPendingInvitations(invitations || []);
@@ -152,24 +152,24 @@ export default function MyTeam() {
   const handleInvitePlayer = async (userId, message) => {
     try {
       setInviting(true);
-      
+
       // Envoyer l'invitation
       await sendTeamInvitation(selectedTeamId, userId, session.user.id, message);
-      
+
       // Récupérer les infos de l'équipe et de l'utilisateur invitant
       const { data: profileData } = await supabase
         .from('profiles')
         .select('username')
         .eq('id', session.user.id)
         .single();
-      
+
       // Récupérer les infos de l'utilisateur invité
       const { data: invitedUserData } = await supabase
         .from('profiles')
         .select('username, email')
         .eq('id', userId)
         .single();
-      
+
       // Envoyer la notification in-app
       await notifyTeamInvitation(
         userId,
@@ -177,11 +177,11 @@ export default function MyTeam() {
         currentTeam.name,
         profileData?.username || session.user.email
       );
-      
+
       // Envoyer l'email d'invitation
       // L'email est stocké dans profiles.email (synchronisé depuis auth.users)
       const recipientEmail = invitedUserData?.email;
-      
+
       if (recipientEmail) {
         try {
           await sendTeamInvitationEmail({
@@ -199,10 +199,10 @@ export default function MyTeam() {
       } else {
         console.warn('⚠️ Pas d\'email trouvé pour le joueur invité');
       }
-      
+
       toast.success('✅ Invitation envoyée avec succès !');
       setShowInviteModal(false);
-      
+
       // Recharger les invitations
       await loadPendingInvitations();
     } catch (error) {
@@ -234,7 +234,7 @@ export default function MyTeam() {
 
   const uploadLogo = async (event) => {
     if (!currentTeam || !isCaptain) return;
-    
+
     try {
       setUploading(true);
       if (!event.target.files || event.target.files.length === 0) throw new Error('Sélectionne une image !');
@@ -256,7 +256,7 @@ export default function MyTeam() {
 
       // Mettre à jour aussi la liste globale
       setAllTeams(prev => prev.map(t => t.id === currentTeam.id ? { ...t, logo_url: publicUrl } : t));
-      
+
       toast.success("Logo mis à jour !");
     } catch (error) {
       toast.error('Erreur : ' + error.message);
@@ -334,13 +334,12 @@ export default function MyTeam() {
       <DashboardLayout session={session}>
         <div className="text-center py-20">
           <h2 className="font-display text-4xl text-cyan-400 mb-6" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
-          <button 
-            type="button"
-            onClick={() => navigate('/create-team')} 
-            className="px-8 py-4 bg-gradient-to-r from-violet-600 to-cyan-500 border-2 border-cyan-500 rounded-lg text-white font-display text-base uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/50"
+          <GradientButton
+            onClick={() => navigate('/create-team')}
+            size="lg"
           >
             Créer une Team
-          </button>
+          </GradientButton>
         </div>
       </DashboardLayout>
     </MyTeamErrorBoundary>
@@ -364,8 +363,8 @@ export default function MyTeam() {
           <div className="flex justify-between items-center mb-6">
             {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
             {allTeams.length > 1 && (
-              <select 
-                value={selectedTeamId || ''} 
+              <select
+                value={selectedTeamId || ''}
                 onChange={(e) => handleTeamSwitch(e.target.value)}
                 className="px-4 py-2 bg-black/50 border-2 border-violet-500 text-white rounded-lg font-body text-base transition-all duration-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20"
               >
@@ -375,158 +374,156 @@ export default function MyTeam() {
               </select>
             )}
           </div>
-        
-        <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
-        
-        {/* EN-TÊTE AVEC LOGO */}
-        <div className="flex items-center gap-5 mb-8">
-          <div className="relative w-20 h-20 flex-shrink-0">
-            <img 
-              src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`} 
-              alt="Team Logo" 
-              className="w-full h-full rounded-xl object-cover border-2 border-cyan-500"
-            />
-            
-            {isCaptain && (
-              <>
-                <label 
-                  htmlFor="logo-upload" 
-                  className={`absolute -bottom-1 -right-1 bg-cyan-500 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2 border-gray-900 font-bold text-lg transition-all duration-300 hover:bg-violet-600 hover:scale-110`}
-                >
-                  {uploading ? '⏳' : '+'}
-                </label>
-                <input 
-                  type="file" 
-                  id="logo-upload" 
-                  accept="image/*" 
-                  onChange={uploadLogo} 
-                  disabled={uploading}
-                  className="hidden" 
+
+          <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 shadow-xl rounded-xl p-8">
+
+            {/* EN-TÊTE AVEC LOGO */}
+            <div className="flex items-center gap-5 mb-8">
+              <div className="relative w-20 h-20 flex-shrink-0">
+                <img
+                  src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`}
+                  alt="Team Logo"
+                  className="w-full h-full rounded-xl object-cover border-2 border-cyan-500"
                 />
-              </>
-            )}
-          </div>
 
-          <div className="flex-1 overflow-hidden">
-            <h1 className="font-display text-3xl text-white mb-1 truncate">{currentTeam.name}</h1>
-            <span className="text-lg text-cyan-400 font-bold font-body">[{currentTeam.tag}]</span>
-          </div>
+                {isCaptain && (
+                  <>
+                    <label
+                      htmlFor="logo-upload"
+                      className={`absolute -bottom-1 -right-1 bg-cyan-500 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2 border-gray-900 font-bold text-lg transition-all duration-300 hover:bg-violet-600 hover:scale-110`}
+                    >
+                      {uploading ? '⏳' : '+'}
+                    </label>
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/*"
+                      onChange={uploadLogo}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                  </>
+                )}
+              </div>
 
-          <div className="flex gap-2">
-            <button 
-              type="button"
-              onClick={copyInviteLink} 
-              className="px-4 py-2 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
-            >
-              🔗 Lien
-            </button>
-            {canManage && (
-              <button 
-                type="button"
-                onClick={() => setShowInviteModal(true)} 
-                className="px-4 py-2 bg-gradient-to-r from-violet-600 to-cyan-500 border-2 border-cyan-500 rounded-lg text-white font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/50"
-              >
-                👥 Inviter Joueur
-              </button>
+              <div className="flex-1 overflow-hidden">
+                <h1 className="font-display text-3xl text-white mb-1 truncate">{currentTeam.name}</h1>
+                <span className="text-lg text-cyan-400 font-bold font-body">[{currentTeam.tag}]</span>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={copyInviteLink}
+                  className="px-4 py-2 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display font-bold whitespace-nowrap uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
+                >
+                  🔗 Lien
+                </button>
+                {canManage && (
+                  <GradientButton
+                    onClick={() => setShowInviteModal(true)}
+                  >
+                    👥 Inviter Joueur
+                  </GradientButton>
+                )}
+              </div>
+            </div>
+
+            {/* INVITATIONS EN ATTENTE */}
+            {canManage && pendingInvitations.length > 0 && (
+              <div className="mb-6">
+                <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-xl text-cyan-400 mb-4" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>
+                  Invitations envoyées ({pendingInvitations.length})
+                </h3>
+                <div className="space-y-2">
+                  {pendingInvitations.map((inv) => (
+                    <div key={inv.id} className="bg-black/30 border border-violet-500/30 rounded-lg p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={inv.invited_user?.avatar_url || `https://ui-avatars.com/api/?name=${inv.invited_user?.username || 'User'}`}
+                          className="w-6 h-6 rounded-full object-cover border border-cyan-500"
+                          alt=""
+                        />
+                        <span className="text-sm font-body text-white">
+                          {inv.invited_user?.username || 'Joueur'}
+                        </span>
+                      </div>
+                      <Badge variant="warning" size="sm">En attente</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
+
+            {/* LISTE DES MEMBRES */}
+            <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-2xl text-cyan-400 mb-6" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>Roster ({members.length})</h3>
+            <ul className="list-none p-0">
+              {members.map(m => {
+                const isCurrentUser = m.user_id === session.user.id;
+                const memberRole = m.user_id === currentTeam.captain_id ? 'captain' : (m.role || 'player');
+
+                return (
+                  <li key={m.id} className="flex justify-between items-center py-4 border-b border-white/5">
+                    <div className="flex items-center gap-3 flex-1">
+                      <img
+                        src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`}
+                        className="w-8 h-8 rounded-full object-cover border-2 border-cyan-500"
+                        alt=""
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-body ${isCurrentUser ? 'text-cyan-400' : 'text-white'}`}>
+                            {m.profiles?.username || 'Joueur sans pseudo'}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded font-body ${getRoleBadgeColor(memberRole)}`}>
+                            {getRoleLabel(memberRole)}
+                          </span>
+                        </div>
+                        {/* Dropdown pour changer le rôle (uniquement capitaine et non pour lui-même) */}
+                        {isCaptain && !isCurrentUser && memberRole !== 'captain' && (
+                          <div className="mt-1">
+                            <select
+                              value={memberRole}
+                              onChange={(e) => handleChangeRole(m.user_id, e.target.value)}
+                              className="px-2 py-1 text-xs bg-black/50 border border-violet-500/50 text-white rounded font-body transition-all duration-200 hover:border-cyan-500 focus:outline-none focus:border-cyan-500"
+                            >
+                              <option value="player">Joueur</option>
+                              <option value="coach">Coach</option>
+                              <option value="manager">Manager</option>
+                            </select>
+                            <span className="ml-2 text-xs text-white/50 font-body">
+                              {canManageMembers(memberRole) && '🔑 Peut inviter/exclure'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {canManage && !isCurrentUser && (
+                      <button
+                        type="button"
+                        onClick={() => handleKickMember(m.user_id)}
+                        className="px-3 py-1 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
+                      >
+                        Exclure
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
 
-        {/* INVITATIONS EN ATTENTE */}
-        {canManage && pendingInvitations.length > 0 && (
-          <div className="mb-6">
-            <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-xl text-cyan-400 mb-4" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>
-              Invitations envoyées ({pendingInvitations.length})
-            </h3>
-            <div className="space-y-2">
-              {pendingInvitations.map((inv) => (
-                <div key={inv.id} className="bg-black/30 border border-violet-500/30 rounded-lg p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={inv.invited_user?.avatar_url || `https://ui-avatars.com/api/?name=${inv.invited_user?.username || 'User'}`} 
-                      className="w-6 h-6 rounded-full object-cover border border-cyan-500" 
-                      alt="" 
-                    />
-                    <span className="text-sm font-body text-white">
-                      {inv.invited_user?.username || 'Joueur'}
-                    </span>
-                  </div>
-                  <Badge variant="warning" size="sm">En attente</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* LISTE DES MEMBRES */}
-        <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-2xl text-cyan-400 mb-6" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>Roster ({members.length})</h3>
-        <ul className="list-none p-0">
-          {members.map(m => {
-            const isCurrentUser = m.user_id === session.user.id;
-            const memberRole = m.user_id === currentTeam.captain_id ? 'captain' : (m.role || 'player');
-            
-            return (
-              <li key={m.id} className="flex justify-between items-center py-4 border-b border-white/5">
-                <div className="flex items-center gap-3 flex-1">
-                  <img 
-                    src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`} 
-                    className="w-8 h-8 rounded-full object-cover border-2 border-cyan-500" 
-                    alt="" 
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-body ${isCurrentUser ? 'text-cyan-400' : 'text-white'}`}>
-                        {m.profiles?.username || 'Joueur sans pseudo'}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded font-body ${getRoleBadgeColor(memberRole)}`}>
-                        {getRoleLabel(memberRole)}
-                      </span>
-                    </div>
-                    {/* Dropdown pour changer le rôle (uniquement capitaine et non pour lui-même) */}
-                    {isCaptain && !isCurrentUser && memberRole !== 'captain' && (
-                      <div className="mt-1">
-                        <select
-                          value={memberRole}
-                          onChange={(e) => handleChangeRole(m.user_id, e.target.value)}
-                          className="px-2 py-1 text-xs bg-black/50 border border-violet-500/50 text-white rounded font-body transition-all duration-200 hover:border-cyan-500 focus:outline-none focus:border-cyan-500"
-                        >
-                          <option value="player">Joueur</option>
-                          <option value="coach">Coach</option>
-                          <option value="manager">Manager</option>
-                        </select>
-                        <span className="ml-2 text-xs text-white/50 font-body">
-                          {canManageMembers(memberRole) && '🔑 Peut inviter/exclure'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {canManage && !isCurrentUser && (
-                  <button 
-                    type="button"
-                    onClick={() => handleKickMember(m.user_id)} 
-                    className="px-3 py-1 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
-                  >
-                    Exclure
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-      </div>
-      
-      {/* MODAL D'INVITATION */}
-      <InvitePlayerModal
-        isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        onInvite={handleInvitePlayer}
-        excludedUserIds={members.map(m => m.user_id)}
-        loading={inviting}
-      />
-    </DashboardLayout>
+        {/* MODAL D'INVITATION */}
+        <InvitePlayerModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          onInvite={handleInvitePlayer}
+          excludedUserIds={members.map(m => m.user_id)}
+          loading={inviting}
+        />
+      </DashboardLayout>
     </MyTeamErrorBoundary>
   );
 }

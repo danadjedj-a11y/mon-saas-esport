@@ -1,21 +1,26 @@
 import ParticipantCard from './ParticipantCard';
+import { GlassCard } from '../../shared/components/ui';
 
 export default function ParticipantsList({ participants, tournamentId }) {
   return (
-    <div className="bg-gray-900/95 p-8 rounded-xl border-2 border-cyan-400 shadow-lg shadow-violet-500/30">
-      <h2 className="mt-0 text-cyan-400 mb-5 font-handwriting text-3xl">
-        Participants ({participants.length})
-      </h2>
-      
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">Participants</h2>
+        <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm text-gray-400">
+          {participants.length} Équipes
+        </span>
+      </div>
+
       {participants.length === 0 ? (
-        <div className="text-center py-10 text-gray-400 font-display">
-          Aucun participant inscrit pour le moment
-        </div>
+        <GlassCard className="text-center py-20">
+          <div className="text-6xl mb-4 opacity-50">👻</div>
+          <p className="text-gray-400 font-medium">Aucun participant inscrit pour le moment</p>
+        </GlassCard>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {participants.map(p => (
-            <ParticipantCard 
-              key={p.id} 
+            <ParticipantCard
+              key={p.id}
               participant={p}
               tournamentId={tournamentId}
             />
