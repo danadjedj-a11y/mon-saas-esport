@@ -62,10 +62,5 @@
         "**/*.test.tsx",
         "**/*.test.js",
         "**/*.test.jsx"
-    ],
-    "references": [
-        {
-            "path": "./tsconfig.node.json"
-        }
     ]
 }
