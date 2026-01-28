@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input, Textarea, Select } from '../../../shared/components/ui';
+import { GradientButton, Input, Textarea, Select, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 const GAME_OPTIONS = [
@@ -58,7 +58,7 @@ export default function SettingsGeneral() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
   const [activeTab, setActiveTab] = useState('general');
-  
+
   const [formData, setFormData] = useState({
     // Onglet Général
     name: '',
@@ -83,7 +83,7 @@ export default function SettingsGeneral() {
     contact_discord: '',
     contact_twitter: '',
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -153,7 +153,7 @@ export default function SettingsGeneral() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       toast.error('Le nom du tournoi est requis');
       return;
@@ -177,11 +177,11 @@ export default function SettingsGeneral() {
         .eq('id', tournamentId);
 
       if (error) throw error;
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
-      
+
       toast.success('Paramètres sauvegardés');
     } catch (error) {
       console.error('Erreur:', error);
@@ -207,12 +207,12 @@ export default function SettingsGeneral() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Paramètres Généraux
-        </h1>
-      </div>
+      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Paramètres Généraux"
+        subtitle="Configurez les informations essentielles de votre tournoi"
+        gradient={true}
+      />
 
       {/* Tabs */}
       <div className="flex justify-center gap-1 mb-8 border-b border-white/10">
@@ -220,11 +220,10 @@ export default function SettingsGeneral() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-3 font-medium transition-colors relative ${
-              activeTab === tab.id
-                ? 'text-cyan'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            className={`px-6 py-3 font-medium transition-colors relative ${activeTab === tab.id
+              ? 'text-cyan'
+              : 'text-gray-400 hover:text-white'
+              }`}
           >
             {tab.label}
             {activeTab === tab.id && (
@@ -236,8 +235,8 @@ export default function SettingsGeneral() {
 
       <form onSubmit={handleSubmit}>
         {/* Card Container */}
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
-          
+        <GlassCard className="p-6">
+
           {/* Tab: Général */}
           {activeTab === 'general' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -292,11 +291,10 @@ export default function SettingsGeneral() {
                         key={platform.value}
                         type="button"
                         onClick={() => togglePlatform(platform.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                          formData.platforms.includes(platform.value)
-                            ? 'bg-cyan text-white'
-                            : 'bg-[#1a1d2e] text-gray-400 hover:bg-white/5'
-                        }`}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${formData.platforms.includes(platform.value)
+                          ? 'bg-cyan text-white'
+                          : 'bg-[#1a1d2e] text-gray-400 hover:bg-white/5'
+                          }`}
                       >
                         {formData.platforms.includes(platform.value) && (
                           <span className="mr-1">✕</span>
@@ -491,7 +489,7 @@ export default function SettingsGeneral() {
               <p className="text-gray-400 text-sm mb-6">
                 Informations de contact pour les participants et les spectateurs.
               </p>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Email de contact
@@ -530,14 +528,14 @@ export default function SettingsGeneral() {
               </div>
             </div>
           )}
-        </div>
+        </GlassCard>
 
         {/* Submit Button */}
         <div className="flex justify-end mt-6">
-          <Button
+          <GradientButton
             type="submit"
             disabled={saving}
-            className="bg-cyan hover:bg-cyan/90 text-white px-6"
+            variant="primary"
           >
             {saving ? (
               <>
@@ -550,7 +548,7 @@ export default function SettingsGeneral() {
                 Mettre à jour
               </>
             )}
-          </Button>
+          </GradientButton>
         </div>
       </form>
     </div>

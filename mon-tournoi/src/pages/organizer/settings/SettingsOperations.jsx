@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Modal } from '../../../shared/components/ui';
+import { GradientButton, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 export default function SettingsOperations() {
@@ -22,7 +22,7 @@ export default function SettingsOperations() {
     try {
       const { error } = await supabase
         .from('tournaments')
-        .update({ 
+        .update({
           status: 'published',
           published_at: new Date().toISOString()
         })
@@ -32,7 +32,7 @@ export default function SettingsOperations() {
 
       toast.success('Tournoi publié avec succès');
       setShowPublishModal(false);
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
@@ -56,7 +56,7 @@ export default function SettingsOperations() {
 
       toast.success('Tournoi dépublié');
       setShowPublishModal(false);
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
@@ -82,7 +82,7 @@ export default function SettingsOperations() {
 
       // Créer une copie sans certains champs
       const { id, created_at, updated_at, ...tournamentData } = originalTournament;
-      
+
       const { data: newTournament, error: createError } = await supabase
         .from('tournaments')
         .insert({
@@ -98,7 +98,7 @@ export default function SettingsOperations() {
 
       toast.success('Tournoi dupliqué avec succès');
       setShowDuplicateModal(false);
-      
+
       // Rediriger vers le nouveau tournoi
       navigate(`/organizer/tournament/${newTournament.id}`);
     } catch (error) {
@@ -114,7 +114,7 @@ export default function SettingsOperations() {
     try {
       const { error } = await supabase
         .from('tournaments')
-        .update({ 
+        .update({
           status: 'archived',
           archived_at: new Date().toISOString()
         })
@@ -144,7 +144,7 @@ export default function SettingsOperations() {
       // Supprimer les données associées
       await supabase.from('participants').delete().eq('tournament_id', tournamentId);
       await supabase.from('matches').delete().eq('tournament_id', tournamentId);
-      
+
       // Supprimer le tournoi
       const { error } = await supabase
         .from('tournaments')
@@ -167,22 +167,20 @@ export default function SettingsOperations() {
   const isArchived = tournament?.status === 'archived';
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Opérations globales
-        </h1>
-      </div>
+    <div className="max-w-3xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Opérations"
+        subtitle="Gérez les opérations et actions du tournoi"
+        gradient={true}
+      />
 
       {/* Operations Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Publier */}
         <div
           onClick={() => !isArchived && setShowPublishModal(true)}
-          className={`bg-[#2a2d3e] rounded-xl border border-white/10 p-6 cursor-pointer transition-all ${
-            isArchived ? 'opacity-50 cursor-not-allowed' : 'hover:border-cyan/30 hover:bg-[#2a2d3e]/80'
-          }`}
+          className={`bg-[#2a2d3e] rounded-xl border border-white/10 p-6 cursor-pointer transition-all ${isArchived ? 'opacity-50 cursor-not-allowed' : 'hover:border-cyan/30 hover:bg-[#2a2d3e]/80'
+            }`}
         >
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-cyan/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -196,7 +194,7 @@ export default function SettingsOperations() {
                 {isPublished ? 'Dépublier' : 'Publier'}
               </h3>
               <p className="text-sm text-gray-400">
-                {isPublished 
+                {isPublished
                   ? 'Repasser le tournoi en brouillon'
                   : 'Rendre le tournoi visible au public'
                 }
@@ -233,9 +231,8 @@ export default function SettingsOperations() {
         {/* Archiver */}
         <div
           onClick={() => !isArchived && setShowArchiveModal(true)}
-          className={`bg-[#2a2d3e] rounded-xl border border-white/10 p-6 cursor-pointer transition-all ${
-            isArchived ? 'opacity-50 cursor-not-allowed' : 'hover:border-amber-500/30 hover:bg-[#2a2d3e]/80'
-          }`}
+          className={`bg-[#2a2d3e] rounded-xl border border-white/10 p-6 cursor-pointer transition-all ${isArchived ? 'opacity-50 cursor-not-allowed' : 'hover:border-amber-500/30 hover:bg-[#2a2d3e]/80'
+            }`}
         >
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-amber-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -291,18 +288,18 @@ export default function SettingsOperations() {
               : 'Êtes-vous sûr de vouloir publier ce tournoi ? Il sera visible par tous les utilisateurs.'
             }
           </p>
-          
+
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setShowPublishModal(false)}>
+            <GradientButton variant="ghost" onClick={() => setShowPublishModal(false)}>
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={isPublished ? handleUnpublish : handlePublish}
               disabled={isLoading}
               className={isPublished ? 'bg-gray-600 hover:bg-gray-700' : 'bg-cyan hover:bg-cyan/90'}
             >
               {isLoading ? 'En cours...' : (isPublished ? 'Dépublier' : 'Publier')}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>
@@ -317,18 +314,18 @@ export default function SettingsOperations() {
           <p className="text-gray-400">
             Une copie du tournoi sera créée avec les mêmes paramètres, mais sans les participants ni les matchs.
           </p>
-          
+
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setShowDuplicateModal(false)}>
+            <GradientButton variant="ghost" onClick={() => setShowDuplicateModal(false)}>
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={handleDuplicate}
               disabled={isLoading}
               className="bg-violet hover:bg-violet/90"
             >
               {isLoading ? 'Duplication...' : 'Dupliquer'}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>
@@ -343,18 +340,18 @@ export default function SettingsOperations() {
           <p className="text-gray-400">
             Le tournoi sera déplacé dans vos archives. Vous pourrez toujours le consulter mais il ne sera plus modifiable.
           </p>
-          
+
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setShowArchiveModal(false)}>
+            <GradientButton variant="ghost" onClick={() => setShowArchiveModal(false)}>
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={handleArchive}
               disabled={isLoading}
               className="bg-amber-500 hover:bg-amber-600"
             >
               {isLoading ? 'Archivage...' : 'Archiver'}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>
@@ -377,7 +374,7 @@ export default function SettingsOperations() {
               Toutes les données du tournoi seront définitivement supprimées : participants, matchs, résultats, etc.
             </p>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Pour confirmer, tapez le nom du tournoi : <span className="text-white">{tournament?.name}</span>
@@ -390,9 +387,9 @@ export default function SettingsOperations() {
               placeholder={tournament?.name}
             />
           </div>
-          
+
           <div className="flex justify-end gap-3">
-            <Button
+            <GradientButton
               variant="ghost"
               onClick={() => {
                 setShowDeleteModal(false);
@@ -400,14 +397,14 @@ export default function SettingsOperations() {
               }}
             >
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={handleDelete}
               disabled={isLoading || deleteConfirm !== tournament?.name}
               className="bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Suppression...' : 'Supprimer définitivement'}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input } from '../../../shared/components/ui';
+import { GradientButton, Input, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 export default function SettingsRegistration() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
   const [activeTab, setActiveTab] = useState('configuration');
-  
+
   const [formData, setFormData] = useState({
     // Configuration
     registration_enabled: true,
@@ -28,7 +28,7 @@ export default function SettingsRegistration() {
     require_birthdate: false,
     require_game_id: false,
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -42,10 +42,10 @@ export default function SettingsRegistration() {
   }, [context?.tournament, tournamentId]);
 
   const populateForm = (tournament) => {
-    const regDeadline = tournament.registration_deadline 
+    const regDeadline = tournament.registration_deadline
       ? new Date(tournament.registration_deadline)
       : null;
-    
+
     setFormData(prev => ({
       ...prev,
       registration_enabled: tournament.status !== 'closed',
@@ -94,18 +94,18 @@ export default function SettingsRegistration() {
         .from('tournaments')
         .update({
           registration_deadline: registrationDeadline,
-          max_participants: formData.limit_registrations 
-            ? parseInt(formData.max_registrations) 
+          max_participants: formData.limit_registrations
+            ? parseInt(formData.max_registrations)
             : null,
         })
         .eq('id', tournamentId);
 
       if (error) throw error;
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
-      
+
       toast.success("Paramètres d'inscription sauvegardés");
     } catch (error) {
       console.error('Erreur:', error);
@@ -131,13 +131,12 @@ export default function SettingsRegistration() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Paramètres d'inscription
-        </h1>
-      </div>
+    <div className="max-w-3xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Paramètres d'inscription"
+        subtitle="Configurez les inscriptions et les conditions de participation"
+        gradient={true}
+      />
 
       {/* Tabs */}
       <div className="flex justify-center gap-1 mb-8 border-b border-white/10">
@@ -146,13 +145,12 @@ export default function SettingsRegistration() {
             key={tab.id}
             onClick={() => !tab.disabled && setActiveTab(tab.id)}
             disabled={tab.disabled}
-            className={`px-6 py-3 font-medium transition-colors relative ${
-              tab.disabled
-                ? 'text-gray-600 cursor-not-allowed'
-                : activeTab === tab.id
-                  ? 'text-cyan'
-                  : 'text-gray-400 hover:text-white'
-            }`}
+            className={`px-6 py-3 font-medium transition-colors relative ${tab.disabled
+              ? 'text-gray-600 cursor-not-allowed'
+              : activeTab === tab.id
+                ? 'text-cyan'
+                : 'text-gray-400 hover:text-white'
+              }`}
           >
             {tab.label}
             {tab.disabled && (
@@ -166,15 +164,15 @@ export default function SettingsRegistration() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
-          
+        <GlassCard className="p-6">
+
           {/* Tab: Configuration */}
           {activeTab === 'configuration' && (
             <div className="space-y-8">
               {/* Général */}
               <section>
                 <h3 className="text-lg font-semibold text-white mb-4">Général</h3>
-                
+
                 <div className="space-y-4">
                   {/* Activer inscriptions */}
                   <div>
@@ -304,7 +302,7 @@ export default function SettingsRegistration() {
                         <span className="text-white">Non</span>
                       </label>
                     </div>
-                    
+
                     {formData.limit_registrations && (
                       <Input
                         type="number"
@@ -352,7 +350,7 @@ export default function SettingsRegistration() {
               {/* Équipe */}
               <section>
                 <h3 className="text-lg font-semibold text-white mb-4">Équipe</h3>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Limiter l'inscription aux équipes permanentes ?
@@ -386,7 +384,7 @@ export default function SettingsRegistration() {
               {/* Joueur */}
               <section>
                 <h3 className="text-lg font-semibold text-white mb-4">Joueur</h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -499,18 +497,18 @@ export default function SettingsRegistration() {
               </p>
             </div>
           )}
-        </div>
+        </GlassCard>
 
         {/* Submit Button */}
         {activeTab === 'configuration' && (
           <div className="flex justify-start mt-6">
-            <Button
+            <GradientButton
               type="submit"
               disabled={saving}
-              className="bg-cyan hover:bg-cyan/90 text-white px-6"
+              variant="primary"
             >
               {saving ? 'Sauvegarde...' : 'Mettre à jour'}
-            </Button>
+            </GradientButton>
           </div>
         )}
       </form>

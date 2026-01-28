@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input, Modal } from '../../../shared/components/ui';
+import { GradientButton, Input, Modal, GlassCard } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 import { regeneratePhaseMatches, calculateMatchCount } from '../../../utils/matchGenerator';
 import clsx from 'clsx';
@@ -39,14 +39,14 @@ export default function PhaseSettings() {
   const { id: tournamentId, phaseId } = useParams();
   const navigate = useNavigate();
   const context = useOutletContext();
-  
+
   const [phase, setPhase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [activeGroup, setActiveGroup] = useState(null);
   const [activeRound, setActiveRound] = useState(null);
-  
+
   // Configuration de la phase
   const [config, setConfig] = useState({
     name: '',
@@ -77,7 +77,7 @@ export default function PhaseSettings() {
 
   const fetchPhaseData = async () => {
     if (!phaseId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -87,7 +87,7 @@ export default function PhaseSettings() {
         .single();
 
       if (error) throw error;
-      
+
       setPhase(data);
       const loadedConfig = {
         name: data.name || '',
@@ -103,7 +103,7 @@ export default function PhaseSettings() {
       };
       setConfig(loadedConfig);
       setHasChanges(false);
-      
+
       // Définir le premier groupe comme actif
       if (data.format === 'double_elimination') {
         setActiveGroup('winners');
@@ -193,17 +193,17 @@ export default function PhaseSettings() {
         .eq('id', phaseId);
 
       if (error) throw error;
-      
+
       toast.success('✓ Configuration sauvegardée avec succès');
       setHasChanges(false);
-      
+
       // Mettre à jour la phase locale
       setPhase(prev => ({
         ...prev,
         name: config.name.trim(),
         config: configToSave,
       }));
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
@@ -230,7 +230,7 @@ export default function PhaseSettings() {
     try {
       // Sauvegarder d'abord la config
       await handleSave();
-      
+
       // Régénérer les matchs avec la nouvelle config
       const updatedPhase = {
         ...phase,
@@ -239,7 +239,7 @@ export default function PhaseSettings() {
           grand_final: config.grandFinal,
         }
       };
-      
+
       const matches = await regeneratePhaseMatches(updatedPhase, tournamentId);
       toast.success(`✓ ${matches.length} matchs générés avec succès`);
     } catch (error) {
@@ -293,12 +293,13 @@ export default function PhaseSettings() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-400">Phase non trouvée</p>
-        <Button 
+        <GradientButton
           onClick={() => navigate(`/organizer/tournament/${tournamentId}/structure`)}
           className="mt-4"
+          variant="secondary"
         >
           Retour à la structure
-        </Button>
+        </GradientButton>
       </div>
     );
   }
@@ -325,7 +326,7 @@ export default function PhaseSettings() {
     <div>
       {/* Breadcrumb */}
       <div className="mb-4 text-sm flex items-center gap-2">
-        <button 
+        <button
           onClick={() => navigate(`/organizer/tournament/${tournamentId}/structure`)}
           className="text-gray-400 hover:text-white transition-colors"
         >
@@ -393,7 +394,7 @@ export default function PhaseSettings() {
             <h3 className="font-display font-semibold text-white">
               Configuration du {config.groups[activeGroup].name}
             </h3>
-            
+
             {/* Dropdown pour les rounds */}
             {config.groups[activeGroup].rounds && (
               <div className="relative">
@@ -440,117 +441,117 @@ export default function PhaseSettings() {
       )}
 
       {/* Tab Content */}
-      <div className="bg-[#2a2d3e] rounded-xl p-6 border border-white/10">
+      <GlassCard className="p-6">
         {/* Général */}
         {activeTab === 'general' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Numéro <InfoTooltip text="L'ordre de la phase dans le tournoi" />
-              </label>
-              <Input
-                type="number"
-                value={phase.phase_order}
-                disabled
-                className="bg-[#1e2235] border-white/10 opacity-70"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Taille <InfoTooltip text="Nombre d'équipes dans cette phase" />
-              </label>
-              <Input
-                type="number"
-                value={config.size}
-                onChange={(e) => updateConfig({ size: parseInt(e.target.value) || 4 })}
-                min={2}
-                max={256}
-                className="bg-[#1e2235] border-white/10"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                💡 {calculateMatchCount(phase?.format, config.size, { grand_final: config.grandFinal })} matchs seront générés
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Nom <span className="text-gray-500">(30 caractères maximum)</span>
-              </label>
-              <Input
-                value={config.name}
-                onChange={(e) => setConfig(prev => ({ ...prev, name: e.target.value.slice(0, 30) }))}
-                placeholder="Ex: Playoffs, Qualifications..."
-                className="bg-[#1e2235] border-white/10"
-              />
-            </div>
-
-            {phase.format === 'double_elimination' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Activer la Grande Finale ? <InfoTooltip text="Configuration de la grande finale pour le double élimination" />
+                  Numéro <InfoTooltip text="L'ordre de la phase dans le tournoi" />
                 </label>
-                <select
-                  value={config.grandFinal}
-                  onChange={(e) => setConfig(prev => ({ ...prev, grandFinal: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-[#1e2235] border border-white/10 rounded-lg text-white focus:border-violet focus:outline-none"
-                >
-                  {GRAND_FINAL_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <Input
+                  type="number"
+                  value={phase.phase_order}
+                  disabled
+                  className="bg-[#1e2235] border-white/10 opacity-70"
+                />
               </div>
-            )}
 
-            {(phase.format === 'elimination' || phase.format === 'double_elimination') && (
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Passer le premier tour ? <InfoTooltip text="Permet aux seeds les plus élevés de passer automatiquement le premier tour" />
+                  Taille <InfoTooltip text="Nombre d'équipes dans cette phase" />
                 </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={config.skipFirstRound}
-                      onChange={() => setConfig(prev => ({ ...prev, skipFirstRound: true }))}
-                      className="w-4 h-4 accent-cyan-400"
-                    />
-                    <span className="text-gray-300">Oui</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={!config.skipFirstRound}
-                      onChange={() => setConfig(prev => ({ ...prev, skipFirstRound: false }))}
-                      className="w-4 h-4 accent-cyan-400"
-                    />
-                    <span className="text-gray-300">Non</span>
-                  </label>
-                </div>
+                <Input
+                  type="number"
+                  value={config.size}
+                  onChange={(e) => updateConfig({ size: parseInt(e.target.value) || 4 })}
+                  min={2}
+                  max={256}
+                  className="bg-[#1e2235] border-white/10"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 {calculateMatchCount(phase?.format, config.size, { grand_final: config.grandFinal })} matchs seront générés
+                </p>
               </div>
-            )}
-          </div>
 
-          {/* Section Régénération des matchs */}
-          <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-            <h4 className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
-              ⚡ Génération des matchs
-            </h4>
-            <p className="text-sm text-gray-400 mb-4">
-              Si vous avez modifié la taille ou la configuration, vous devez régénérer les matchs.
-              <br />
-              <span className="text-amber-400">Attention : cette action supprimera tous les résultats existants.</span>
-            </p>
-            <Button
-              onClick={handleRegenerateMatches}
-              disabled={saving}
-              className="bg-amber-600 hover:bg-amber-500"
-            >
-              {saving ? '⏳ Génération...' : '🔄 Régénérer les matchs'}
-            </Button>
-          </div>
-        </>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Nom <span className="text-gray-500">(30 caractères maximum)</span>
+                </label>
+                <Input
+                  value={config.name}
+                  onChange={(e) => setConfig(prev => ({ ...prev, name: e.target.value.slice(0, 30) }))}
+                  placeholder="Ex: Playoffs, Qualifications..."
+                  className="bg-[#1e2235] border-white/10"
+                />
+              </div>
+
+              {phase.format === 'double_elimination' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Activer la Grande Finale ? <InfoTooltip text="Configuration de la grande finale pour le double élimination" />
+                  </label>
+                  <select
+                    value={config.grandFinal}
+                    onChange={(e) => setConfig(prev => ({ ...prev, grandFinal: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-[#1e2235] border border-white/10 rounded-lg text-white focus:border-violet focus:outline-none"
+                  >
+                    {GRAND_FINAL_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {(phase.format === 'elimination' || phase.format === 'double_elimination') && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Passer le premier tour ? <InfoTooltip text="Permet aux seeds les plus élevés de passer automatiquement le premier tour" />
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={config.skipFirstRound}
+                        onChange={() => setConfig(prev => ({ ...prev, skipFirstRound: true }))}
+                        className="w-4 h-4 accent-cyan-400"
+                      />
+                      <span className="text-gray-300">Oui</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={!config.skipFirstRound}
+                        onChange={() => setConfig(prev => ({ ...prev, skipFirstRound: false }))}
+                        className="w-4 h-4 accent-cyan-400"
+                      />
+                      <span className="text-gray-300">Non</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section Régénération des matchs */}
+            <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <h4 className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
+                ⚡ Génération des matchs
+              </h4>
+              <p className="text-sm text-gray-400 mb-4">
+                Si vous avez modifié la taille ou la configuration, vous devez régénérer les matchs.
+                <br />
+                <span className="text-amber-400">Attention : cette action supprimera tous les résultats existants.</span>
+              </p>
+              <GradientButton
+                onClick={handleRegenerateMatches}
+                disabled={saving}
+                variant="warning"
+              >
+                {saving ? '⏳ Génération...' : '🔄 Régénérer les matchs'}
+              </GradientButton>
+            </div>
+          </>
         )}
 
         {/* Avancé */}
@@ -620,7 +621,7 @@ export default function PhaseSettings() {
 
             <div className="p-4 bg-violet/10 border border-violet/30 rounded-lg">
               <p className="text-sm text-gray-400">
-                💡 Si activé, les équipes seront automatiquement placées dans le bracket 
+                💡 Si activé, les équipes seront automatiquement placées dans le bracket
                 selon leur ordre de seeding une fois la phase lancée.
               </p>
             </div>
@@ -638,42 +639,39 @@ export default function PhaseSettings() {
             }}
           />
         )}
-      </div>
+      </GlassCard>
 
       {/* Actions */}
       <div className="flex items-center justify-between mt-6">
-        <Button
+        <GradientButton
           onClick={() => navigate(`/organizer/tournament/${tournamentId}/structure`)}
           variant="secondary"
-          className="bg-[#2a2d3e] border-white/10 hover:bg-white/10"
         >
           ← Retour
-        </Button>
-        
+        </GradientButton>
+
         <div className="flex items-center gap-3">
           {hasChanges && (
             <span className="text-amber-400 text-sm mr-2">● Modifications non sauvegardées</span>
           )}
-          <Button
+          <GradientButton
             onClick={handleSaveAndReturn}
             disabled={saving}
-            variant="secondary"
-            className="bg-cyan-600 border-cyan-500 hover:bg-cyan-500 text-white"
+            variant="primary"
           >
             {saving ? '⏳' : '✓'} Mettre à jour + Retour
-          </Button>
-          <Button
+          </GradientButton>
+          <GradientButton
             onClick={handleSave}
             disabled={saving}
+            variant="primary"
             className={clsx(
               "transition-all",
-              hasChanges 
-                ? "bg-cyan-600 hover:bg-cyan-500 ring-2 ring-cyan-400/50" 
-                : "bg-cyan-600 hover:bg-cyan-500"
+              hasChanges && "ring-2 ring-cyan-400/50"
             )}
           >
             {saving ? '⏳ Sauvegarde...' : '✓ Mettre à jour'}
-          </Button>
+          </GradientButton>
         </div>
       </div>
     </div>
@@ -685,9 +683,9 @@ export default function PhaseSettings() {
  */
 function InfoTooltip({ text }) {
   const [show, setShow] = useState(false);
-  
+
   return (
-    <span 
+    <span
       className="relative inline-block ml-1 cursor-help"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
@@ -712,7 +710,7 @@ function MatchFormatSettings({ format, bestOf, fixedGames, onChange }) {
         <label className="block text-sm font-medium text-gray-300 mb-3">
           Format <InfoTooltip text="Le format définit comment les matchs sont joués" />
         </label>
-        
+
         {/* Cartes de sélection du format */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {MATCH_FORMAT_OPTIONS.map(opt => (
@@ -769,7 +767,7 @@ function MatchFormatSettings({ format, bestOf, fixedGames, onChange }) {
             ))}
           </div>
           <p className="mt-3 text-xs text-gray-500">
-            💡 Actuellement sélectionné: <span className="text-cyan-400 font-bold">Best of {bestOf || 3}</span> 
+            💡 Actuellement sélectionné: <span className="text-cyan-400 font-bold">Best of {bestOf || 3}</span>
             - Le premier à gagner {Math.ceil((bestOf || 3) / 2)} manche(s) remporte le match.
           </p>
         </div>
@@ -818,7 +816,7 @@ function MatchFormatSettings({ format, bestOf, fixedGames, onChange }) {
  */
 function RoundSettings({ round, onChange, parentFormat }) {
   const [localFormat, setLocalFormat] = useState(round.matchFormat || 'inherited');
-  
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

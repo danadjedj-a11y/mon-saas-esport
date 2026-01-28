@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button } from '../../../shared/components/ui';
+import { GradientButton, Input, Select, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 export default function SettingsAppearance() {
@@ -9,7 +9,7 @@ export default function SettingsAppearance() {
   const context = useOutletContext();
   const logoInputRef = useRef(null);
   const bannerInputRef = useRef(null);
-  
+
   const [logoPreview, setLogoPreview] = useState(null);
   const [bannerPreview, setBannerPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
@@ -84,7 +84,7 @@ export default function SettingsAppearance() {
   const uploadFile = async (file, path) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${tournamentId}/${path}.${fileExt}`;
-    
+
     const { error } = await supabase.storage
       .from('tournament-assets')
       .upload(fileName, file, { upsert: true });
@@ -122,11 +122,11 @@ export default function SettingsAppearance() {
           .eq('id', tournamentId);
 
         if (error) throw error;
-        
+
         if (context?.refreshTournament) {
           context.refreshTournament();
         }
-        
+
         toast.success('Apparence mise à jour');
         setLogoFile(null);
         setBannerFile(null);
@@ -150,35 +150,34 @@ export default function SettingsAppearance() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Apparence
-        </h1>
-      </div>
+    <div className="max-w-2xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Apparence"
+        subtitle="Personnalisez le logo et l'arrière-plan de votre tournoi"
+        gradient={true}
+      />
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6 space-y-8">
-          
+        <GlassCard className="p-6 space-y-8">
+
           {/* Logo */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Logo
               <span className="text-gray-500 text-xs ml-2">(Min. 256x256px, PNG ou JPG)</span>
             </label>
-            
+
             <div className="flex items-center gap-4">
               {logoPreview && (
                 <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#1a1d2e] border border-white/10">
-                  <img 
-                    src={logoPreview} 
-                    alt="Logo preview" 
+                  <img
+                    src={logoPreview}
+                    alt="Logo preview"
                     className="w-full h-full object-cover"
                   />
                 </div>
               )}
-              
+
               <div>
                 <input
                   ref={logoInputRef}
@@ -187,13 +186,13 @@ export default function SettingsAppearance() {
                   onChange={handleLogoChange}
                   className="hidden"
                 />
-                <Button
+                <GradientButton
                   type="button"
                   onClick={() => logoInputRef.current?.click()}
-                  className="bg-cyan hover:bg-cyan/90 text-white"
+                  variant="primary"
                 >
                   Choisir une image
-                </Button>
+                </GradientButton>
               </div>
             </div>
           </div>
@@ -204,18 +203,18 @@ export default function SettingsAppearance() {
               Arrière-plan
               <span className="text-gray-500 text-xs ml-2">(Upgrade de tournoi nécessaire)</span>
             </label>
-            
+
             <div className="space-y-3">
               {bannerPreview && (
                 <div className="w-full h-32 rounded-lg overflow-hidden bg-[#1a1d2e] border border-white/10">
-                  <img 
-                    src={bannerPreview} 
-                    alt="Banner preview" 
+                  <img
+                    src={bannerPreview}
+                    alt="Banner preview"
                     className="w-full h-full object-cover"
                   />
                 </div>
               )}
-              
+
               <div>
                 <input
                   ref={bannerInputRef}
@@ -224,14 +223,13 @@ export default function SettingsAppearance() {
                   onChange={handleBannerChange}
                   className="hidden"
                 />
-                <Button
+                <GradientButton
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
                   onClick={() => bannerInputRef.current?.click()}
-                  className="border border-white/20 text-gray-400 hover:text-white"
                 >
                   Choisir une image
-                </Button>
+                </GradientButton>
               </div>
             </div>
           </div>
@@ -248,14 +246,14 @@ export default function SettingsAppearance() {
               Personnalisez les couleurs de votre page tournoi avec un abonnement premium.
             </p>
           </div>
-        </div>
+        </GlassCard>
 
         {/* Submit Button */}
         <div className="flex justify-end mt-6">
-          <Button
+          <GradientButton
             type="submit"
             disabled={saving || (!logoFile && !bannerFile)}
-            className="bg-cyan hover:bg-cyan/90 text-white px-6"
+            variant="primary"
           >
             {saving ? (
               <>
@@ -268,7 +266,7 @@ export default function SettingsAppearance() {
                 Mettre à jour
               </>
             )}
-          </Button>
+          </GradientButton>
         </div>
       </form>
     </div>

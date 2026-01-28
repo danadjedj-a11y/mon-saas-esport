@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { toast } from '../utils/toast';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { Card, Badge, Button } from '../shared/components/ui';
+import { GlassCard, Badge, GradientButton } from '../shared/components/ui';
 
 // Composant pour embed Twitch
 const TwitchEmbed = ({ channel }) => {
   if (!channel) return null;
-  
+
   // Extraire le nom de la chaîne de l'URL si c'est une URL complète
-  const channelName = channel.includes('twitch.tv/') 
+  const channelName = channel.includes('twitch.tv/')
     ? channel.split('twitch.tv/')[1]?.split(/[?/]/)[0]
     : channel;
 
@@ -30,7 +30,7 @@ const TwitchEmbed = ({ channel }) => {
 // Composant pour embed YouTube
 const YouTubeEmbed = ({ url }) => {
   if (!url) return null;
-  
+
   // Extraire l'ID de la vidéo YouTube
   let videoId = '';
   if (url.includes('youtube.com/watch?v=')) {
@@ -60,7 +60,7 @@ const YouTubeEmbed = ({ url }) => {
 // Composant pour afficher les tweets liés au match
 const TwitterFeed = ({ hashtag, teamNames }) => {
   const searchQuery = hashtag || (teamNames ? teamNames.join(' OR ') : null);
-  
+
   if (!searchQuery) return null;
 
   return (
@@ -115,14 +115,14 @@ export default function MatchDetails({ session }) {
       // Fetch teams separately to avoid FK relationship issues
       let team1Data = null;
       let team2Data = null;
-      
+
       if (matchData.player1_id || matchData.player2_id) {
         const teamIds = [matchData.player1_id, matchData.player2_id].filter(Boolean);
         const { data: teamsData } = await supabase
           .from('teams')
           .select('id, name, tag, logo_url, captain_id')
           .in('id', teamIds);
-        
+
         if (teamsData) {
           team1Data = teamsData.find(t => t.id === matchData.player1_id) || null;
           team2Data = teamsData.find(t => t.id === matchData.player2_id) || null;
@@ -184,19 +184,19 @@ export default function MatchDetails({ session }) {
     return (
       <DashboardLayout session={session}>
         <div className="max-w-6xl mx-auto p-8">
-          <div className="bg-[#030913]/60 backdrop-blur-md border border-white/5 rounded-lg p-12 text-center">
+          <GlassCard className="p-12 text-center">
             <p className="text-xl text-white mb-4 font-body">❌ Match introuvable</p>
-            <Button onClick={() => navigate(-1)}>
+            <GradientButton onClick={() => navigate(-1)} variant="secondary">
               Retour
-            </Button>
-          </div>
+            </GradientButton>
+          </GlassCard>
         </div>
       </DashboardLayout>
     );
   }
 
   const { team1, team2 } = match;
-  const winner = match.status === 'completed' 
+  const winner = match.status === 'completed'
     ? (match.score_p1 > match.score_p2 ? team1 : match.score_p2 > match.score_p1 ? team2 : null)
     : null;
 
@@ -215,7 +215,7 @@ export default function MatchDetails({ session }) {
         {tournament && (
           <div className="mb-6 text-center">
             <h2 className="text-sm text-gray-400 font-body mb-1">Tournoi</h2>
-            <h1 
+            <h1
               className="font-display text-3xl text-white cursor-pointer hover:text-cyan-400 transition-colors"
               onClick={() => navigate(`/tournament/${tournament.id}`)}
             >
@@ -226,7 +226,7 @@ export default function MatchDetails({ session }) {
         )}
 
         {/* Match Card */}
-        <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 mb-6">
+        <GlassCard className="mb-6">
           {/* Header with Status */}
           <div className="bg-gradient-to-r from-violet-600/20 to-cyan-500/20 p-6 border-b border-white/5">
             <div className="flex justify-between items-center">
@@ -251,11 +251,10 @@ export default function MatchDetails({ session }) {
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               {/* Team 1 */}
-              <div className={`text-center p-6 rounded-lg transition-all ${
-                winner?.id === team1?.id 
-                  ? 'bg-green-500/20 border-2 border-green-500/50 scale-105' 
+              <div className={`text-center p-6 rounded-lg transition-all ${winner?.id === team1?.id
+                  ? 'bg-green-500/20 border-2 border-green-500/50 scale-105'
                   : 'bg-white/5 border border-white/10'
-              }`}>
+                }`}>
                 {team1 ? (
                   <>
                     <img
@@ -306,11 +305,10 @@ export default function MatchDetails({ session }) {
               </div>
 
               {/* Team 2 */}
-              <div className={`text-center p-6 rounded-lg transition-all ${
-                winner?.id === team2?.id 
-                  ? 'bg-green-500/20 border-2 border-green-500/50 scale-105' 
+              <div className={`text-center p-6 rounded-lg transition-all ${winner?.id === team2?.id
+                  ? 'bg-green-500/20 border-2 border-green-500/50 scale-105'
                   : 'bg-white/5 border border-white/10'
-              }`}>
+                }`}>
                 {team2 ? (
                   <>
                     <img
@@ -337,12 +335,12 @@ export default function MatchDetails({ session }) {
               </div>
             </div>
           </div>
-        </Card>
+        </GlassCard>
 
         {/* Additional Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Match Information */}
-          <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
+          <GlassCard className="p-6">
             <h3 className="font-display text-xl text-white mb-4">📋 Informations</h3>
             <div className="space-y-3 font-body">
               <div className="flex justify-between">
@@ -366,34 +364,34 @@ export default function MatchDetails({ session }) {
                 <span className="text-gray-500 text-xs">{match.id}</span>
               </div>
             </div>
-          </Card>
+          </GlassCard>
 
           {/* Actions */}
-          <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
+          <GlassCard className="p-6">
             <h3 className="font-display text-xl text-white mb-4">⚡ Actions</h3>
             <div className="space-y-3">
-              <Button
+              <GradientButton
                 onClick={() => navigate(`/tournament/${tournament?.id}`)}
                 className="w-full"
                 variant="secondary"
               >
                 Voir le tournoi
-              </Button>
+              </GradientButton>
               {(match.status === 'ongoing' || match.status === 'pending') && session && (
-                <Button
+                <GradientButton
                   onClick={() => navigate(`/match/${match.id}/lobby`)}
                   className="w-full"
                 >
                   Accéder au lobby du match
-                </Button>
+                </GradientButton>
               )}
             </div>
-          </Card>
+          </GlassCard>
         </div>
 
         {/* Stream Section */}
         {tournament?.stream_urls && (tournament.stream_urls.twitch || tournament.stream_urls.youtube) && (
-          <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6 mb-6">
+          <GlassCard className="p-6 mb-6">
             <h3 className="font-display text-xl text-white mb-4">📺 Stream en Direct</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {tournament.stream_urls.twitch && (
@@ -413,18 +411,18 @@ export default function MatchDetails({ session }) {
                 </div>
               )}
             </div>
-          </Card>
+          </GlassCard>
         )}
 
         {/* Social Media / Tweets Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <TwitterFeed 
+          <TwitterFeed
             hashtag={tournament?.name?.replace(/\s+/g, '') || null}
             teamNames={[team1?.name, team2?.name].filter(Boolean)}
           />
-          
+
           {/* Temps forts / Clips */}
-          <Card className="bg-[#030913]/60 backdrop-blur-md border border-white/5 p-6">
+          <GlassCard className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">🎬</span>
               <h4 className="font-display text-lg text-white">Temps Forts</h4>
@@ -443,7 +441,7 @@ export default function MatchDetails({ session }) {
                 <span>→</span>
               </a>
             )}
-          </Card>
+          </GlassCard>
         </div>
       </div>
     </DashboardLayout>

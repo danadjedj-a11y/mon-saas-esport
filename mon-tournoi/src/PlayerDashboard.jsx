@@ -48,10 +48,12 @@ export default function PlayerDashboard({ session }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (session) fetchPlayerData();
+    if (session?.user) fetchPlayerData();
   }, [session]);
 
   const fetchPlayerData = async () => {
+    if (!session?.user) return; // Safety check
+
     setLoading(true);
     try {
       // Récupérer mes équipes

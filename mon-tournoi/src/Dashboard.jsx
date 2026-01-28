@@ -47,8 +47,8 @@ export default function Dashboard({ session }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark">
       <div className="text-center">
-        <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-3xl shadow-glow-md animate-pulse">
-          🎮
+        <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center animate-pulse">
+          <img src="/Logo.png" alt="Fluky Boys" className="w-full h-full object-contain" />
         </div>
         <div className="w-8 h-8 border-2 border-violet/30 border-t-violet rounded-full animate-spin mx-auto mb-4" />
         <p className="font-body text-text-secondary">Redirection en cours...</p>

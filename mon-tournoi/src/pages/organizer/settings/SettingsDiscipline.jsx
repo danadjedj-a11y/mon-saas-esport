@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Select } from '../../../shared/components/ui';
+import { GradientButton, Select, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 // Configuration par jeu
@@ -86,7 +86,7 @@ const GAME_CONFIG = {
 export default function SettingsDiscipline() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
-  
+
   const [game, setGame] = useState('');
   const [gameConfig, setGameConfig] = useState(null);
   const [formData, setFormData] = useState({
@@ -104,7 +104,7 @@ export default function SettingsDiscipline() {
       setGame(context.tournament.game || '');
       const config = GAME_CONFIG[context.tournament.game];
       setGameConfig(config || null);
-      
+
       // Charger les paramètres existants si disponibles
       if (context.tournament.discipline_settings) {
         setFormData(prev => ({
@@ -130,7 +130,7 @@ export default function SettingsDiscipline() {
       setGame(data.game || '');
       const config = GAME_CONFIG[data.game];
       setGameConfig(config || null);
-      
+
       if (data.discipline_settings) {
         setFormData(prev => ({
           ...prev,
@@ -162,11 +162,11 @@ export default function SettingsDiscipline() {
         .eq('id', tournamentId);
 
       if (error) throw error;
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
-      
+
       toast.success('Paramètres de discipline sauvegardés');
     } catch (error) {
       console.error('Erreur:', error);
@@ -192,8 +192,8 @@ export default function SettingsDiscipline() {
             Paramètres de discipline
           </h1>
         </div>
-        
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-8 text-center">
+
+        <GlassCard className="p-8 text-center">
           <div className="text-6xl mb-4">🎮</div>
           <h2 className="text-xl font-semibold text-white mb-2">
             Aucune discipline sélectionnée
@@ -201,19 +201,18 @@ export default function SettingsDiscipline() {
           <p className="text-gray-400">
             Veuillez d'abord sélectionner un jeu dans les paramètres généraux.
           </p>
-        </div>
-      </div>
+        </GlassCard>
+      </div >
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Paramètres de {gameConfig.name}
-        </h1>
-      </div>
+    <div className="max-w-2xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Discipline"
+        subtitle="Configurez les paramètres spécifiques à la discipline"
+        gradient={true}
+      />
 
       {/* Tabs */}
       <div className="flex justify-center gap-1 mb-8 border-b border-white/10">
@@ -224,8 +223,8 @@ export default function SettingsDiscipline() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6 space-y-6">
-          
+        <GlassCard className="p-6 space-y-6">
+
           {/* Intégration avec le jeu */}
           {gameConfig.hasIntegration && (
             <div>
@@ -323,14 +322,14 @@ export default function SettingsDiscipline() {
               />
             </div>
           )}
-        </div>
+        </GlassCard>
 
         {/* Submit Button */}
         <div className="flex justify-end mt-6">
-          <Button
+          <GradientButton
             type="submit"
             disabled={saving}
-            className="bg-cyan hover:bg-cyan/90 text-white px-6"
+            variant="primary"
           >
             {saving ? (
               <>
@@ -343,7 +342,7 @@ export default function SettingsDiscipline() {
                 Mettre à jour
               </>
             )}
-          </Button>
+          </GradientButton>
         </div>
       </form>
     </div>

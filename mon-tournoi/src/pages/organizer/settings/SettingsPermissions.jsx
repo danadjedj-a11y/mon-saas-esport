@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input, Modal } from '../../../shared/components/ui';
+import { GradientButton, Input, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 const PERMISSION_OPTIONS = [
@@ -157,16 +157,15 @@ export default function SettingsPermissions() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Permissions
-        </h1>
-      </div>
+    <div className="max-w-3xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader 
+        title="Permissions"
+        subtitle="Gérez les droits d'accès et les rôles des utilisateurs"
+        gradient={true}
+      />
 
       {/* Users Section */}
-      <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6 mb-6">
+      <GlassCard className="p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">
             Permissions utilisateur
@@ -248,10 +247,10 @@ export default function SettingsPermissions() {
             Aucun utilisateur avec des permissions spécifiques.
           </p>
         )}
-      </div>
+      </GlassCard>
 
       {/* Groups Section */}
-      <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
+      <GlassCard className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">
             Permissions du groupe
@@ -267,7 +266,7 @@ export default function SettingsPermissions() {
         <p className="text-gray-500 text-sm">
           Aucun groupe
         </p>
-      </div>
+      </GlassCard>
 
       {/* Add/Edit User Modal */}
       <Modal
@@ -321,7 +320,7 @@ export default function SettingsPermissions() {
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button
+            <GradientButton
               variant="ghost"
               onClick={() => {
                 setShowAddUserModal(false);
@@ -329,13 +328,13 @@ export default function SettingsPermissions() {
               }}
             >
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={editingUser ? handleUpdateUser : handleAddUser}
-              className="bg-cyan hover:bg-cyan/90 text-white"
+              variant="primary"
             >
               {editingUser ? 'Mettre à jour' : 'Ajouter'}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>

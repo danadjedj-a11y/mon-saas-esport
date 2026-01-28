@@ -6,16 +6,16 @@ import DashboardLayout from './layouts/DashboardLayout';
 import { useAuth } from './shared/hooks';
 import { createTournament } from './shared/services/api/tournaments';
 import { tournamentSchema as _tournamentSchema } from './shared/utils/schemas/tournament';
-import { Button, Input, Textarea, Select, Card, Badge, WYSIWYGEditor } from './shared/components/ui';
+import { Button, Input, Textarea, Select, Card, Badge, WYSIWYGEditor, GradientButton } from './shared/components/ui';
 
 export default function CreateTournament() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  
+
   // Wizard step state
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
-  
+
   // Form data state
   const [formData, setFormData] = useState({
     // Step 1: Détails du tournoi
@@ -25,15 +25,15 @@ export default function CreateTournament() {
     date: '',
     maxParticipants: '',
     registrationDeadline: '',
-    
+
     // Step 2: Règles
     rules: '',
     description: '',
-    
+
     // Step 3: Récompenses
     cashprizeTotal: '',
     cashprizeDistribution: { '1': '', '2': '', '3': '' },
-    
+
     // Step 4: Configuration avancée
     bestOf: 1,
     mapsPool: '',
@@ -41,7 +41,7 @@ export default function CreateTournament() {
     streamUrls: { twitch: '', youtube: '' },
     clips: [], // Nouvelle section clips
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -115,7 +115,7 @@ export default function CreateTournament() {
   const updateClip = (index, field, value) => {
     setFormData(prev => ({
       ...prev,
-      clips: prev.clips.map((clip, i) => 
+      clips: prev.clips.map((clip, i) =>
         i === index ? { ...clip, [field]: value } : clip
       )
     }));
@@ -124,7 +124,7 @@ export default function CreateTournament() {
   const updateSponsor = (index, field, value) => {
     setFormData(prev => ({
       ...prev,
-      sponsors: prev.sponsors.map((sponsor, i) => 
+      sponsors: prev.sponsors.map((sponsor, i) =>
         i === index ? { ...sponsor, [field]: value } : sponsor
       )
     }));
@@ -132,7 +132,7 @@ export default function CreateTournament() {
 
   const validateStep = (step) => {
     const stepErrors = {};
-    
+
     if (step === 1) {
       if (!formData.name.trim()) stepErrors.name = 'Le nom du tournoi est requis';
       if (!formData.date) stepErrors.date = 'La date de début est requise';
@@ -145,7 +145,7 @@ export default function CreateTournament() {
         }
       }
     }
-    
+
     setErrors(stepErrors);
     return Object.keys(stepErrors).length === 0;
   };
@@ -162,9 +162,9 @@ export default function CreateTournament() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateStep(currentStep)) return;
-    
+
     setLoading(true);
     setErrors({});
 
@@ -214,7 +214,7 @@ export default function CreateTournament() {
       navigate(`/tournament/${tournament.id}`);
     } catch (err) {
       console.error('Erreur création tournoi:', err);
-      
+
       if (err.issues && Array.isArray(err.issues)) {
         const zodErrors = {};
         err.issues.forEach((issue) => {
@@ -250,12 +250,12 @@ export default function CreateTournament() {
     <div className="flex justify-center items-center gap-3 mb-8">
       {[1, 2, 3, 4].map(step => (
         <div key={step} className="flex items-center">
-          <div 
+          <div
             className={`
               w-10 h-10 rounded-full flex items-center justify-center font-bold
               transition-all duration-300
-              ${step === currentStep 
-                ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white scale-110' 
+              ${step === currentStep
+                ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white scale-110'
                 : step < currentStep
                   ? 'bg-green-500 text-white'
                   : 'bg-white/10 text-gray-500'
@@ -265,10 +265,9 @@ export default function CreateTournament() {
             {step < currentStep ? '✓' : step}
           </div>
           {step < 4 && (
-            <div 
-              className={`w-16 h-1 mx-2 ${
-                step < currentStep ? 'bg-green-500' : 'bg-white/10'
-              }`}
+            <div
+              className={`w-16 h-1 mx-2 ${step < currentStep ? 'bg-green-500' : 'bg-white/10'
+                }`}
             />
           )}
         </div>
@@ -281,7 +280,7 @@ export default function CreateTournament() {
       <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
         📋 Détails du Tournoi
       </h3>
-      
+
       <Input
         label="Nom de l'événement"
         type="text"
@@ -401,7 +400,7 @@ export default function CreateTournament() {
           <label className="block mb-3 text-white font-body font-bold">
             Distribution du cashprize par rang
           </label>
-          
+
           <div className="space-y-3">
             <Input
               label="🥇 1ère place (€)"
@@ -412,7 +411,7 @@ export default function CreateTournament() {
               value={formData.cashprizeDistribution['1']}
               onChange={e => updateNestedField('cashprizeDistribution', '1', e.target.value)}
             />
-            
+
             <Input
               label="🥈 2ème place (€)"
               type="number"
@@ -422,7 +421,7 @@ export default function CreateTournament() {
               value={formData.cashprizeDistribution['2']}
               onChange={e => updateNestedField('cashprizeDistribution', '2', e.target.value)}
             />
-            
+
             <Input
               label="🥉 3ème place (€)"
               type="number"
@@ -481,7 +480,7 @@ export default function CreateTournament() {
         <label className="block mb-3 text-white font-body font-bold">
           📺 Streams Officiels
         </label>
-        
+
         <div className="space-y-3">
           <Input
             label="Twitch"
@@ -490,7 +489,7 @@ export default function CreateTournament() {
             value={formData.streamUrls.twitch}
             onChange={e => updateNestedField('streamUrls', 'twitch', e.target.value)}
           />
-          
+
           <Input
             label="YouTube"
             type="url"
@@ -619,7 +618,7 @@ export default function CreateTournament() {
         <Card variant="glass" padding="xl" className="shadow-xl">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={() => navigate('/organizer/dashboard')}
@@ -628,8 +627,8 @@ export default function CreateTournament() {
             </Button>
           </div>
 
-          <h2 className="text-center mb-2 font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400" 
-              style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
+          <h2 className="text-center mb-2 font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400"
+            style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
             Créer un Tournoi
           </h2>
           <p className="text-center text-gray-400 mb-8 font-body">
@@ -662,22 +661,20 @@ export default function CreateTournament() {
               </div>
 
               {currentStep < totalSteps ? (
-                <Button
+                <GradientButton
                   type="button"
-                  variant="primary"
                   onClick={nextStep}
                 >
                   Suivant →
-                </Button>
+                </GradientButton>
               ) : (
-                <Button
+                <GradientButton
                   type="submit"
-                  variant="primary"
                   loading={loading}
                   disabled={loading}
                 >
                   {loading ? 'Création...' : '🚀 Créer le Tournoi'}
-                </Button>
+                </GradientButton>
               )}
             </div>
           </form>

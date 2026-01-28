@@ -61,13 +61,15 @@ export default function OrganizerDashboard({ session }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (session) {
+    if (session?.user) {
       fetchData();
       fetchPendingRequestsCount();
     }
   }, [session]);
 
   const fetchData = async () => {
+    if (!session?.user) return; // Safety check
+
     setLoading(true);
     try {
       const { data: tournamentsData, error: tError } = await supabase

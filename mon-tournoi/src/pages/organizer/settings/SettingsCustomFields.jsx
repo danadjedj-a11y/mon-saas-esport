@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input, Select, Modal } from '../../../shared/components/ui';
+import { GradientButton, Input, Select, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 const FIELD_TYPES = [
@@ -45,10 +45,10 @@ export default function SettingsCustomFields() {
         .order('display_order');
 
       if (error && error.code !== '42P01') throw error;
-      
+
       const teamFields = (data || []).filter(f => f.target === 'team' || !f.target);
       const playerFields = (data || []).filter(f => f.target === 'player');
-      
+
       setFields({ team: teamFields, player: playerFields });
     } catch (error) {
       console.error('Erreur:', error);
@@ -159,13 +159,12 @@ export default function SettingsCustomFields() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Champs Personnalisés
-        </h1>
-      </div>
+    <div className="max-w-3xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Champs personnalisés"
+        subtitle="Créez des champs personnalisés pour votre tournoi"
+        gradient={true}
+      />
 
       {/* Tabs */}
       <div className="flex justify-center gap-1 mb-8 border-b border-white/10">
@@ -173,11 +172,10 @@ export default function SettingsCustomFields() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-3 font-medium transition-colors relative ${
-              activeTab === tab.id
-                ? 'text-cyan'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            className={`px-6 py-3 font-medium transition-colors relative ${activeTab === tab.id
+              ? 'text-cyan'
+              : 'text-gray-400 hover:text-white'
+              }`}
           >
             {tab.label}
             {activeTab === tab.id && (
@@ -188,9 +186,9 @@ export default function SettingsCustomFields() {
       </div>
 
       {/* Content */}
-      <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
+      <GlassCard className="p-6">
         {/* Info box */}
-        <div className="bg-cyan/10 border border-cyan/20 rounded-lg p-4 mb-6">
+        <div variant="primary">
           <p className="text-sm text-gray-300">
             Les <strong>champs personnalisés</strong> vous permettent d'obtenir davantage d'informations
             sur vos participants, telles que l'id en jeu, les informations personnelles, etc.
@@ -218,7 +216,7 @@ export default function SettingsCustomFields() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleEditField(field)}
@@ -246,14 +244,14 @@ export default function SettingsCustomFields() {
 
         {/* Add button */}
         <div className="flex justify-end">
-          <Button
+          <GradientButton
             onClick={() => setShowTypeSelector(true)}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             + Ajouter
-          </Button>
+          </GradientButton>
         </div>
-      </div>
+      </GlassCard>
 
       {/* Type Selector Modal */}
       <Modal
@@ -269,10 +267,10 @@ export default function SettingsCustomFields() {
               ⚠️ À propos des "Champs Personnalisés"
             </h4>
             <p className="text-sm text-gray-300">
-              Vous pouvez choisir d'ajouter des "custom fields" obligatoires ou facultatifs 
+              Vous pouvez choisir d'ajouter des "custom fields" obligatoires ou facultatifs
               qui seront à renseigner par les participants au moment de l'inscription au tournoi.
               Conformément à la législation applicable et à notre Politique de protection des données,
-              vous êtes autorisé à ne collecter que les données personnelles qui sont strictement 
+              vous êtes autorisé à ne collecter que les données personnelles qui sont strictement
               nécessaires au bon déroulement du tournoi.
             </p>
           </div>
@@ -329,7 +327,7 @@ export default function SettingsCustomFields() {
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button
+            <GradientButton
               variant="ghost"
               onClick={() => {
                 setShowFieldModal(false);
@@ -337,16 +335,16 @@ export default function SettingsCustomFields() {
               }}
             >
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={handleSaveField}
-              className="bg-cyan hover:bg-cyan/90 text-white"
+              variant="primary"
             >
               {editingField ? 'Modifier' : 'Ajouter'}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input } from '../../../shared/components/ui';
+import { GradientButton, Input, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 export default function SettingsParticipant() {
@@ -114,13 +114,12 @@ export default function SettingsParticipant() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Paramètres de participant
-        </h1>
-      </div>
+    <div className="max-w-3xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader 
+        title="Paramètres des participants"
+        subtitle="Configurez les options pour les participants du tournoi"
+        gradient={true}
+      />
 
       {/* Tabs */}
       <div className="flex justify-center gap-1 mb-8 border-b border-white/10">
@@ -131,7 +130,7 @@ export default function SettingsParticipant() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
+        <GlassCard className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             {/* Colonne gauche */}
@@ -296,14 +295,14 @@ export default function SettingsParticipant() {
               )}
             </div>
           </div>
-        </div>
+        </GlassCard>
 
         {/* Submit Button */}
         <div className="flex justify-end mt-6">
-          <Button
+          <GradientButton
             type="submit"
             disabled={saving}
-            className="bg-cyan hover:bg-cyan/90 text-white px-6"
+            variant="primary"
           >
             {saving ? (
               <>
@@ -316,7 +315,7 @@ export default function SettingsParticipant() {
                 Mettre à jour
               </>
             )}
-          </Button>
+          </GradientButton>
         </div>
       </form>
     </div>

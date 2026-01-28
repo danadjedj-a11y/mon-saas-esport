@@ -23,3 +23,4 @@ export { GradientButton } from './GradientButton';
 export { NeonBadge } from './NeonBadge';
 export { StatCard } from './StatCard';
 export { GlowBorder } from './GlowBorder';
+export { default as PageHeader } from './PageHeader';

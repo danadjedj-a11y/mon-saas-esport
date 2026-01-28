@@ -129,10 +129,7 @@ export default function PublicTournament({ session }) {
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#05050A]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-              <span className="text-sm font-bold">FB</span>
-            </div>
-            <span className="text-lg font-bold">FLUKY BOYS</span>
+            <img src="/Logo.png" alt="Fluky Boys" className="h-10 w-auto" />
           </button>
           <div className="flex items-center gap-3">
             <button className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-[#94A3B8] transition-colors hover:border-[#00F5FF]/50 hover:text-[#00F5FF]">
@@ -490,11 +487,11 @@ function OverviewTab({ tournament, participants, matches, session, onRefetch, wi
           <GlassCard>
             <h3 className="mb-4 text-lg font-bold">Organisateur</h3>
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
                 {organizer.avatar_url ? (
-                  <img src={organizer.avatar_url} alt="" className="h-14 w-14 rounded-xl" />
+                  <img src={organizer.avatar_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
                 ) : (
-                  <span className="text-lg font-bold">FB</span>
+                  <img src="/Logo.png" alt="Fluky Boys" className="h-12 w-12 object-contain" />
                 )}
               </div>
               <div>

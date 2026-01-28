@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'
 import { getUserRole } from './utils/userRole'
 import { toast } from './utils/toast'
 import { loginSchema, signupSchema } from './shared/utils/schemas/auth'
+import { GradientButton } from './shared/components/ui'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
@@ -34,7 +35,7 @@ export default function Auth() {
       }
     }
     checkSession()
-    
+
     // NE PAS créer de listener ici - App.jsx gère déjà onAuthStateChange
     // Cela évite les doubles redirections qui causent le clignotement
   }, [navigate])
@@ -57,7 +58,7 @@ export default function Auth() {
 
   const uploadAvatar = async (userId) => {
     if (!avatarFile) return null
-    
+
     const fileExt = avatarFile.name.split('.').pop()
     const fileName = `${userId}-${Date.now()}.${fileExt}`
     const filePath = `${fileName}`
@@ -82,14 +83,14 @@ export default function Auth() {
     e.preventDefault()
     setErrors({})
     setLoading(true)
-    
+
     // Validation avec Zod
     const schema = mode === 'signup' ? signupSchema : loginSchema
-    const dataToValidate = mode === 'signup' 
+    const dataToValidate = mode === 'signup'
       ? { email, password, username, dateOfBirth }
       : { email, password }
     const result = schema.safeParse(dataToValidate)
-    
+
     if (!result.success) {
       // Mapper les erreurs Zod
       const zodErrors = {}
@@ -101,7 +102,7 @@ export default function Auth() {
       setLoading(false)
       return
     }
-    
+
     // Vérifier les consentements pour l'inscription
     if (mode === 'signup') {
       if (!acceptTerms || !acceptPrivacy) {
@@ -112,10 +113,10 @@ export default function Auth() {
         return
       }
     }
-    
+
     // Données validées
     const validatedData = result.data
-    
+
     let authResult
     if (mode === 'signup') {
       // Vérifier si le pseudonyme existe déjà
@@ -123,29 +124,29 @@ export default function Auth() {
         .from('profiles')
         .select('username')
         .eq('username', validatedData.username)
-      
+
       if (existingProfiles && existingProfiles.length > 0) {
         setErrors({ username: 'Ce pseudonyme est déjà utilisé' })
         setLoading(false)
         return
       }
-      
+
       // Inscription
-      authResult = await supabase.auth.signUp({ 
-        email: validatedData.email, 
+      authResult = await supabase.auth.signUp({
+        email: validatedData.email,
         password: validatedData.password,
         options: {
-          data: { 
+          data: {
             username: validatedData.username,
             date_of_birth: validatedData.dateOfBirth
           }
         }
       })
-      
+
       // Si inscription réussie, créer le profil et uploader l'avatar
       if (authResult.data?.user && !authResult.error) {
         let avatarUrl = null
-        
+
         // Upload l'avatar si fourni
         if (avatarFile) {
           avatarUrl = await uploadAvatar(authResult.data.user.id)
@@ -163,16 +164,16 @@ export default function Auth() {
             privacy_accepted_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-        
+
         if (profileError) {
           console.error('Erreur création profil:', profileError)
         }
       }
     } else {
       // Connexion
-      authResult = await supabase.auth.signInWithPassword({ 
-        email: validatedData.email, 
-        password: validatedData.password 
+      authResult = await supabase.auth.signInWithPassword({
+        email: validatedData.email,
+        password: validatedData.password
       })
     }
 
@@ -195,12 +196,12 @@ export default function Auth() {
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan/15 rounded-full blur-3xl" />
       </div>
-      
+
       <div className="relative z-10 glass-card w-full max-w-md p-8">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-violet to-cyan rounded-2xl flex items-center justify-center text-3xl shadow-glow-md">
-            🎮
+          <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+            <img src="/Logo.png" alt="Fluky Boys" className="w-full h-full object-contain" />
           </div>
           <h1 className="font-display text-3xl font-bold gradient-text mb-2">
             Fluky Boys
@@ -209,7 +210,7 @@ export default function Auth() {
             {mode === 'login' ? 'Content de vous revoir !' : 'Rejoignez la communauté'}
           </p>
         </div>
-        
+
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
           <div>
             <input
@@ -220,9 +221,8 @@ export default function Auth() {
                 setEmail(e.target.value)
                 if (errors.email) setErrors(prev => ({ ...prev, email: undefined }))
               }}
-              className={`w-full px-4 py-3.5 bg-dark-50 border ${
-                errors.email ? 'border-danger' : 'border-glass-border'
-              } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
+              className={`w-full px-4 py-3.5 bg-dark-50 border ${errors.email ? 'border-danger' : 'border-glass-border'
+                } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
               required
             />
             {errors.email && (
@@ -231,7 +231,7 @@ export default function Auth() {
               </p>
             )}
           </div>
-          
+
           {mode === 'signup' && (
             <>
               {/* Avatar Upload */}
@@ -268,9 +268,8 @@ export default function Auth() {
                     setUsername(e.target.value)
                     if (errors.username) setErrors(prev => ({ ...prev, username: undefined }))
                   }}
-                  className={`w-full px-4 py-3.5 bg-dark-50 border ${
-                    errors.username ? 'border-danger' : 'border-glass-border'
-                  } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
+                  className={`w-full px-4 py-3.5 bg-dark-50 border ${errors.username ? 'border-danger' : 'border-glass-border'
+                    } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
                   required
                 />
                 {errors.username && (
@@ -284,7 +283,7 @@ export default function Auth() {
                   </p>
                 )}
               </div>
-              
+
               <div>
                 <input
                   type="date"
@@ -294,9 +293,8 @@ export default function Auth() {
                     setDateOfBirth(e.target.value)
                     if (errors.dateOfBirth) setErrors(prev => ({ ...prev, dateOfBirth: undefined }))
                   }}
-                  className={`w-full px-4 py-3.5 bg-dark-50 border ${
-                    errors.dateOfBirth ? 'border-danger' : 'border-glass-border'
-                  } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20`}
+                  className={`w-full px-4 py-3.5 bg-dark-50 border ${errors.dateOfBirth ? 'border-danger' : 'border-glass-border'
+                    } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20`}
                   required
                 />
                 {errors.dateOfBirth && (
@@ -312,7 +310,7 @@ export default function Auth() {
               </div>
             </>
           )}
-          
+
           <div>
             <input
               type="password"
@@ -322,9 +320,8 @@ export default function Auth() {
                 setPassword(e.target.value)
                 if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
               }}
-              className={`w-full px-4 py-3.5 bg-dark-50 border ${
-                errors.password ? 'border-danger' : 'border-glass-border'
-              } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
+              className={`w-full px-4 py-3.5 bg-dark-50 border ${errors.password ? 'border-danger' : 'border-glass-border'
+                } text-text rounded-xl font-body transition-all duration-200 focus:border-violet focus:ring-2 focus:ring-violet/20 placeholder:text-text-muted`}
               required
             />
             {errors.password && (
@@ -338,7 +335,7 @@ export default function Auth() {
               </p>
             )}
           </div>
-          
+
           {/* Consentements RGPD pour l'inscription */}
           {mode === 'signup' && (
             <div className="space-y-3 mt-2">
@@ -354,9 +351,9 @@ export default function Auth() {
                 />
                 <span className="text-sm text-text-secondary font-body">
                   J'accepte les{' '}
-                  <a 
-                    href="/legal/terms" 
-                    target="_blank" 
+                  <a
+                    href="/legal/terms"
+                    target="_blank"
                     className="text-violet-light hover:text-violet underline"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -365,7 +362,7 @@ export default function Auth() {
                   {' '}*
                 </span>
               </label>
-              
+
               <label className="flex items-start gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -378,9 +375,9 @@ export default function Auth() {
                 />
                 <span className="text-sm text-text-secondary font-body">
                   J'accepte la{' '}
-                  <a 
-                    href="/legal/privacy" 
-                    target="_blank" 
+                  <a
+                    href="/legal/privacy"
+                    target="_blank"
                     className="text-violet-light hover:text-violet underline"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -389,7 +386,7 @@ export default function Auth() {
                   {' '}et le traitement de mes données personnelles *
                 </span>
               </label>
-              
+
               {errors.consent && (
                 <p className="text-danger text-sm font-body flex items-center gap-1">
                   <span>⚠</span> {errors.consent}
@@ -397,32 +394,22 @@ export default function Auth() {
               )}
             </div>
           )}
-          
-          <button 
+
+          <GradientButton
             type="submit"
-            disabled={loading} 
-            className={`w-full mt-2 px-6 py-3.5 bg-gradient-to-r from-violet to-violet-dark text-white rounded-xl font-display font-semibold transition-all duration-200 ${
-              loading 
-                ? 'opacity-60 cursor-not-allowed' 
-                : 'hover:shadow-glow-md hover:scale-[1.02] active:scale-[0.98]'
-            }`}
+            disabled={loading}
+            loading={loading}
+            className="w-full mt-2"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Chargement...
-              </span>
-            ) : (
-              mode === 'login' ? '🔐 Se connecter' : '✨ S\'inscrire'
-            )}
-          </button>
+            {mode === 'login' ? '🔐 Se connecter' : '✨ S\'inscrire'}
+          </GradientButton>
         </form>
 
         {/* Divider */}
         <div className="divider-gradient my-6" />
 
         {/* Switch mode */}
-        <p 
+        <p
           className="text-center text-sm text-text-secondary cursor-pointer font-body transition-colors duration-200 hover:text-violet-light"
           onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
         >

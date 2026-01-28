@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Select } from '../../../shared/components/ui';
+import { GradientButton, Select, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 const FORMAT_OPTIONS = [
@@ -15,7 +15,7 @@ const FORMAT_OPTIONS = [
 export default function SettingsMatch() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
-  
+
   const [formData, setFormData] = useState({
     participant_reporting: false,
     match_format: '',
@@ -71,7 +71,7 @@ export default function SettingsMatch() {
 
     try {
       // Extraire le nombre du format (bo1 -> 1, bo3 -> 3, etc.)
-      const bestOf = formData.match_format 
+      const bestOf = formData.match_format
         ? parseInt(formData.match_format.replace('bo', ''))
         : 1;
 
@@ -85,11 +85,11 @@ export default function SettingsMatch() {
         .eq('id', tournamentId);
 
       if (error) throw error;
-      
+
       if (context?.refreshTournament) {
         context.refreshTournament();
       }
-      
+
       toast.success('Paramètres de match sauvegardés');
     } catch (error) {
       console.error('Erreur:', error);
@@ -108,13 +108,12 @@ export default function SettingsMatch() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Paramètres de match
-        </h1>
-      </div>
+    <div className="max-w-2xl mx-auto">      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Paramètres de match"
+        subtitle="Configurez les règles et formats des matchs"
+        gradient={true}
+      />
 
       {/* Tabs */}
       <div className="flex justify-center gap-1 mb-8 border-b border-white/10">
@@ -125,14 +124,14 @@ export default function SettingsMatch() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6 space-y-6">
-          
+        <GlassCard className="p-6 space-y-6">
+
           {/* Rapport participant */}
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">
               Rapport participant
             </h3>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Activer le rapport de match par les participants
@@ -172,7 +171,7 @@ export default function SettingsMatch() {
             <h3 className="text-lg font-semibold text-white mb-4">
               Format
             </h3>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Format
@@ -196,7 +195,7 @@ export default function SettingsMatch() {
             <h3 className="text-lg font-semibold text-white mb-4">
               Durée estimée
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -211,7 +210,7 @@ export default function SettingsMatch() {
                   className="w-full bg-[#1a1d2e] border border-white/10 rounded-lg px-4 py-2 text-white"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Pause entre matchs (minutes)
@@ -227,14 +226,14 @@ export default function SettingsMatch() {
               </div>
             </div>
           </div>
-        </div>
+        </GlassCard>
 
         {/* Submit Button */}
         <div className="flex justify-end mt-6">
-          <Button
+          <GradientButton
             type="submit"
             disabled={saving}
-            className="bg-cyan hover:bg-cyan/90 text-white px-6"
+            variant="primary"
           >
             {saving ? (
               <>
@@ -247,7 +246,7 @@ export default function SettingsMatch() {
                 Mettre à jour
               </>
             )}
-          </Button>
+          </GradientButton>
         </div>
       </form>
     </div>

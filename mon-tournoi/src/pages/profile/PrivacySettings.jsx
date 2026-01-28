@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
-import { Button, Card, Input } from '../../shared/components/ui';
+import { GradientButton, Card, Input, PageHeader } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import { openCookieSettings } from '../../components/CookieConsent';
 
@@ -154,22 +154,22 @@ export default function PrivacySettings({ session }) {
       const userId = session.user.id;
 
       // 1. Supprimer les données liées (dans l'ordre des dépendances)
-      
+
       // Messages
       await supabase.from('messages').delete().eq('user_id', userId);
-      
+
       // Participations
       await supabase.from('participants').delete().eq('user_id', userId);
-      
+
       // Membres d'équipe
       await supabase.from('team_members').delete().eq('user_id', userId);
-      
+
       // Comptes gaming
       await supabase.from('gaming_accounts').delete().eq('user_id', userId);
-      
+
       // Demandes de modification
       await supabase.from('gaming_account_change_requests').delete().eq('user_id', userId);
-      
+
       // Consentements
       await supabase.from('user_consents').delete().eq('user_id', userId);
 
@@ -208,11 +208,11 @@ export default function PrivacySettings({ session }) {
       // 4. Supprimer le compte auth (via fonction admin ou API)
       // Note: La suppression du compte auth.users nécessite généralement une fonction serveur
       // Pour l'instant, on déconnecte l'utilisateur
-      
+
       await supabase.auth.signOut();
-      
+
       toast.success('Votre compte a été supprimé. Au revoir !');
-      
+
       // Rediriger vers l'accueil
       setTimeout(() => {
         window.location.href = '/';
@@ -237,12 +237,12 @@ export default function PrivacySettings({ session }) {
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
-      <h1 className="text-2xl font-display font-bold text-white mb-2">
-        Vie privée & Données personnelles
-      </h1>
-      <p className="text-gray-400 mb-8">
-        Gérez vos données personnelles et exercez vos droits RGPD.
-      </p>
+      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Vie privée & Données personnelles"
+        subtitle="Gérez vos données personnelles et exercez vos droits RGPD"
+        gradient={true}
+      />
 
       {/* Vos données */}
       <Card variant="glass" padding="lg" className="mb-6">
@@ -267,7 +267,7 @@ export default function PrivacySettings({ session }) {
           <div className="flex justify-between py-2">
             <span className="text-gray-400">Dernière connexion</span>
             <span className="text-white">
-              {session.user.last_sign_in_at 
+              {session.user.last_sign_in_at
                 ? new Date(session.user.last_sign_in_at).toLocaleDateString('fr-FR')
                 : '-'
               }
@@ -282,17 +282,17 @@ export default function PrivacySettings({ session }) {
           📦 Exporter vos données
         </h2>
         <p className="text-gray-400 text-sm mb-4">
-          Téléchargez une copie de toutes vos données personnelles au format JSON. 
-          Conformément au RGPD (droit à la portabilité), vous pouvez récupérer vos données 
+          Téléchargez une copie de toutes vos données personnelles au format JSON.
+          Conformément au RGPD (droit à la portabilité), vous pouvez récupérer vos données
           dans un format lisible par machine.
         </p>
-        <Button
+        <GradientButton
           onClick={handleExportData}
           disabled={exporting}
-          variant="outline"
+          variant="secondary"
         >
           {exporting ? '⏳ Export en cours...' : '📥 Télécharger mes données'}
-        </Button>
+        </GradientButton>
       </Card>
 
       {/* Gestion des cookies */}
@@ -303,12 +303,12 @@ export default function PrivacySettings({ session }) {
         <p className="text-gray-400 text-sm mb-4">
           Gérez vos préférences de cookies et traceurs.
         </p>
-        <Button
+        <GradientButton
           onClick={openCookieSettings}
-          variant="outline"
+          variant="secondary"
         >
           ⚙️ Gérer mes cookies
-        </Button>
+        </GradientButton>
       </Card>
 
       {/* Droit de rectification */}
@@ -319,12 +319,12 @@ export default function PrivacySettings({ session }) {
         <p className="text-gray-400 text-sm mb-4">
           Vous pouvez modifier vos informations personnelles à tout moment depuis votre profil.
         </p>
-        <Button
+        <GradientButton
           onClick={() => navigate('/profile')}
-          variant="outline"
+          variant="secondary"
         >
           👤 Modifier mon profil
-        </Button>
+        </GradientButton>
       </Card>
 
       {/* Suppression du compte */}
@@ -333,17 +333,16 @@ export default function PrivacySettings({ session }) {
           🗑️ Supprimer mon compte
         </h2>
         <p className="text-gray-400 text-sm mb-4">
-          Conformément au RGPD (droit à l'effacement), vous pouvez demander la suppression 
-          de votre compte et de toutes vos données personnelles. 
+          Conformément au RGPD (droit à l'effacement), vous pouvez demander la suppression
+          de votre compte et de toutes vos données personnelles.
           <strong className="text-red-400"> Cette action est irréversible.</strong>
         </p>
-        <Button
+        <GradientButton
           onClick={() => setShowDeleteModal(true)}
-          variant="outline"
-          className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+          variant="warning"
         >
           🗑️ Supprimer mon compte
-        </Button>
+        </GradientButton>
       </Card>
 
       {/* Contact */}
@@ -352,7 +351,7 @@ export default function PrivacySettings({ session }) {
           📧 Nous contacter
         </h2>
         <p className="text-gray-400 text-sm mb-4">
-          Pour toute question concernant vos données personnelles ou pour exercer un droit 
+          Pour toute question concernant vos données personnelles ou pour exercer un droit
           non disponible ici, contactez-nous.
         </p>
         <a
@@ -372,7 +371,7 @@ export default function PrivacySettings({ session }) {
             </h3>
             <div className="space-y-4 text-gray-300 text-sm">
               <p>
-                Vous êtes sur le point de supprimer définitivement votre compte. 
+                Vous êtes sur le point de supprimer définitivement votre compte.
                 Cette action entraînera :
               </p>
               <ul className="list-disc list-inside space-y-1 text-gray-400">
@@ -397,23 +396,24 @@ export default function PrivacySettings({ session }) {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <Button
+              <GradientButton
                 onClick={() => {
                   setShowDeleteModal(false);
                   setDeleteConfirm('');
                 }}
-                variant="outline"
+                variant="secondary"
                 className="flex-1"
               >
                 Annuler
-              </Button>
-              <Button
+              </GradientButton>
+              <GradientButton
                 onClick={handleDeleteAccount}
                 disabled={deleting || deleteConfirm !== 'SUPPRIMER'}
-                className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-500/50"
+                variant="warning"
+                className="flex-1"
               >
                 {deleting ? '⏳ Suppression...' : '🗑️ Supprimer définitivement'}
-              </Button>
+              </GradientButton>
             </div>
           </div>
         </div>

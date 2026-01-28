@@ -102,12 +102,9 @@ export default function DashboardLayout({ children, session = null }) {
       {/* ======== NAVIGATION HEADER ======== */}
       <nav className="relative z-50 flex items-center justify-between px-6 py-4 lg:px-12 border-b border-[rgba(148,163,184,0.1)] backdrop-blur-sm bg-[rgba(5,5,10,0.8)]">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_20px_rgba(99,102,241,0.4)]">
-            <span className="text-lg font-bold text-white">FB</span>
-          </div>
-          <span className="text-xl font-bold text-[#F8FAFC]">Fluky Boys</span>
-        </Link>
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <img src="/Logo.png" alt="Fluky Boys" className="h-10 w-auto" />
+        </button>
 
         {/* ... (rest of nav code implied, but focusing on the div wrapper changes if needed) ... */}
 

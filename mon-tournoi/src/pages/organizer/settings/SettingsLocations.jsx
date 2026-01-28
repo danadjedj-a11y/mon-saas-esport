@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
-import { Button, Input, Select, Modal, Textarea } from '../../../shared/components/ui';
+import { GradientButton, Input, Select, Modal, Textarea, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
 const LOCATION_TYPES = [
@@ -13,7 +13,7 @@ const LOCATION_TYPES = [
 export default function SettingsLocations() {
   const { id: tournamentId } = useParams();
   const context = useOutletContext();
-  
+
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -43,7 +43,7 @@ export default function SettingsLocations() {
         .order('created_at', { ascending: false });
 
       if (error && error.code !== '42P01') throw error;
-      
+
       setLocations(data || []);
     } catch (error) {
       console.error('Erreur:', error);
@@ -147,25 +147,25 @@ export default function SettingsLocations() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Emplacements de match
-        </h1>
-      </div>
+      {/* Premium Header with Gradient */}
+      <PageHeader
+        title="Lieux"
+        subtitle="Gérez les emplacements et salles du tournoi"
+        gradient={true}
+      />
 
       {/* Add Button */}
       <div className="flex justify-end mb-4">
-        <Button
+        <GradientButton
           onClick={() => handleOpenModal()}
-          className="bg-cyan hover:bg-cyan/90 text-white"
+          variant="primary"
         >
           Ajouter un emplacement
-        </Button>
+        </GradientButton>
       </div>
 
       {/* Locations List */}
-      <div className="bg-[#2a2d3e] rounded-xl border border-white/10 p-6">
+      <GlassCard className="p-6">
         {locations.length > 0 ? (
           <div className="space-y-3">
             {locations.map((location) => {
@@ -204,7 +204,7 @@ export default function SettingsLocations() {
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenModal(location)}
@@ -237,7 +237,7 @@ export default function SettingsLocations() {
             </p>
           </div>
         )}
-      </div>
+      </GlassCard>
 
       {/* Add/Edit Modal */}
       <Modal
@@ -270,11 +270,10 @@ export default function SettingsLocations() {
                 <button
                   key={type.value}
                   onClick={() => setFormData({ ...formData, type: type.value })}
-                  className={`p-3 rounded-lg border transition-all text-center ${
-                    formData.type === type.value
+                  className={`p-3 rounded-lg border transition-all text-center ${formData.type === type.value
                       ? 'border-cyan bg-cyan/10 text-white'
                       : 'border-white/10 bg-[#1a1d2e] text-gray-400 hover:border-white/20'
-                  }`}
+                    }`}
                 >
                   <span className="text-xl block mb-1">{type.icon}</span>
                   <span className="text-sm">{type.label}</span>
@@ -297,7 +296,7 @@ export default function SettingsLocations() {
                   className="bg-[#1a1d2e] border-white/10"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -339,7 +338,7 @@ export default function SettingsLocations() {
                   className="bg-[#1a1d2e] border-white/10"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Mot de passe (optionnel)
@@ -385,15 +384,15 @@ export default function SettingsLocations() {
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="ghost" onClick={() => setShowModal(false)}>
+            <GradientButton variant="ghost" onClick={() => setShowModal(false)}>
               Annuler
-            </Button>
-            <Button
+            </GradientButton>
+            <GradientButton
               onClick={handleSave}
-              className="bg-cyan hover:bg-cyan/90 text-white"
+              variant="primary"
             >
               {editingLocation ? 'Mettre à jour' : 'Ajouter'}
-            </Button>
+            </GradientButton>
           </div>
         </div>
       </Modal>
