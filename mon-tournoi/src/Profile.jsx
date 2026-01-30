@@ -229,8 +229,22 @@ export default function Profile() {
         }
       }
     } catch (error) {
-      toast.error(error.message);
-      setRiotVerified(false);
+      console.error('Riot verification failed:', error);
+      
+      // Si l'API ne répond pas, proposer de sauvegarder quand même
+      if (error.message.includes('Erreur') || error.message.includes('Timeout') || error.message.includes('réseau')) {
+        toast.error(error.message + ' Vous pouvez quand même sauvegarder votre Riot ID.');
+        // Marquer comme non-vérifié mais permettre la sauvegarde
+        setRiotVerified(false);
+        setRiotAccountInfo({
+          name: riotId.split('#')[0],
+          tag: riotId.split('#')[1],
+          unverified: true
+        });
+      } else {
+        toast.error(error.message);
+        setRiotVerified(false);
+      }
     } finally {
       setVerifyingRiot(false);
     }
@@ -892,6 +906,28 @@ export default function Profile() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Affichage si non vérifié mais ID saisi */}
+              {!riotVerified && riotAccountInfo?.unverified && (
+                <div className="p-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-yellow-500/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-yellow-500/20 flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium">
+                        {riotAccountInfo.name}#{riotAccountInfo.tag}
+                      </p>
+                      <p className="text-xs text-yellow-400">
+                        Non vérifié - L'API est temporairement indisponible
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Vous pouvez sauvegarder votre Riot ID. La vérification sera faite ultérieurement.
+                  </p>
                 </div>
               )}
             </div>

@@ -27,35 +27,77 @@ export async function verifyRiotAccount(riotId) {
 
   try {
     // Vérifier le compte via l'API Henrik
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    
     const response = await fetch(
-      `${HENRIK_API_BASE}/valorant/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`
+      `${HENRIK_API_BASE}/valorant/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
+      { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+        }
+      }
     );
     
-    const data = await response.json();
+    clearTimeout(timeoutId);
     
-    if (data.status === 404 || data.status === 'error') {
+    // Vérifier le statut HTTP
+    if (response.status === 404) {
       throw new Error('Compte Riot introuvable. Vérifiez votre GameName#TAG');
     }
     
+    if (response.status === 429) {
+      throw new Error('Trop de requêtes. Attendez quelques secondes et réessayez.');
+    }
+    
+    if (response.status === 503 || response.status === 502) {
+      throw new Error('API temporairement indisponible. Réessayez dans quelques minutes.');
+    }
+    
     if (!response.ok) {
-      throw new Error('Erreur lors de la vérification');
+      console.error('Henrik API error:', response.status, response.statusText);
+      throw new Error(`Erreur API (${response.status}). Réessayez plus tard.`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 404 || data.status === 'error' || data.error) {
+      throw new Error('Compte Riot introuvable. Vérifiez votre GameName#TAG');
     }
 
     return {
       success: true,
       account: {
-        name: data.data.name,
-        tag: data.data.tag,
-        puuid: data.data.puuid,
-        region: data.data.region,
-        accountLevel: data.data.account_level,
-        card: data.data.card?.small || null,
+        name: data.data?.name || name,
+        tag: data.data?.tag || tag,
+        puuid: data.data?.puuid,
+        region: data.data?.region,
+        accountLevel: data.data?.account_level,
+        card: data.data?.card?.small || null,
       }
     };
   } catch (error) {
-    if (error.message.includes('Compte Riot') || error.message.includes('Format invalide')) {
+    console.error('Riot verification error:', error);
+    
+    if (error.name === 'AbortError') {
+      throw new Error('Timeout - L\'API met trop de temps à répondre.');
+    }
+    
+    if (error.message.includes('Compte Riot') || 
+        error.message.includes('Format invalide') ||
+        error.message.includes('Trop de requêtes') ||
+        error.message.includes('API temporairement') ||
+        error.message.includes('Erreur API') ||
+        error.message.includes('Timeout')) {
       throw error;
     }
+    
+    // Erreur réseau ou CORS
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error('Erreur réseau. Vérifiez votre connexion ou réessayez.');
+    }
+    
     throw new Error('Erreur de connexion à l\'API. Réessayez plus tard.');
   }
 }
