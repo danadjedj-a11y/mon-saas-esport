@@ -122,13 +122,30 @@ export async function getValorantRank(riotId, region = 'eu') {
   const [name, tag] = parts;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(
-      `${HENRIK_API_BASE}/valorant/v2/mmr/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`
+      `${HENRIK_API_BASE}/valorant/v2/mmr/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
+      { signal: controller.signal }
     );
+    
+    clearTimeout(timeoutId);
+    
+    // Vérifier que c'est bien du JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.log('Rank API returned non-JSON response');
+      return null;
+    }
+    
+    if (!response.ok) {
+      return null;
+    }
     
     const data = await response.json();
     
-    if (!response.ok || data.status === 404) {
+    if (data.status === 404 || data.error) {
       return null;
     }
 
@@ -142,7 +159,8 @@ export async function getValorantRank(riotId, region = 'eu') {
       gamesNeeded: currentData?.games_needed_for_rating || 0,
     };
   } catch (error) {
-    console.error('Erreur récupération rang:', error);
+    // Silencieusement ignorer les erreurs de rang - pas critique
+    console.log('Rank fetch skipped:', error.name === 'AbortError' ? 'timeout' : 'error');
     return null;
   }
 }
