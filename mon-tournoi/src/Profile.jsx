@@ -18,7 +18,8 @@ import { api } from "../convex/_generated/api";
 import { Button, Card, Badge, Tabs, Avatar, Input, GradientButton } from './shared/components/ui';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2 } from 'lucide-react';
+import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2, Shield, Search } from 'lucide-react';
+import { verifyRiotAccount, getValorantRank, VALORANT_TIERS } from './services/riotVerification';
 
 // Icône Discord SVG
 const DiscordIcon = () => (
@@ -143,6 +144,12 @@ export default function Profile() {
   const [savingGaming, setSavingGaming] = useState(false);
   const [connectingDiscord, setConnectingDiscord] = useState(false);
 
+  // États pour la vérification Riot
+  const [verifyingRiot, setVerifyingRiot] = useState(false);
+  const [riotVerified, setRiotVerified] = useState(false);
+  const [riotAccountInfo, setRiotAccountInfo] = useState(null);
+  const [valorantRank, setValorantRank] = useState(null);
+
   // Gaming accounts state
   const [gamingAccounts, setGamingAccounts] = useState({
     discordId: '',
@@ -185,6 +192,48 @@ export default function Profile() {
     // Ouvrir le modal Clerk pour gérer les connexions
     openUserProfile();
     toast.info('💡 Allez dans "Comptes connectés" pour délier Discord');
+  };
+
+  // Vérifier un compte Riot via l'API Henrik
+  const handleVerifyRiot = async () => {
+    const riotId = gamingAccounts.riotId?.trim();
+    
+    if (!riotId) {
+      toast.error('Entrez votre Riot ID (ex: Player#EUW)');
+      return;
+    }
+    
+    if (!riotId.includes('#')) {
+      toast.error('Format invalide. Utilisez: GameName#TAG');
+      return;
+    }
+    
+    setVerifyingRiot(true);
+    setRiotVerified(false);
+    setRiotAccountInfo(null);
+    setValorantRank(null);
+    
+    try {
+      // Vérifier le compte
+      const result = await verifyRiotAccount(riotId);
+      
+      if (result.success) {
+        setRiotAccountInfo(result.account);
+        setRiotVerified(true);
+        toast.success(`✅ Compte vérifié : ${result.account.name}#${result.account.tag}`);
+        
+        // Essayer de récupérer le rang Valorant
+        const rank = await getValorantRank(riotId, result.account.region || 'eu');
+        if (rank) {
+          setValorantRank(rank);
+        }
+      }
+    } catch (error) {
+      toast.error(error.message);
+      setRiotVerified(false);
+    } finally {
+      setVerifyingRiot(false);
+    }
   };
 
   // Sync initial values when data loads
@@ -755,8 +804,103 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Section spéciale Riot Games avec vérification */}
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-2xl flex-shrink-0">
+              🎮
+            </div>
+            
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold text-white text-lg">Riot Games</h4>
+                {riotVerified && (
+                  <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                    <Shield className="w-3 h-3" />
+                    Vérifié
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mb-3">Valorant, League of Legends, TFT</p>
+              
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={gamingAccounts.riotId}
+                  onChange={(e) => {
+                    setGamingAccounts({ ...gamingAccounts, riotId: e.target.value });
+                    setRiotVerified(false);
+                    setRiotAccountInfo(null);
+                    setValorantRank(null);
+                  }}
+                  placeholder="GameName#TAG"
+                  className="flex-1 px-3 py-2 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                />
+                <button
+                  onClick={handleVerifyRiot}
+                  disabled={verifyingRiot || !gamingAccounts.riotId}
+                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {verifyingRiot ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  Vérifier
+                </button>
+              </div>
+              
+              {/* Affichage des infos du compte vérifié */}
+              {riotVerified && riotAccountInfo && (
+                <div className="p-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-green-500/20">
+                  <div className="flex items-center gap-3">
+                    {riotAccountInfo.card && (
+                      <img 
+                        src={riotAccountInfo.card} 
+                        alt="Card" 
+                        className="w-10 h-10 rounded"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-white font-medium">
+                        {riotAccountInfo.name}#{riotAccountInfo.tag}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Niveau {riotAccountInfo.accountLevel || '?'} • Région: {riotAccountInfo.region?.toUpperCase() || 'EU'}
+                      </p>
+                    </div>
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                  </div>
+                  
+                  {/* Rang Valorant si disponible */}
+                  {valorantRank && (
+                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-3">
+                      {valorantRank.currentTierIcon && (
+                        <img 
+                          src={valorantRank.currentTierIcon} 
+                          alt={valorantRank.currentTier} 
+                          className="w-8 h-8"
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: VALORANT_TIERS[valorantRank.currentTier]?.color || '#fff' }}>
+                          {VALORANT_TIERS[valorantRank.currentTier]?.icon} {valorantRank.currentTier}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {valorantRank.rankingInTier} RR • {valorantRank.elo} ELO
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Autres comptes gaming (sans Discord et Riot) */}
         <div className="space-y-4">
-          {GAMING_PLATFORMS.filter(p => p.id !== 'discordId').map((platform) => (
+          {GAMING_PLATFORMS.filter(p => p.id !== 'discordId' && p.id !== 'riotId').map((platform) => (
             <div 
               key={platform.id}
               className="p-4 rounded-xl bg-[rgba(5,5,10,0.5)] border border-white/5 hover:border-violet-500/30 transition-colors"
@@ -820,19 +964,20 @@ export default function Profile() {
         </div>
       </Card>
 
-      {/* Info OAuth */}
-      <Card variant="outlined" padding="lg" className="border-cyan-500/30">
+      {/* Info vérification */}
+      <Card variant="outlined" padding="lg" className="border-green-500/30">
         <div className="flex items-start gap-4">
-          <div className="p-2 rounded-lg bg-cyan-500/10">
-            <AlertCircle className="w-5 h-5 text-cyan-400" />
+          <div className="p-2 rounded-lg bg-green-500/10">
+            <Shield className="w-5 h-5 text-green-400" />
           </div>
           <div>
-            <h4 className="font-semibold text-cyan-400 mb-1">
-              Connexion directe aux plateformes
+            <h4 className="font-semibold text-green-400 mb-1">
+              Vérification des comptes
             </h4>
             <p className="text-sm text-gray-400">
-              La connexion OAuth directe avec Riot Games, Steam et autres plateformes sera disponible prochainement. 
-              En attendant, entrez manuellement vos identifiants ci-dessus.
+              <strong>Discord</strong> : Connectez-vous via le bouton OAuth ci-dessus.<br/>
+              <strong>Riot Games</strong> : Entrez votre Riot ID et cliquez sur "Vérifier" pour valider votre compte Valorant/LoL.<br/>
+              <strong>Autres</strong> : Entrez manuellement vos identifiants, la vérification sera faite lors des tournois.
             </p>
           </div>
         </div>
