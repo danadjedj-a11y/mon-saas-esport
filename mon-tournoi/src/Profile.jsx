@@ -18,7 +18,14 @@ import { api } from "../convex/_generated/api";
 import { Button, Card, Badge, Tabs, Avatar, Input, GradientButton } from './shared/components/ui';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
+import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2 } from 'lucide-react';
+
+// Icône Discord SVG
+const DiscordIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+  </svg>
+);
 
 // Fonction pour compresser une image avant upload
 const compressImage = async (file, maxWidth = 400, quality = 0.8) => {
@@ -134,6 +141,7 @@ export default function Profile() {
   const [bio, setBio] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [savingGaming, setSavingGaming] = useState(false);
+  const [connectingDiscord, setConnectingDiscord] = useState(false);
 
   // Gaming accounts state
   const [gamingAccounts, setGamingAccounts] = useState({
@@ -155,6 +163,57 @@ export default function Profile() {
       return discordAccount.username || discordAccount.externalId;
     }
     return null;
+  };
+
+  // Vérifier si Discord est déjà connecté via Clerk
+  const isDiscordConnected = () => {
+    if (!clerkUser) return false;
+    return clerkUser.externalAccounts?.some(
+      account => account.provider === 'discord' || account.provider === 'oauth_discord'
+    );
+  };
+
+  // Connecter Discord via Clerk OAuth
+  const handleConnectDiscord = async () => {
+    if (!clerkUser) return;
+    
+    setConnectingDiscord(true);
+    try {
+      // Créer une connexion externe avec Discord
+      await clerkUser.createExternalAccount({
+        strategy: 'oauth_discord',
+        redirectUrl: window.location.href,
+      });
+      toast.success('🔗 Redirection vers Discord...');
+    } catch (error) {
+      console.error('Erreur connexion Discord:', error);
+      if (error.errors?.[0]?.message) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error('Erreur lors de la connexion à Discord');
+      }
+      setConnectingDiscord(false);
+    }
+  };
+
+  // Déconnecter Discord
+  const handleDisconnectDiscord = async () => {
+    if (!clerkUser) return;
+    
+    const discordAccount = clerkUser.externalAccounts?.find(
+      account => account.provider === 'discord' || account.provider === 'oauth_discord'
+    );
+    
+    if (discordAccount) {
+      try {
+        await discordAccount.destroy();
+        setGamingAccounts(prev => ({ ...prev, discordId: '' }));
+        toast.success('Discord déconnecté');
+      } catch (error) {
+        console.error('Erreur déconnexion Discord:', error);
+        toast.error('Erreur lors de la déconnexion');
+      }
+    }
   };
 
   // Sync initial values when data loads
@@ -650,6 +709,69 @@ export default function Profile() {
   // ========================================
   const GamingAccountsTab = (
     <div className="space-y-6">
+      {/* Discord OAuth - Section spéciale */}
+      <Card variant="glass" padding="lg" className="border border-indigo-500/30">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+            <DiscordIcon />
+          </div>
+          
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-display text-xl text-white">Discord</h3>
+              {isDiscordConnected() && (
+                <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                  <CheckCircle className="w-3 h-3" />
+                  Connecté
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Connectez votre compte Discord pour synchroniser automatiquement votre profil
+            </p>
+            
+            {isDiscordConnected() ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                  <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center">
+                    <DiscordIcon />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{getDiscordFromClerk()}</p>
+                    <p className="text-xs text-gray-500">Compte Discord lié</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleDisconnectDiscord}
+                  className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Déconnecter Discord
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleConnectDiscord}
+                disabled={connectingDiscord}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] text-white font-medium transition-colors disabled:opacity-50"
+              >
+                {connectingDiscord ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Connexion...
+                  </>
+                ) : (
+                  <>
+                    <DiscordIcon />
+                    Connecter avec Discord
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* Autres comptes gaming */}
       <Card variant="glass" padding="lg">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -663,7 +785,7 @@ export default function Profile() {
         </div>
 
         <div className="space-y-4">
-          {GAMING_PLATFORMS.map((platform) => (
+          {GAMING_PLATFORMS.filter(p => p.id !== 'discordId').map((platform) => (
             <div 
               key={platform.id}
               className="p-4 rounded-xl bg-[rgba(5,5,10,0.5)] border border-white/5 hover:border-violet-500/30 transition-colors"
