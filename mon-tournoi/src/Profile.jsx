@@ -60,6 +60,15 @@ const compressImage = async (file, maxWidth = 400, quality = 0.8) => {
 // Icônes pour les plateformes de jeu
 const GAMING_PLATFORMS = [
   { 
+    id: 'discordId', 
+    name: 'Discord', 
+    icon: '💬',
+    placeholder: 'username ou User#0000',
+    games: 'Communication, Communauté',
+    color: 'from-indigo-500 to-indigo-600',
+    verifyUrl: 'https://discord.com/'
+  },
+  { 
     id: 'riotId', 
     name: 'Riot Games', 
     icon: '🎮',
@@ -128,11 +137,25 @@ export default function Profile() {
 
   // Gaming accounts state
   const [gamingAccounts, setGamingAccounts] = useState({
+    discordId: '',
     riotId: '',
     steamId: '',
     epicGamesId: '',
     battleNetId: '',
   });
+
+  // Récupérer le Discord ID depuis Clerk si connecté via Discord
+  const getDiscordFromClerk = () => {
+    if (!clerkUser) return null;
+    // Chercher dans les comptes externes
+    const discordAccount = clerkUser.externalAccounts?.find(
+      account => account.provider === 'discord' || account.provider === 'oauth_discord'
+    );
+    if (discordAccount) {
+      return discordAccount.username || discordAccount.externalId;
+    }
+    return null;
+  };
 
   // Sync initial values when data loads
   useEffect(() => {
@@ -140,16 +163,27 @@ export default function Profile() {
       setUsername(convexUser.username || '');
       setBio(convexUser.bio || '');
       setIsPublic(!convexUser.isPrivate);
+      
+      // Récupérer Discord depuis Clerk si pas déjà défini
+      const clerkDiscord = getDiscordFromClerk();
+      
       if (convexUser.gamingAccounts) {
         setGamingAccounts({
+          discordId: convexUser.gamingAccounts.discordId || clerkDiscord || '',
           riotId: convexUser.gamingAccounts.riotId || '',
           steamId: convexUser.gamingAccounts.steamId || '',
           epicGamesId: convexUser.gamingAccounts.epicGamesId || '',
           battleNetId: convexUser.gamingAccounts.battleNetId || '',
         });
+      } else if (clerkDiscord) {
+        // Si pas de gaming accounts mais Discord via Clerk
+        setGamingAccounts(prev => ({
+          ...prev,
+          discordId: clerkDiscord
+        }));
       }
     }
-  }, [convexUser]);
+  }, [convexUser, clerkUser]);
 
   // Chargement
   if (!isLoaded || convexUser === undefined) {

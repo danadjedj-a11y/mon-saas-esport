@@ -28,6 +28,7 @@ export default defineSchema({
 
         // Gaming accounts (flexible avec object)
         gamingAccounts: v.optional(v.object({
+            discordId: v.optional(v.string()),
             riotId: v.optional(v.string()),
             steamId: v.optional(v.string()),
             epicGamesId: v.optional(v.string()),
