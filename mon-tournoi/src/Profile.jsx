@@ -866,34 +866,104 @@ export default function Profile() {
               
               {/* Affichage des infos du compte vérifié */}
               {riotVerified && riotAccountInfo && (
-                <div className="p-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-green-500/20">
+                <div className="p-4 rounded-lg bg-[rgba(5,5,10,0.6)] border border-green-500/20 space-y-3">
+                  {/* En-tête avec carte et infos de base */}
                   <div className="flex items-center gap-3">
                     {riotAccountInfo.card && (
                       <img 
                         src={riotAccountInfo.card} 
                         alt="Card" 
-                        className="w-10 h-10 rounded"
+                        className="w-12 h-12 rounded-lg"
                       />
                     )}
                     <div className="flex-1">
-                      <p className="text-white font-medium">
+                      <p className="text-white font-semibold text-lg">
                         {riotAccountInfo.name}#{riotAccountInfo.tag}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        Niveau {riotAccountInfo.accountLevel || '?'} • Région: {riotAccountInfo.region?.toUpperCase() || 'EU'}
+                      <p className="text-sm text-gray-400">
+                        Niveau <span className="text-cyan-400 font-medium">{riotAccountInfo.accountLevel || '?'}</span> • Région: <span className="text-cyan-400">{riotAccountInfo.region?.toUpperCase() || 'EU'}</span>
                       </p>
                     </div>
-                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <CheckCircle className="w-6 h-6 text-green-400" />
                   </div>
                   
-                  {/* Rang Valorant si disponible */}
-                  {valorantRank && (
-                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-3">
+                  {/* Rang actuel */}
+                  {riotAccountInfo.currentRank && (
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-xs text-gray-500 mb-2">Rang Compétitif</p>
+                      <div className="flex items-center gap-3">
+                        {riotAccountInfo.rankImage && (
+                          <img 
+                            src={riotAccountInfo.rankImage} 
+                            alt={riotAccountInfo.currentRank} 
+                            className="w-12 h-12"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <p className="font-bold text-lg" style={{ color: VALORANT_TIERS[riotAccountInfo.currentRank]?.color || '#fff' }}>
+                            {VALORANT_TIERS[riotAccountInfo.currentRank]?.icon} {riotAccountInfo.currentRank}
+                          </p>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-gray-400">
+                              <span className="text-white font-medium">{riotAccountInfo.rankingInTier}</span> RR
+                            </span>
+                            {riotAccountInfo.elo && (
+                              <span className="text-gray-400">
+                                <span className="text-white font-medium">{riotAccountInfo.elo}</span> ELO
+                              </span>
+                            )}
+                            {riotAccountInfo.mmrChange !== null && riotAccountInfo.mmrChange !== undefined && (
+                              <span className={riotAccountInfo.mmrChange >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                {riotAccountInfo.mmrChange >= 0 ? '+' : ''}{riotAccountInfo.mmrChange}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Plus haut rang */}
+                      {riotAccountInfo.highestRank && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          🏆 Plus haut rang: <span className="text-yellow-400">{riotAccountInfo.highestRank}</span>
+                          {riotAccountInfo.highestRankSeason && <span className="text-gray-600"> ({riotAccountInfo.highestRankSeason})</span>}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Stats récentes */}
+                  {riotAccountInfo.stats && (
+                    <div className="pt-3 border-t border-white/10">
+                      <p className="text-xs text-gray-500 mb-2">Stats récentes ({riotAccountInfo.stats.matches} matchs)</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="text-center p-2 rounded bg-white/5">
+                          <p className="text-lg font-bold text-white">{riotAccountInfo.stats.kills}</p>
+                          <p className="text-xs text-gray-500">Kills</p>
+                        </div>
+                        <div className="text-center p-2 rounded bg-white/5">
+                          <p className="text-lg font-bold text-white">{riotAccountInfo.stats.deaths}</p>
+                          <p className="text-xs text-gray-500">Deaths</p>
+                        </div>
+                        <div className="text-center p-2 rounded bg-white/5">
+                          <p className="text-lg font-bold text-white">{riotAccountInfo.stats.assists}</p>
+                          <p className="text-xs text-gray-500">Assists</p>
+                        </div>
+                        <div className="text-center p-2 rounded bg-white/5">
+                          <p className="text-lg font-bold text-cyan-400">{riotAccountInfo.stats.kd}</p>
+                          <p className="text-xs text-gray-500">K/D</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Fallback: ancien affichage rang si nouvelle API pas dispo */}
+                  {!riotAccountInfo.currentRank && valorantRank && (
+                    <div className="pt-3 border-t border-white/10 flex items-center gap-3">
                       {valorantRank.currentTierIcon && (
                         <img 
                           src={valorantRank.currentTierIcon} 
                           alt={valorantRank.currentTier} 
-                          className="w-8 h-8"
+                          className="w-10 h-10"
                         />
                       )}
                       <div>

@@ -57,19 +57,37 @@ export async function verifyRiotAccount(riotId) {
       throw new Error('Trop de requêtes. Attendez quelques secondes.');
     }
 
-    // Succès - compte vérifié ou format validé
+    // Succès - compte vérifié avec toutes les infos
     if (data.success) {
+      const d = data.data;
       return {
         success: true,
         validated: data.validated !== false,
         account: {
-          name: data.data?.name || name,
-          tag: data.data?.tag || tag,
-          puuid: data.data?.puuid,
-          region: data.data?.region,
-          accountLevel: data.data?.account_level,
-          card: data.data?.card || null,
-          message: data.data?.message
+          name: d?.name || name,
+          tag: d?.tag || tag,
+          puuid: d?.puuid,
+          region: d?.region,
+          accountLevel: d?.account_level,
+          card: d?.card || null,
+          cardWide: d?.card_wide || null,
+          message: d?.message,
+          
+          // Rang actuel
+          currentRank: d?.current_rank || null,
+          currentRankTier: d?.current_rank_tier || null,
+          rankingInTier: d?.ranking_in_tier || 0,
+          elo: d?.elo || null,
+          mmrChange: d?.mmr_change || null,
+          rankImage: d?.rank_image || null,
+          rankImageLarge: d?.rank_image_large || null,
+          
+          // Plus haut rang
+          highestRank: d?.highest_rank || null,
+          highestRankSeason: d?.highest_rank_season || null,
+          
+          // Stats
+          stats: d?.stats || null
         }
       };
     }
