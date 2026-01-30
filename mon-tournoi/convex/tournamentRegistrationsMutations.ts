@@ -346,3 +346,164 @@ export const promoteFromWaitlist = mutation({
         return { success: true };
     },
 });
+
+/**
+ * Création manuelle d'une inscription par l'organisateur
+ * Permet d'ajouter une équipe ou un joueur solo manuellement
+ */
+export const createManualRegistration = mutation({
+    args: {
+        tournamentId: v.id("tournaments"),
+        teamId: v.optional(v.id("teams")),
+        playerName: v.optional(v.string()),
+        userId: v.optional(v.id("users")),
+        seed: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+            .first();
+
+        if (!user) {
+            throw new Error("Utilisateur non trouvé");
+        }
+
+        // Vérifier le tournoi
+        const tournament = await ctx.db.get(args.tournamentId);
+        if (!tournament) {
+            throw new Error("Tournoi non trouvé");
+        }
+
+        // Vérifier que c'est l'organisateur
+        if (tournament.organizerId !== user._id) {
+            throw new Error("Seul l'organisateur peut ajouter des participants manuellement");
+        }
+
+        // Vérifier qu'on a soit un teamId soit un playerName
+        if (!args.teamId && !args.playerName) {
+            throw new Error("Il faut spécifier une équipe ou un nom de joueur");
+        }
+
+        // Si équipe fournie, vérifier qu'elle n'est pas déjà inscrite
+        if (args.teamId) {
+            const existing = await ctx.db
+                .query("tournamentRegistrations")
+                .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+                .filter((q) => q.eq(q.field("teamId"), args.teamId))
+                .first();
+
+            if (existing) {
+                throw new Error("Cette équipe est déjà inscrite");
+            }
+        }
+
+        // Créer l'inscription
+        const registrationId = await ctx.db.insert("tournamentRegistrations", {
+            tournamentId: args.tournamentId,
+            teamId: args.teamId,
+            userId: args.userId,
+            status: "confirmed",
+            seed: args.seed,
+            checkedInAt: undefined,
+            createdAt: Date.now(),
+            // Note: playerName pourrait être stocké dans un champ supplémentaire si nécessaire
+        });
+
+        return registrationId;
+    },
+});
+
+/**
+ * Actions en masse sur les inscriptions (bulk)
+ */
+export const bulkUpdateStatus = mutation({
+    args: {
+        registrationIds: v.array(v.id("tournamentRegistrations")),
+        status: v.union(
+            v.literal("pending"),
+            v.literal("confirmed"),
+            v.literal("rejected"),
+            v.literal("checked_in")
+        ),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+            .first();
+
+        if (!user) {
+            throw new Error("Utilisateur non trouvé");
+        }
+
+        let updatedCount = 0;
+
+        for (const regId of args.registrationIds) {
+            const registration = await ctx.db.get(regId);
+            if (!registration) continue;
+
+            // Vérifier que l'utilisateur est l'organisateur du tournoi
+            const tournament = await ctx.db.get(registration.tournamentId);
+            if (!tournament || tournament.organizerId !== user._id) continue;
+
+            await ctx.db.patch(regId, {
+                status: args.status,
+                ...(args.status === "checked_in" ? { checkedInAt: Date.now() } : {}),
+            });
+            updatedCount++;
+        }
+
+        return { updatedCount };
+    },
+});
+
+/**
+ * Suppression en masse des inscriptions
+ */
+export const bulkDelete = mutation({
+    args: {
+        registrationIds: v.array(v.id("tournamentRegistrations")),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+            .first();
+
+        if (!user) {
+            throw new Error("Utilisateur non trouvé");
+        }
+
+        let deletedCount = 0;
+
+        for (const regId of args.registrationIds) {
+            const registration = await ctx.db.get(regId);
+            if (!registration) continue;
+
+            // Vérifier que l'utilisateur est l'organisateur du tournoi
+            const tournament = await ctx.db.get(registration.tournamentId);
+            if (!tournament || tournament.organizerId !== user._id) continue;
+
+            await ctx.db.delete(regId);
+            deletedCount++;
+        }
+
+        return { deletedCount };
+    },
+});

@@ -281,3 +281,67 @@ export const createForMatch = mutation({
         return { count: totalNotifications };
     },
 });
+
+/**
+ * Supprimer une notification
+ */
+export const deleteNotification = mutation({
+    args: { notificationId: v.id("notifications") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const notification = await ctx.db.get(args.notificationId);
+        if (!notification) {
+            throw new Error("Notification non trouvée");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+            .first();
+
+        if (!user || notification.userId !== user._id) {
+            throw new Error("Cette notification ne vous appartient pas");
+        }
+
+        await ctx.db.delete(args.notificationId);
+        return { success: true };
+    },
+});
+
+/**
+ * Supprimer toutes les notifications lues
+ */
+export const deleteAllRead = mutation({
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+            .first();
+
+        if (!user) {
+            throw new Error("Utilisateur non trouvé");
+        }
+
+        const readNotifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_user_and_read", (q) =>
+                q.eq("userId", user._id).eq("read", true)
+            )
+            .collect();
+
+        for (const notification of readNotifications) {
+            await ctx.db.delete(notification._id);
+        }
+
+        return { count: readNotifications.length };
+    },
+});

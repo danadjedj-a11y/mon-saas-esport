@@ -109,12 +109,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Non authentifié");
+    if (!identity || !identity.email) throw new Error("Non authentifié");
 
-    // Récupérer l'utilisateur Convex
+    // Récupérer l'utilisateur Convex par email
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) throw new Error("Utilisateur non trouvé");

@@ -139,14 +139,27 @@ export default function PublicTournament({ session }) {
             <img src="/Logo.png" alt="Fluky Boys" className="h-10 w-auto" />
           </button>
           <div className="flex items-center gap-3">
-            <button className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-[#94A3B8] transition-colors hover:border-[#00F5FF]/50 hover:text-[#00F5FF]">
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert('Lien copié !');
+              }}
+              title="Partager"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-[#94A3B8] transition-colors hover:border-[#00F5FF]/50 hover:text-[#00F5FF]"
+            >
               <Share2 className="h-5 w-5" />
             </button>
-            <button className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-[#94A3B8] transition-colors hover:border-[#00F5FF]/50 hover:text-[#00F5FF]">
-              <Bell className="h-5 w-5" />
-            </button>
+            <FollowButton 
+              tournamentId={id} 
+              variant="icon"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-[#94A3B8] transition-colors hover:border-[#00F5FF]/50 hover:text-[#00F5FF]"
+            />
             {tournament.status === 'draft' && (
-              <GradientButton variant="primary" size="sm">
+              <GradientButton 
+                variant="primary" 
+                size="sm"
+                onClick={() => setActiveTab('overview')}
+              >
                 S'inscrire
               </GradientButton>
             )}

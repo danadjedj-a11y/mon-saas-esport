@@ -1,57 +1,36 @@
 /**
- * CREATE TOURNAMENT - Version Convex
+ * CREATE TOURNAMENT - Version Simplifiée
  * 
- * Wizard de création de tournoi en 4 étapes
- * Utilise Convex au lieu de Supabase
+ * Formulaire simple pour créer un tournoi rapidement.
+ * Les options avancées sont disponibles dans les paramètres du tournoi après création.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { Button, Input, Textarea, Select, Card, Badge, WYSIWYGEditor, GradientButton } from './shared/components/ui';
+import { GlassCard, GradientButton } from './shared/components/ui';
+import { Trophy, Gamepad2, Users, Calendar, ArrowLeft, Sparkles, Settings } from 'lucide-react';
 
 export default function CreateTournament() {
   const navigate = useNavigate();
-  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn } = useUser();
 
   // Données Convex
   const convexUser = useQuery(api.users.getCurrent);
   const createTournamentMutation = useMutation(api.tournamentsMutations.create);
 
-  // Wizard step state
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
-
-  // Form data state
+  // Form data - seulement les champs essentiels
   const [formData, setFormData] = useState({
-    // Step 1: Détails du tournoi
     name: '',
     game: 'Valorant',
     format: 'elimination',
     date: '',
-    maxParticipants: '',
-    registrationDeadline: '',
-    teamSize: 5, // Nouveau: taille d'équipe
-
-    // Step 2: Règles
-    rules: '',
-    description: '',
-
-    // Step 3: Récompenses
-    cashprizeTotal: '',
-    cashprizeDistribution: { '1': '', '2': '', '3': '' },
-
-    // Step 4: Configuration avancée
-    bestOf: 1,
-    mapsPool: '',
-    sponsors: [],
-    streamUrls: { twitch: '', youtube: '' },
-    clips: [],
-    checkInRequired: false,
+    maxParticipants: 32,
+    teamSize: 5,
   });
 
   const [loading, setLoading] = useState(false);
@@ -62,562 +41,83 @@ export default function CreateTournament() {
     { value: 'League of Legends', label: 'League of Legends' },
     { value: 'CS2', label: 'Counter-Strike 2' },
     { value: 'Rocket League', label: 'Rocket League' },
-    { value: 'FC 24', label: 'FC 24' },
+    { value: 'FC 25', label: 'FC 25' },
+    { value: 'Fortnite', label: 'Fortnite' },
+    { value: 'Apex Legends', label: 'Apex Legends' },
+    { value: 'Overwatch 2', label: 'Overwatch 2' },
+    { value: 'Other', label: 'Autre' },
   ];
 
   const formatOptions = [
-    { value: 'elimination', label: '🏆 Arbre à Élimination Directe' },
-    { value: 'double_elimination', label: '⚔️ Double Elimination' },
-    { value: 'round_robin', label: '🔄 Championnat (Round Robin)' },
+    { value: 'elimination', label: '🏆 Élimination Directe' },
+    { value: 'double_elimination', label: '⚔️ Double Élimination' },
+    { value: 'round_robin', label: '🔄 Round Robin' },
     { value: 'swiss', label: '🇨🇭 Système Suisse' },
   ];
 
-  const bestOfOptions = [
-    { value: 1, label: 'Single Game (1 manche)' },
-    { value: 3, label: 'Best-of-3 (premier à 2 victoires)' },
-    { value: 5, label: 'Best-of-5 (premier à 3 victoires)' },
-    { value: 7, label: 'Best-of-7 (premier à 4 victoires)' },
+  const teamSizePresets = [
+    { value: 1, label: '1v1 (Solo)' },
+    { value: 2, label: '2v2 (Duo)' },
+    { value: 3, label: '3v3 (Trio)' },
+    { value: 5, label: '5v5 (Standard)' },
+    { value: 6, label: '6v6' },
   ];
 
-  const updateField = useCallback((field, value) => {
+  const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[field];
-      return newErrors;
-    });
-  }, []);
-
-  const updateNestedField = useCallback((parent, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [parent]: { ...prev[parent], [field]: value }
-    }));
-  }, []);
-
-  const addSponsor = () => {
-    setFormData(prev => ({
-      ...prev,
-      sponsors: [...prev.sponsors, { name: '', logo_url: '' }]
-    }));
-  };
-
-  const removeSponsor = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      sponsors: prev.sponsors.filter((_, i) => i !== index)
-    }));
-  };
-
-  const addClip = () => {
-    setFormData(prev => ({
-      ...prev,
-      clips: [...prev.clips, { title: '', url: '', platform: 'twitch' }]
-    }));
-  };
-
-  const removeClip = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      clips: prev.clips.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateClip = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      clips: prev.clips.map((clip, i) =>
-        i === index ? { ...clip, [field]: value } : clip
-      )
-    }));
-  };
-
-  const updateSponsor = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      sponsors: prev.sponsors.map((sponsor, i) =>
-        i === index ? { ...sponsor, [field]: value } : sponsor
-      )
-    }));
-  };
-
-  const validateStep = (step) => {
-    const stepErrors = {};
-
-    if (step === 1) {
-      if (!formData.name.trim()) stepErrors.name = 'Le nom du tournoi est requis';
-      if (!formData.date) stepErrors.date = 'La date de début est requise';
-      if (formData.date && new Date(formData.date) < new Date()) {
-        stepErrors.date = 'La date doit être dans le futur';
-      }
-      if (formData.registrationDeadline && formData.date) {
-        if (new Date(formData.registrationDeadline) > new Date(formData.date)) {
-          stepErrors.registrationDeadline = 'La date limite d\'inscription doit être avant le début du tournoi';
-        }
-      }
-    }
-
-    setErrors(stepErrors);
-    return Object.keys(stepErrors).length === 0;
-  };
-
-  const nextStep = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
     }
   };
 
-  const prevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+  const validate = () => {
+    const newErrors = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Le nom est requis';
+    }
+    
+    if (!formData.date) {
+      newErrors.date = 'La date est requise';
+    } else if (new Date(formData.date) < new Date()) {
+      newErrors.date = 'La date doit être dans le futur';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateStep(currentStep)) return;
+    if (!validate()) return;
+
     if (!isSignedIn || !convexUser) {
-      toast.error('Vous devez être connecté pour créer un tournoi');
+      toast.error('Vous devez être connecté');
       return;
     }
 
     setLoading(true);
-    setErrors({});
 
     try {
-      // Préparer les données pour Convex
       const tournamentId = await createTournamentMutation({
-        name: formData.name,
+        name: formData.name.trim(),
         game: formData.game,
         format: formData.format,
-        maxTeams: formData.maxParticipants ? parseInt(formData.maxParticipants) : 32,
-        teamSize: formData.teamSize || 5,
-        startDate: formData.date ? new Date(formData.date).getTime() : undefined,
-        endDate: undefined,
-        description: formData.description || undefined,
-        rules: formData.rules || undefined,
-        prizePool: formData.cashprizeTotal ? `${formData.cashprizeTotal}€` : undefined,
-        checkInRequired: formData.checkInRequired,
+        maxTeams: parseInt(formData.maxParticipants) || 32,
+        teamSize: parseInt(formData.teamSize) || 5,
+        startDate: new Date(formData.date).getTime(),
       });
 
-      toast.success('Tournoi créé avec succès !');
-      navigate(`/tournament/${tournamentId}`);
+      toast.success('Tournoi créé ! Vous pouvez maintenant le configurer.');
+      navigate(`/organizer/tournament/${tournamentId}/settings/general`);
     } catch (err) {
-      console.error('Erreur création tournoi:', err);
-      toast.error(err.message || 'Erreur lors de la création du tournoi');
+      console.error('Erreur création:', err);
+      toast.error(err.message || 'Erreur lors de la création');
     } finally {
       setLoading(false);
     }
   };
-
-  const getFormatDescription = (format) => {
-    switch (format) {
-      case 'elimination':
-        return "Classique. Le perdant rentre chez lui. Idéal pour les tournois rapides.";
-      case 'double_elimination':
-        return "Deux brackets : Winners et Losers. Une deuxième chance après une défaite. Format esport professionnel.";
-      case 'round_robin':
-        return "Tout le monde joue contre tout le monde. Classement aux points (Victoire=3, Nul=1, Défaite=0).";
-      case 'swiss':
-        return "Plusieurs rounds où les équipes sont appariées selon leur score. Pas d'élimination, classement final par victoires et tie-breaks.";
-      default:
-        return '';
-    }
-  };
-
-  const renderStepIndicator = () => (
-    <div className="flex justify-center items-center gap-3 mb-8">
-      {[1, 2, 3, 4].map(step => (
-        <div key={step} className="flex items-center">
-          <div
-            className={`
-              w-10 h-10 rounded-full flex items-center justify-center font-bold
-              transition-all duration-300
-              ${step === currentStep
-                ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white scale-110'
-                : step < currentStep
-                  ? 'bg-green-500 text-white'
-                  : 'bg-white/10 text-gray-500'
-              }
-            `}
-          >
-            {step < currentStep ? '✓' : step}
-          </div>
-          {step < 4 && (
-            <div
-              className={`w-16 h-1 mx-2 ${step < currentStep ? 'bg-green-500' : 'bg-white/10'
-                }`}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
-        📋 Détails du Tournoi
-      </h3>
-
-      <Input
-        label="Nom de l'événement"
-        type="text"
-        placeholder="Ex: Weekly Cup #42"
-        value={formData.name}
-        onChange={e => updateField('name', e.target.value)}
-        required
-        error={!!errors.name}
-        errorMessage={errors.name}
-        maxLength={100}
-      />
-
-      <Select
-        label="Jeu"
-        value={formData.game}
-        onChange={e => updateField('game', e.target.value)}
-        options={gameOptions}
-      />
-
-      <Card variant="outlined" padding="md" className="border-violet-500/30">
-        <Select
-          label="Format de la compétition"
-          value={formData.format}
-          onChange={e => updateField('format', e.target.value)}
-          options={formatOptions}
-        />
-        <p className="text-sm text-white mt-2 italic font-body">
-          {getFormatDescription(formData.format)}
-        </p>
-      </Card>
-
-      <Input
-        label="Date de début"
-        type="datetime-local"
-        value={formData.date}
-        onChange={e => updateField('date', e.target.value)}
-        required
-        error={!!errors.date}
-        errorMessage={errors.date}
-      />
-
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Nombre maximum d'équipes"
-          type="number"
-          min={2}
-          max={1000}
-          placeholder="Ex: 16, 32, 64..."
-          value={formData.maxParticipants}
-          onChange={e => updateField('maxParticipants', e.target.value)}
-          error={!!errors.maxParticipants}
-          errorMessage={errors.maxParticipants}
-        />
-
-        <Input
-          label="Joueurs par équipe"
-          type="number"
-          min={1}
-          max={20}
-          placeholder="Ex: 5"
-          value={formData.teamSize}
-          onChange={e => updateField('teamSize', parseInt(e.target.value) || 5)}
-        />
-      </div>
-
-      <Input
-        label="Date limite d'inscription (Optionnel)"
-        type="datetime-local"
-        value={formData.registrationDeadline}
-        onChange={e => updateField('registrationDeadline', e.target.value)}
-        error={!!errors.registrationDeadline}
-        errorMessage={errors.registrationDeadline}
-      />
-    </div>
-  );
-
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
-        📝 Description & Règles
-      </h3>
-
-      <div>
-        <label className="block mb-2 text-white font-body">Description du tournoi</label>
-        <WYSIWYGEditor
-          value={formData.description}
-          onChange={(value) => updateField('description', value)}
-          placeholder="Décrivez votre tournoi : objectifs, ambiance, spécificités..."
-          minHeight="200px"
-        />
-        <p className="text-xs text-gray-400 mt-2 font-body">
-          Utilisez cette section pour donner envie aux équipes de s'inscrire !
-        </p>
-      </div>
-
-      <div>
-        <label className="block mb-2 text-white font-body">Règlement (Optionnel)</label>
-        <WYSIWYGEditor
-          value={formData.rules}
-          onChange={(value) => updateField('rules', value)}
-          placeholder="Rédigez le règlement : format, sanctions, preuves requises..."
-          minHeight="300px"
-        />
-        <p className="text-xs text-gray-400 mt-2 font-body">
-          Un règlement clair évite les conflits ! Pas de limite de caractères.
-        </p>
-      </div>
-    </div>
-  );
-
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
-        💰 Récompenses (Cashprize)
-      </h3>
-
-      <Input
-        label="Montant total du cashprize (€)"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="Ex: 1000"
-        value={formData.cashprizeTotal}
-        onChange={e => updateField('cashprizeTotal', e.target.value)}
-      />
-
-      {formData.cashprizeTotal && parseFloat(formData.cashprizeTotal) > 0 && (
-        <Card variant="outlined" padding="md" className="border-violet-500/30">
-          <label className="block mb-3 text-white font-body font-bold">
-            Distribution du cashprize par rang
-          </label>
-
-          <div className="space-y-3">
-            <Input
-              label="🥇 1ère place (€)"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Ex: 500"
-              value={formData.cashprizeDistribution['1']}
-              onChange={e => updateNestedField('cashprizeDistribution', '1', e.target.value)}
-            />
-
-            <Input
-              label="🥈 2ème place (€)"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Ex: 300"
-              value={formData.cashprizeDistribution['2']}
-              onChange={e => updateNestedField('cashprizeDistribution', '2', e.target.value)}
-            />
-
-            <Input
-              label="🥉 3ème place (€)"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Ex: 200"
-              value={formData.cashprizeDistribution['3']}
-              onChange={e => updateNestedField('cashprizeDistribution', '3', e.target.value)}
-            />
-          </div>
-
-          <p className="text-xs text-gray-400 mt-3 font-body">
-            💡 Astuce : La somme des montants devrait correspondre au cashprize total
-          </p>
-        </Card>
-      )}
-
-      {!formData.cashprizeTotal && (
-        <div className="text-center text-gray-500 py-8 font-body">
-          Aucun cashprize ? Pas de problème ! Les joueurs aiment aussi la gloire 🏆
-        </div>
-      )}
-    </div>
-  );
-
-  const renderStep4 = () => (
-    <div className="space-y-6">
-      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
-        ⚙️ Configuration Avancée
-      </h3>
-
-      <Card variant="outlined" padding="md" className="border-violet-500/30">
-        <Select
-          label="Format des Matchs (Best-of-X)"
-          value={String(formData.bestOf)}
-          onChange={e => updateField('bestOf', parseInt(e.target.value))}
-          options={bestOfOptions}
-        />
-        <p className="text-sm text-white mt-2 italic font-body">
-          Le gagnant est la première équipe à remporter {Math.ceil(formData.bestOf / 2)} manche{Math.ceil(formData.bestOf / 2) > 1 ? 's' : ''}.
-        </p>
-      </Card>
-
-      {formData.bestOf > 1 && (
-        <Input
-          label="Pool de Cartes (Optionnel)"
-          type="text"
-          placeholder="Ex: Bind, Haven, Split, Ascent (séparées par des virgules)"
-          value={formData.mapsPool}
-          onChange={e => updateField('mapsPool', e.target.value)}
-          maxLength={500}
-        />
-      )}
-
-      <Card variant="outlined" padding="md" className="border-violet-500/30">
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={formData.checkInRequired}
-            onChange={e => updateField('checkInRequired', e.target.checked)}
-            className="w-5 h-5 rounded border-gray-500 bg-transparent text-violet-500 focus:ring-violet-500"
-          />
-          <span className="text-white font-body">
-            Exiger un check-in avant le début du tournoi
-          </span>
-        </label>
-        <p className="text-xs text-gray-400 mt-2 font-body ml-8">
-          Les équipes devront confirmer leur présence avant le début du tournoi
-        </p>
-      </Card>
-
-      <Card variant="outlined" padding="md" className="border-violet-500/30">
-        <label className="block mb-3 text-white font-body font-bold">
-          📺 Streams Officiels
-        </label>
-
-        <div className="space-y-3">
-          <Input
-            label="Twitch"
-            type="url"
-            placeholder="https://twitch.tv/votre-chaine"
-            value={formData.streamUrls.twitch}
-            onChange={e => updateNestedField('streamUrls', 'twitch', e.target.value)}
-          />
-
-          <Input
-            label="YouTube"
-            type="url"
-            placeholder="https://youtube.com/watch?v=..."
-            value={formData.streamUrls.youtube}
-            onChange={e => updateNestedField('streamUrls', 'youtube', e.target.value)}
-          />
-        </div>
-      </Card>
-
-      <Card variant="outlined" padding="md" className="border-violet-500/30">
-        <div className="flex justify-between items-center mb-3">
-          <label className="text-white font-body font-bold">
-            🏢 Sponsors
-          </label>
-          <Button size="sm" onClick={addSponsor} variant="secondary">
-            + Ajouter un sponsor
-          </Button>
-        </div>
-
-        {formData.sponsors.length > 0 ? (
-          <div className="space-y-4">
-            {formData.sponsors.map((sponsor, index) => (
-              <Card key={index} variant="outlined" padding="sm" className="border-white/10">
-                <div className="flex gap-3 items-start">
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      placeholder="Nom du sponsor"
-                      value={sponsor.name}
-                      onChange={e => updateSponsor(index, 'name', e.target.value)}
-                      size="sm"
-                    />
-                    <Input
-                      placeholder="URL du logo (https://...)"
-                      type="url"
-                      value={sponsor.logo_url}
-                      onChange={e => updateSponsor(index, 'logo_url', e.target.value)}
-                      size="sm"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeSponsor(index)}
-                    className="text-red-400 hover:text-red-500 transition-colors text-xl"
-                    title="Retirer ce sponsor"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500 text-center py-4 font-body">
-            Aucun sponsor pour le moment
-          </p>
-        )}
-      </Card>
-
-      {/* Section Clips */}
-      <Card variant="outlined" padding="md" className="border-violet-500/30">
-        <div className="flex justify-between items-center mb-3">
-          <label className="text-white font-body font-bold">
-            🎬 Clips & Temps Forts
-          </label>
-          <Button size="sm" onClick={addClip} variant="secondary">
-            + Ajouter un clip
-          </Button>
-        </div>
-
-        {formData.clips.length > 0 ? (
-          <div className="space-y-4">
-            {formData.clips.map((clip, index) => (
-              <Card key={index} variant="outlined" padding="sm" className="border-white/10">
-                <div className="flex gap-3 items-start">
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      placeholder="Titre du clip (ex: Action finale Round 13)"
-                      value={clip.title}
-                      onChange={e => updateClip(index, 'title', e.target.value)}
-                      size="sm"
-                    />
-                    <div className="flex gap-2">
-                      <Select
-                        value={clip.platform}
-                        onChange={e => updateClip(index, 'platform', e.target.value)}
-                        options={[
-                          { value: 'twitch', label: '🟣 Twitch' },
-                          { value: 'youtube', label: '🔴 YouTube' },
-                          { value: 'twitter', label: '𝕏 Twitter/X' },
-                        ]}
-                        className="w-36"
-                      />
-                      <Input
-                        placeholder="URL du clip"
-                        type="url"
-                        value={clip.url}
-                        onChange={e => updateClip(index, 'url', e.target.value)}
-                        size="sm"
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeClip(index)}
-                    className="text-red-400 hover:text-red-500 transition-colors text-xl"
-                    title="Retirer ce clip"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500 text-center py-4 font-body">
-            Ajoutez des clips pour mettre en avant les meilleurs moments du tournoi
-          </p>
-        )}
-      </Card>
-    </div>
-  );
 
   // Chargement
   if (!isLoaded || convexUser === undefined) {
@@ -632,71 +132,175 @@ export default function CreateTournament() {
 
   return (
     <DashboardLayout>
-      <div className="w-full max-w-4xl mx-auto">
-        <Card variant="glass" padding="xl" className="shadow-xl">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/organizer/dashboard')}
-            >
-              ← Annuler
-            </Button>
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate('/organizer/dashboard')}
+            className="flex items-center gap-2 text-[#94A3B8] hover:text-white transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour
+          </button>
+          
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20">
+              <Trophy className="w-8 h-8 text-violet-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Créer un Tournoi</h1>
+              <p className="text-[#94A3B8]">Configuration rapide • Options avancées disponibles après</p>
+            </div>
           </div>
+        </div>
 
-          <h2 className="text-center mb-2 font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400"
-            style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
-            Créer un Tournoi
-          </h2>
-          <p className="text-center text-gray-400 mb-8 font-body">
-            Configuration en {totalSteps} étapes
-          </p>
+        {/* Formulaire */}
+        <form onSubmit={handleSubmit}>
+          <GlassCard className="space-y-6">
+            {/* Nom du tournoi */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-[#F8FAFC] mb-2">
+                <Sparkles className="w-4 h-4 text-violet-400" />
+                Nom du tournoi *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => updateField('name', e.target.value)}
+                placeholder="Ex: Weekly Cup #1"
+                maxLength={100}
+                className={`w-full px-4 py-3 rounded-lg bg-[rgba(5,5,10,0.6)] border ${
+                  errors.name ? 'border-red-500' : 'border-white/10'
+                } text-white placeholder-[#64748B] focus:outline-none focus:border-violet-500 transition-colors`}
+              />
+              {errors.name && <p className="mt-1 text-sm text-red-400">{errors.name}</p>}
+            </div>
 
-          {/* Step Indicator */}
-          {renderStepIndicator()}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit}>
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}
-            {currentStep === 3 && renderStep3()}
-            {currentStep === 4 && renderStep4()}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center mt-8 gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-              >
-                ← Précédent
-              </Button>
-
-              <div className="text-sm text-gray-400 font-body">
-                Étape {currentStep} sur {totalSteps}
+            {/* Jeu et Format sur la même ligne */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-[#F8FAFC] mb-2">
+                  <Gamepad2 className="w-4 h-4 text-cyan-400" />
+                  Jeu
+                </label>
+                <select
+                  value={formData.game}
+                  onChange={(e) => updateField('game', e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white focus:outline-none focus:border-violet-500 transition-colors"
+                >
+                  {gameOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
 
-              {currentStep < totalSteps ? (
-                <GradientButton
-                  type="button"
-                  onClick={nextStep}
+              <div>
+                <label className="text-sm font-medium text-[#F8FAFC] mb-2 block">
+                  Format
+                </label>
+                <select
+                  value={formData.format}
+                  onChange={(e) => updateField('format', e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white focus:outline-none focus:border-violet-500 transition-colors"
                 >
-                  Suivant →
-                </GradientButton>
-              ) : (
-                <GradientButton
-                  type="submit"
-                  loading={loading}
-                  disabled={loading}
-                >
-                  {loading ? 'Création...' : '🚀 Créer le Tournoi'}
-                </GradientButton>
-              )}
+                  {formatOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </form>
-        </Card>
+
+            {/* Date */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-[#F8FAFC] mb-2">
+                <Calendar className="w-4 h-4 text-pink-400" />
+                Date de début *
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.date}
+                onChange={(e) => updateField('date', e.target.value)}
+                className={`w-full px-4 py-3 rounded-lg bg-[rgba(5,5,10,0.6)] border ${
+                  errors.date ? 'border-red-500' : 'border-white/10'
+                } text-white focus:outline-none focus:border-violet-500 transition-colors`}
+              />
+              {errors.date && <p className="mt-1 text-sm text-red-400">{errors.date}</p>}
+            </div>
+
+            {/* Participants et Taille équipe */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-[#F8FAFC] mb-2">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  Max équipes
+                </label>
+                <input
+                  type="number"
+                  min={2}
+                  max={256}
+                  value={formData.maxParticipants}
+                  onChange={(e) => updateField('maxParticipants', e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white focus:outline-none focus:border-violet-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-[#F8FAFC] mb-2 block">
+                  Taille d'équipe
+                </label>
+                <select
+                  value={formData.teamSize}
+                  onChange={(e) => updateField('teamSize', e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white focus:outline-none focus:border-violet-500 transition-colors"
+                >
+                  {teamSizePresets.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Info box */}
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-violet-500/10 border border-violet-500/20">
+              <Settings className="w-5 h-5 text-violet-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-[#94A3B8]">
+                <p className="text-violet-300 font-medium mb-1">Options avancées</p>
+                <p>
+                  Règles, description, cashprize, map pool, sponsors... 
+                  Tous ces paramètres sont configurables après la création dans les réglages du tournoi.
+                </p>
+              </div>
+            </div>
+
+            {/* Boutons */}
+            <div className="flex gap-4 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate('/organizer/dashboard')}
+                className="flex-1 px-6 py-3 rounded-lg border border-white/10 text-[#94A3B8] hover:text-white hover:border-white/20 transition-colors"
+              >
+                Annuler
+              </button>
+              <GradientButton
+                type="submit"
+                disabled={loading}
+                className="flex-1"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Création...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4" />
+                    Créer le tournoi
+                  </span>
+                )}
+              </GradientButton>
+            </div>
+          </GlassCard>
+        </form>
       </div>
     </DashboardLayout>
   );

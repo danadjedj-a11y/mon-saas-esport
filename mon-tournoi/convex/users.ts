@@ -318,3 +318,102 @@ export const listAll = query({
         return users;
     },
 });
+
+/**
+ * Récupère le classement des joueurs (leaderboard)
+ */
+export const getLeaderboard = query({
+    args: {
+        limit: v.optional(v.number()),
+        game: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 50;
+
+        // Récupérer toutes les stats triées par ELO
+        const allStats = await ctx.db
+            .query("userStats")
+            .withIndex("by_elo")
+            .order("desc")
+            .take(limit);
+
+        // Enrichir avec les données utilisateur
+        const leaderboard = await Promise.all(
+            allStats.map(async (stats, index) => {
+                const user = await ctx.db.get(stats.userId);
+                return {
+                    rank: index + 1,
+                    userId: stats.userId,
+                    username: user?.username || user?.displayName || "Joueur inconnu",
+                    avatar: user?.avatar || null,
+                    eloRating: stats.eloRating,
+                    tournamentsPlayed: stats.tournamentsPlayed,
+                    tournamentsWon: stats.tournamentsWon,
+                    matchesPlayed: stats.matchesPlayed,
+                    matchesWon: stats.matchesWon,
+                    winRate: stats.winRate,
+                };
+            })
+        );
+
+        return leaderboard;
+    },
+});
+
+/**
+ * Récupère le rang d'un utilisateur spécifique
+ */
+export const getUserRank = query({
+    args: { userId: v.optional(v.id("users")) },
+    handler: async (ctx, args) => {
+        let userId = args.userId;
+
+        // Si pas d'ID fourni, prendre l'utilisateur connecté
+        if (!userId) {
+            const identity = await ctx.auth.getUserIdentity();
+            if (!identity) return null;
+
+            const user = await ctx.db
+                .query("users")
+                .withIndex("by_email", (q) => q.eq("email", identity.email!))
+                .first();
+
+            if (!user) return null;
+            userId = user._id;
+        }
+
+        // Récupérer les stats de l'utilisateur
+        const userStats = await ctx.db
+            .query("userStats")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .first();
+
+        if (!userStats) {
+            return { rank: null, stats: null };
+        }
+
+        // Compter combien de joueurs ont un ELO supérieur
+        const higherRanked = await ctx.db
+            .query("userStats")
+            .withIndex("by_elo")
+            .filter((q) => q.gt(q.field("eloRating"), userStats.eloRating))
+            .collect();
+
+        const rank = higherRanked.length + 1;
+
+        const user = await ctx.db.get(userId);
+
+        return {
+            rank,
+            userId,
+            username: user?.username || user?.displayName || "Joueur",
+            avatar: user?.avatar || null,
+            eloRating: userStats.eloRating,
+            tournamentsPlayed: userStats.tournamentsPlayed,
+            tournamentsWon: userStats.tournamentsWon,
+            matchesPlayed: userStats.matchesPlayed,
+            matchesWon: userStats.matchesWon,
+            winRate: userStats.winRate,
+        };
+    },
+});
