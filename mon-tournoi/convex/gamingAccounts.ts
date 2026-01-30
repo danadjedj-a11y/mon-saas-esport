@@ -157,12 +157,12 @@ export const approve = mutation({
   },
   handler: async (ctx, { requestId, adminNotes }) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Non authentifié");
+    if (!identity || !identity.email) throw new Error("Non authentifié");
 
     // Vérifier que c'est un admin/organizer
     const admin = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!admin || admin.role !== "organizer") {
@@ -173,18 +173,37 @@ export const approve = mutation({
     if (!request) throw new Error("Demande non trouvée");
     if (request.status !== "pending") throw new Error("Demande déjà traitée");
 
-    // Mettre à jour le compte gaming dans playerGameAccounts
-    const existingAccount = await ctx.db
-      .query("playerGameAccounts")
-      .withIndex("by_user_and_platform", (q) => 
-        q.eq("userId", request.userId).eq("platform", request.platform)
-      )
-      .first();
+    // Mettre à jour le compte gaming dans le profil utilisateur
+    const user = await ctx.db.get(request.userId);
+    if (user) {
+      const currentGamingAccounts = user.gamingAccounts || {};
+      
+      // Construire la nouvelle valeur selon la plateforme
+      let newAccountValue = request.newUsername;
+      if (request.newTag) {
+        newAccountValue = `${request.newUsername}#${request.newTag}`;
+      }
 
-    if (existingAccount) {
-      await ctx.db.patch(existingAccount._id, {
-        username: request.newUsername,
-        tag: request.newTag,
+      // Mapper la plateforme au champ correspondant
+      const platformMap: Record<string, string> = {
+        "Riot": "riotId",
+        "Valorant": "riotId",
+        "League of Legends": "riotId",
+        "Steam": "steamId",
+        "CS2": "steamId",
+        "Epic Games": "epicGamesId",
+        "Fortnite": "epicGamesId",
+        "Battle.net": "battleNetId",
+        "Overwatch": "battleNetId",
+      };
+
+      const fieldName = platformMap[request.platform] || request.platform.toLowerCase() + "Id";
+
+      await ctx.db.patch(request.userId, {
+        gamingAccounts: {
+          ...currentGamingAccounts,
+          [fieldName]: newAccountValue,
+        },
         updatedAt: Date.now(),
       });
     }
@@ -211,12 +230,12 @@ export const reject = mutation({
   },
   handler: async (ctx, { requestId, adminNotes }) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Non authentifié");
+    if (!identity || !identity.email) throw new Error("Non authentifié");
 
     // Vérifier que c'est un admin/organizer
     const admin = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!admin || admin.role !== "organizer") {
@@ -248,11 +267,11 @@ export const cancel = mutation({
   },
   handler: async (ctx, { requestId }) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Non authentifié");
+    if (!identity || !identity.email) throw new Error("Non authentifié");
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) throw new Error("Utilisateur non trouvé");
