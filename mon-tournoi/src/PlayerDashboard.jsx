@@ -1,9 +1,17 @@
-import { useEffect, useState, useMemo } from 'react';
+/**
+ * PLAYER DASHBOARD - Version Convex
+ * 
+ * Dashboard joueur utilisant Convex au lieu de Supabase
+ */
+
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { useUser } from "@clerk/clerk-react";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 import DashboardLayout from './layouts/DashboardLayout';
 import TeamInvitations from './components/TeamInvitations';
-import { GlassCard, GradientButton, NeonBadge, StatCard, GlowBorder } from './shared/components/ui';
+import { GlassCard, GradientButton, NeonBadge, StatCard } from './shared/components/ui';
 import { Gamepad2, Trophy, Users, Swords, History, Clock, Medal, Zap, LayoutDashboard, Search, Plus } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -38,112 +46,59 @@ const TABS = [
   { id: 'activity', label: 'Historique', icon: History },
 ];
 
-export default function PlayerDashboard({ session }) {
+export default function PlayerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [myTeams, setMyTeams] = useState([]);
-  const [myTournaments, setMyTournaments] = useState([]);
-  const [upcomingMatches, setUpcomingMatches] = useState([]);
-  const [recentResults, setRecentResults] = useState([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
 
-  useEffect(() => {
-    if (session?.user) fetchPlayerData();
-  }, [session]);
+  // Données Convex
+  const convexUser = useQuery(api.users.getCurrent);
+  const userStats = useQuery(api.users.getStats, {});
 
-  const fetchPlayerData = async () => {
-    if (!session?.user) return; // Safety check
+  // Équipes de l'utilisateur
+  const myTeams = useQuery(
+    api.teams.listByUser,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
 
-    setLoading(true);
-    try {
-      // Récupérer mes équipes
-      const [captainResult, memberResult, tempTeamsResult] = await Promise.all([
-        supabase.from('teams').select('*').eq('captain_id', session.user.id),
-        supabase.from('team_members').select('team_id, teams(*)').eq('user_id', session.user.id),
-        supabase.from('temporary_teams').select('id, tournament_id, name').eq('captain_id', session.user.id),
-      ]);
+  // Tournois où l'utilisateur participe
+  const myTournaments = useQuery(
+    api.tournaments.listByParticipant,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
 
-      const captainTeams = captainResult.data || [];
-      const memberTeams = (memberResult.data || []).map(m => m.teams).filter(Boolean);
-      const allTeams = [...captainTeams, ...memberTeams];
-      const uniqueTeams = Array.from(new Map(allTeams.map(t => [t.id, t])).values());
-      setMyTeams(uniqueTeams);
+  // Matchs à venir et récents
+  const upcomingMatches = useQuery(
+    api.matches.listUpcoming,
+    convexUser?._id ? { userId: convexUser._id, limit: 10 } : "skip"
+  );
 
-      const teamIds = uniqueTeams.map(t => t.id);
-      const tempTeams = tempTeamsResult.data || [];
-      const tempTeamIds = tempTeams.map(t => t.id);
-      const tempTournamentIds = tempTeams.map(t => t.tournament_id);
+  const recentMatches = useQuery(
+    api.matches.listRecent,
+    convexUser?._id ? { userId: convexUser._id, limit: 10 } : "skip"
+  );
 
-      // Récupérer les tournois
-      let tournamentIds = [...tempTournamentIds];
-      if (teamIds.length > 0) {
-        const { data: participants } = await supabase
-          .from('participants')
-          .select('tournament_id')
-          .in('team_id', teamIds);
-        tournamentIds = [...new Set([...tournamentIds, ...(participants || []).map(p => p.tournament_id)])];
-      }
+  // Stats calculées
+  const stats = useMemo(() => {
+    const teams = myTeams || [];
+    const tournaments = myTournaments || [];
+    const matches = recentMatches || [];
 
-      if (tournamentIds.length > 0) {
-        const { data: tournaments } = await supabase
-          .from('tournaments')
-          .select('*')
-          .in('id', tournamentIds)
-          .order('start_date', { ascending: false });
-        setMyTournaments(tournaments || []);
-      }
+    return {
+      teams: teams.length,
+      tournaments: tournaments.length,
+      ongoing: tournaments.filter(t => t.status === 'ongoing').length,
+      wins: userStats?.wins || 0,
+      upcomingMatches: (upcomingMatches || []).length,
+    };
+  }, [myTeams, myTournaments, recentMatches, upcomingMatches, userStats]);
 
-      // Récupérer les matchs
-      const allTeamIds = [...teamIds, ...tempTeamIds];
-      if (allTeamIds.length > 0) {
-        const processMatches = async (status, isUpcoming) => {
-          const { data } = await supabase
-            .from('matches')
-            .select('*, tournament:tournament_id(name, game)')
-            .or(`player1_id.in.(${allTeamIds.join(',')}),player2_id.in.(${allTeamIds.join(',')})`)
-            .in('status', status)
-            .order(isUpcoming ? 'scheduled_at' : 'updated_at', { ascending: isUpcoming })
-            .limit(10);
-
-          if (data?.length > 0) {
-            const matchIds = [...new Set(data.flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean))];
-            const { data: teamsData } = await supabase.from('teams').select('id, name').in('id', matchIds);
-            const teamsMap = Object.fromEntries((teamsData || []).map(t => [t.id, t]));
-
-            return data.map(m => ({
-              ...m,
-              team1: teamsMap[m.player1_id],
-              team2: teamsMap[m.player2_id],
-            }));
-          }
-          return [];
-        };
-
-        setUpcomingMatches(await processMatches(['pending', 'in_progress'], true));
-        setRecentResults(await processMatches(['completed'], false));
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const stats = useMemo(() => ({
-    teams: myTeams.length,
-    tournaments: myTournaments.length,
-    ongoing: myTournaments.filter(t => t.status === 'ongoing').length,
-    wins: recentResults.filter(m => {
-      const myTeamIds = myTeams.map(t => t.id);
-      const isPlayer1 = myTeamIds.includes(m.player1_id);
-      return isPlayer1 ? m.score_p1 > m.score_p2 : m.score_p2 > m.score_p1;
-    }).length,
-    upcomingMatches: upcomingMatches.length,
-  }), [myTeams, myTournaments, recentResults, upcomingMatches]);
+  // Chargement
+  const loading = !isLoaded || convexUser === undefined || myTeams === undefined;
 
   if (loading) {
     return (
-      <DashboardLayout session={session}>
+      <DashboardLayout>
         <div className="flex items-center justify-center py-20">
           <div className="w-10 h-10 border-2 border-[#00F5FF]/30 border-t-[#00F5FF] rounded-full animate-spin" />
         </div>
@@ -151,8 +106,14 @@ export default function PlayerDashboard({ session }) {
     );
   }
 
+  const username = convexUser?.username || clerkUser?.firstName || 'Joueur';
+  const teamsList = myTeams || [];
+  const tournamentsList = myTournaments || [];
+  const upcomingMatchesList = upcomingMatches || [];
+  const recentResultsList = recentMatches || [];
+
   return (
-    <DashboardLayout session={session}>
+    <DashboardLayout>
       {/* Background effects */}
       <div className="relative">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -168,11 +129,11 @@ export default function PlayerDashboard({ session }) {
             <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 via-cyan-600/5 to-pink-600/10" />
             <div className="relative flex flex-col md:flex-row items-center gap-6">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-4xl font-bold text-white shadow-[0_0_20px_rgba(139,92,246,0.3)]">
-                {session?.user?.user_metadata?.username?.charAt(0)?.toUpperCase() || '?'}
+                {username.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {session?.user?.user_metadata?.username || 'Joueur'}
+                  {username}
                 </h1>
                 <div className="flex flex-wrap justify-center md:justify-start gap-3">
                   <span className="px-3 py-1 rounded-full bg-[#161b22] border border-white/10 text-xs text-[#94A3B8]">
@@ -223,31 +184,30 @@ export default function PlayerDashboard({ session }) {
           {activeTab === 'overview' && (
             <OverviewTab
               stats={stats}
-              upcomingMatches={upcomingMatches}
-              recentResults={recentResults}
-              myTournaments={myTournaments}
-              myTeams={myTeams}
-              session={session}
+              upcomingMatches={upcomingMatchesList}
+              recentResults={recentResultsList}
+              myTournaments={tournamentsList}
+              myTeams={teamsList}
+              convexUser={convexUser}
               navigate={navigate}
-              onRefresh={fetchPlayerData}
             />
           )}
 
           {activeTab === 'tournaments' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myTournaments.map(t => (
-                <TournamentCard key={t.id} tournament={t} navigate={navigate} />
+              {tournamentsList.map(t => (
+                <TournamentCard key={t._id} tournament={t} navigate={navigate} />
               ))}
-              {myTournaments.length === 0 && <EmptyState icon="🏆" label="Aucun tournoi" />}
+              {tournamentsList.length === 0 && <EmptyState icon="🏆" label="Aucun tournoi" />}
             </div>
           )}
 
           {activeTab === 'teams' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myTeams.map(t => (
-                <TeamCard key={t.id} team={t} session={session} navigate={navigate} />
+              {teamsList.map(t => (
+                <TeamCard key={t._id} team={t} convexUser={convexUser} navigate={navigate} />
               ))}
-              {myTeams.length === 0 && <EmptyState icon="👥" label="Aucune équipe" />}
+              {teamsList.length === 0 && <EmptyState icon="👥" label="Aucune équipe" />}
             </div>
           )}
 
@@ -255,9 +215,9 @@ export default function PlayerDashboard({ session }) {
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-white">Matchs à venir</h3>
               <div className="space-y-4">
-                {upcomingMatches.length > 0 ? (
-                  upcomingMatches.map(m => (
-                    <MatchRow key={m.id} match={m} navigate={navigate} type="upcoming" />
+                {upcomingMatchesList.length > 0 ? (
+                  upcomingMatchesList.map(m => (
+                    <MatchRow key={m._id} match={m} navigate={navigate} type="upcoming" />
                   ))
                 ) : (
                   <p className="text-[#94A3B8]">Aucun match prévu</p>
@@ -266,9 +226,9 @@ export default function PlayerDashboard({ session }) {
 
               <h3 className="text-xl font-bold text-white pt-6">Derniers résultats</h3>
               <div className="space-y-4">
-                {recentResults.length > 0 ? (
-                  recentResults.map(m => (
-                    <MatchRow key={m.id} match={m} navigate={navigate} type="result" />
+                {recentResultsList.length > 0 ? (
+                  recentResultsList.map(m => (
+                    <MatchRow key={m._id} match={m} navigate={navigate} type="result" />
                   ))
                 ) : (
                   <p className="text-[#94A3B8]">Aucun résultat récent</p>
@@ -277,7 +237,6 @@ export default function PlayerDashboard({ session }) {
             </div>
           )}
 
-          {/* Implement activity tab if needed, simpler version for now */}
           {activeTab === 'activity' && (
             <GlassCard className="text-center py-12">
               <History className="h-12 w-12 text-[#94A3B8] mx-auto mb-4" />
@@ -301,7 +260,7 @@ export default function PlayerDashboard({ session }) {
   );
 }
 
-function OverviewTab({ stats, upcomingMatches, recentResults, myTournaments, myTeams, session, navigate, onRefresh }) {
+function OverviewTab({ stats, upcomingMatches, recentResults, myTournaments, myTeams, convexUser, navigate }) {
   return (
     <div className="space-y-8">
       {/* Stats */}
@@ -313,7 +272,7 @@ function OverviewTab({ stats, upcomingMatches, recentResults, myTournaments, myT
         <StatCard value={stats.wins} label="Victoires" icon={<Medal />} color="amber" />
       </div>
 
-      <TeamInvitations userId={session?.user?.id} onUpdate={onRefresh} />
+      <TeamInvitations userId={convexUser?._id} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Matchs à venir */}
@@ -330,7 +289,7 @@ function OverviewTab({ stats, upcomingMatches, recentResults, myTournaments, myT
           <div className="space-y-3">
             {upcomingMatches.length > 0 ? (
               upcomingMatches.slice(0, 4).map(m => (
-                <MatchRow key={m.id} match={m} navigate={navigate} type="upcoming" />
+                <MatchRow key={m._id} match={m} navigate={navigate} type="upcoming" />
               ))
             ) : (
               <p className="text-[#94A3B8] text-sm text-center py-4">Aucun match à venir</p>
@@ -349,7 +308,7 @@ function OverviewTab({ stats, upcomingMatches, recentResults, myTournaments, myT
           <div className="space-y-3">
             {recentResults.length > 0 ? (
               recentResults.slice(0, 4).map(m => (
-                <MatchRow key={m.id} match={m} navigate={navigate} type="result" />
+                <MatchRow key={m._id} match={m} navigate={navigate} type="result" />
               ))
             ) : (
               <p className="text-[#94A3B8] text-sm text-center py-4">Aucun résultat récent</p>
@@ -366,7 +325,7 @@ function OverviewTab({ stats, upcomingMatches, recentResults, myTournaments, myT
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {myTeams.slice(0, 3).map(t => (
-              <TeamCard key={t.id} team={t} session={session} navigate={navigate} />
+              <TeamCard key={t._id} team={t} convexUser={convexUser} navigate={navigate} />
             ))}
           </div>
         </div>
@@ -383,7 +342,7 @@ function GameController() {
 function MatchRow({ match, navigate, type }) {
   return (
     <div
-      onClick={() => navigate(`/match/${match.id}`)}
+      onClick={() => navigate(`/match/${match._id}`)}
       className="group flex items-center justify-between p-3 rounded-xl bg-[#1a1a24]/50 border border-white/5 hover:border-[#6366F1]/30 hover:bg-[#6366F1]/10 transition-all cursor-pointer"
     >
       <div className="flex flex-col">
@@ -395,23 +354,23 @@ function MatchRow({ match, navigate, type }) {
         <div className="text-xs text-[#94A3B8]">{match.tournament?.name}</div>
       </div>
 
-      {type === 'upcoming' && match.scheduled_at && (
+      {type === 'upcoming' && match.scheduledAt && (
         <span className="text-xs font-medium text-[#FF3E9D] bg-[#FF3E9D]/10 px-2 py-1 rounded-lg">
-          {new Date(match.scheduled_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          {new Date(match.scheduledAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </span>
       )}
 
       {type === 'result' && (
         <span className="text-sm font-bold text-[#00F5FF]">
-          {match.score_p1} - {match.score_p2}
+          {match.scoreTeam1 || 0} - {match.scoreTeam2 || 0}
         </span>
       )}
     </div>
   );
 }
 
-function TeamCard({ team, session, navigate }) {
-  const isCaptain = session?.user?.id === team.captain_id;
+function TeamCard({ team, convexUser, navigate }) {
+  const isCaptain = convexUser?._id === team.captainId;
   return (
     <GlassCard
       className="cursor-pointer hover:border-[#8B5CF6]/50 group transition-all"
@@ -419,7 +378,7 @@ function TeamCard({ team, session, navigate }) {
     >
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#8B5CF6]/20 to-[#00F5FF]/20 flex items-center justify-center text-xl overflow-hidden border border-white/10">
-          {team.logo_url ? <img src={team.logo_url} alt="" className="w-full h-full object-cover" /> : '🛡️'}
+          {team.logoUrl ? <img src={team.logoUrl} alt="" className="w-full h-full object-cover" /> : '🛡️'}
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-bold text-white truncate group-hover:text-[#8B5CF6] transition-colors">{team.name}</h4>
@@ -438,11 +397,11 @@ function TournamentCard({ tournament, navigate }) {
   return (
     <GlassCard
       className="cursor-pointer hover:border-[#00F5FF]/50 group transition-all"
-      onClick={() => navigate(`/player/tournament/${tournament.id}`)}
+      onClick={() => navigate(`/player/tournament/${tournament._id}`)}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="w-10 h-10 rounded-lg bg-[#1a1a24] flex items-center justify-center">
-          {tournament.logo_url ? <img src={tournament.logo_url} className="w-full h-full object-cover rounded-lg" /> : <Trophy className="h-5 w-5 text-[#00F5FF]" />}
+          {tournament.logoUrl ? <img src={tournament.logoUrl} className="w-full h-full object-cover rounded-lg" /> : <Trophy className="h-5 w-5 text-[#00F5FF]" />}
         </div>
         <NeonBadge variant={badgeVariant[tournament.status] || 'draft'}>
           {statusLabels[tournament.status] || tournament.status}

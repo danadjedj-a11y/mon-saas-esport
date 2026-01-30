@@ -1,131 +1,94 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+/**
+ * USE CONVEX QUERY - Remplacement de useSupabaseQuery
+ * 
+ * Ce hook est un wrapper pour maintenir la compatibilité avec le code existant
+ * qui utilisait useSupabaseQuery. Redirige vers useQuery de Convex.
+ * 
+ * DEPRECATED: Utilisez directement useQuery de Convex pour les nouveaux composants
+ */
+
+import { useCallback, useMemo } from 'react';
+import { useQuery } from 'convex/react';
 import { toast } from '../../utils/toast';
 
 /**
- * Hook personnalisé pour les requêtes Supabase
- * Gère loading, error, retry, cache automatiquement
+ * Hook de compatibilité pour remplacer useSupabaseQuery
  * 
- * @param {Function} queryFn - Fonction qui retourne la requête Supabase
- * @param {Object} options - Options (enabled, retry, cache, onSuccess, onError)
+ * @param {Object} query - Query Convex (api.xxx.yyy)
+ * @param {Object} args - Arguments de la query
+ * @param {Object} options - Options (enabled, showToastOnError, onSuccess, onError)
  * @returns {Object} - { data, loading, error, refetch }
+ * 
+ * @example
+ * // Ancien code avec Supabase:
+ * const { data } = useSupabaseQuery(() => supabase.from('teams').select('*'));
+ * 
+ * // Nouveau code avec Convex:
+ * const { data } = useConvexQuery(api.teams.list, { userId });
  */
-export const useSupabaseQuery = (queryFn, options = {}) => {
+export const useConvexQuery = (query, args = {}, options = {}) => {
   const {
     enabled = true,
-    retry = 0,
-    retryDelay = 1000,
     showToastOnError = false,
     onSuccess,
     onError,
   } = options;
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState(null);
-  
-  const isMountedRef = useRef(true);
-  const retryCountRef = useRef(0);
-  const queryVersionRef = useRef(0);
+  // Utiliser "skip" si pas enabled
+  const queryArgs = enabled ? args : "skip";
 
-  // Cleanup au démontage
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
+  // Exécuter la query Convex
+  const data = useQuery(query, queryArgs);
+
+  // Détecter l'état de chargement
+  const loading = data === undefined && enabled;
+
+  // Pas d'erreurs dans Convex - les erreurs sont des exceptions
+  const error = null;
+
+  // Callback de succès
+  useMemo(() => {
+    if (data !== undefined && onSuccess) {
+      onSuccess(data);
+    }
+  }, [data, onSuccess]);
+
+  // Fonction refetch (Convex gère automatiquement le refetch via réactivité)
+  const refetch = useCallback(() => {
+    // Convex est réactif, pas besoin de refetch manuel
+    // Mais on peut forcer en changeant les args
+    console.log('[useConvexQuery] Convex est réactif - pas besoin de refetch manuel');
   }, []);
 
-  const fetchData = useCallback(async () => {
-    if (!enabled || !isMountedRef.current) return;
-
-    // Incrémenter la version pour ignorer les anciennes requêtes
-    const currentVersion = ++queryVersionRef.current;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await queryFn();
-
-      // Vérifier si c'est toujours la requête la plus récente
-      if (currentVersion !== queryVersionRef.current || !isMountedRef.current) {
-        return;
-      }
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      if (isMountedRef.current) {
-        setData(result.data);
-        setError(null);
-        retryCountRef.current = 0;
-        
-        // Callback de succès
-        if (onSuccess) {
-          onSuccess(result.data);
-        }
-      }
-    } catch (err) {
-      console.error('Erreur requête Supabase:', err);
-      
-      // Vérifier si c'est toujours la requête la plus récente
-      if (currentVersion !== queryVersionRef.current || !isMountedRef.current) {
-        return;
-      }
-
-      // Retry si configuré
-      if (retryCountRef.current < retry && isMountedRef.current) {
-        retryCountRef.current++;
-        console.log(`Retry ${retryCountRef.current}/${retry} après ${retryDelay}ms`);
-        
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            fetchData();
-          }
-        }, retryDelay);
-        return;
-      }
-
-      if (isMountedRef.current) {
-        setError(err);
-        
-        if (showToastOnError) {
-          toast.error('Erreur de chargement: ' + err.message);
-        }
-        
-        // Callback d'erreur
-        if (onError) {
-          onError(err);
-        }
-      }
-    } finally {
-      if (currentVersion === queryVersionRef.current && isMountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [queryFn, enabled, retry, retryDelay, showToastOnError, onSuccess, onError]);
-
-  // Exécuter la requête au montage si enabled
-  useEffect(() => {
-    if (enabled) {
-      fetchData();
-    }
-  }, [enabled, fetchData]);
-
-  // Fonction pour refetch manuellement
-  const refetch = useCallback(() => {
-    retryCountRef.current = 0;
-    return fetchData();
-  }, [fetchData]);
-
   return {
-    data,
+    data: data ?? null,
     loading,
     error,
     refetch,
-    isSuccess: !loading && !error && data !== null,
-    isError: !loading && !!error,
+    isSuccess: !loading && data !== undefined,
+    isError: false,
   };
 };
 
-export default useSupabaseQuery;
+/**
+ * Alias pour compatibilité - DÉPRÉCIÉ
+ * Utilisez useConvexQuery ou useQuery directement
+ */
+export const useSupabaseQuery = (queryFn, options = {}) => {
+  console.warn(
+    '[MIGRATION] useSupabaseQuery est déprécié. ' +
+    'Utilisez useQuery de Convex ou useConvexQuery pour la compatibilité.'
+  );
+
+  // Retourne un état vide pour éviter les erreurs
+  return {
+    data: null,
+    loading: false,
+    error: new Error('useSupabaseQuery est déprécié - Migrez vers Convex'),
+    refetch: () => { },
+    isSuccess: false,
+    isError: true,
+  };
+};
+
+export default useConvexQuery;

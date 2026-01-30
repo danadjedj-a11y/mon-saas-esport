@@ -1,16 +1,26 @@
+/**
+ * CREATE TOURNAMENT - Version Convex
+ * 
+ * Wizard de création de tournoi en 4 étapes
+ * Utilise Convex au lieu de Supabase
+ */
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from "@clerk/clerk-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
-import { handleRateLimitError } from './utils/rateLimitHandler';
 import DashboardLayout from './layouts/DashboardLayout';
-import { useAuth } from './shared/hooks';
-import { createTournament } from './shared/services/api/tournaments';
-import { tournamentSchema as _tournamentSchema } from './shared/utils/schemas/tournament';
 import { Button, Input, Textarea, Select, Card, Badge, WYSIWYGEditor, GradientButton } from './shared/components/ui';
 
 export default function CreateTournament() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+
+  // Données Convex
+  const convexUser = useQuery(api.users.getCurrent);
+  const createTournamentMutation = useMutation(api.tournamentsMutations.create);
 
   // Wizard step state
   const [currentStep, setCurrentStep] = useState(1);
@@ -25,6 +35,7 @@ export default function CreateTournament() {
     date: '',
     maxParticipants: '',
     registrationDeadline: '',
+    teamSize: 5, // Nouveau: taille d'équipe
 
     // Step 2: Règles
     rules: '',
@@ -39,7 +50,8 @@ export default function CreateTournament() {
     mapsPool: '',
     sponsors: [],
     streamUrls: { twitch: '', youtube: '' },
-    clips: [], // Nouvelle section clips
+    clips: [],
+    checkInRequired: false,
   });
 
   const [loading, setLoading] = useState(false);
@@ -69,7 +81,6 @@ export default function CreateTournament() {
 
   const updateField = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[field];
@@ -164,68 +175,35 @@ export default function CreateTournament() {
     e.preventDefault();
 
     if (!validateStep(currentStep)) return;
+    if (!isSignedIn || !convexUser) {
+      toast.error('Vous devez être connecté pour créer un tournoi');
+      return;
+    }
 
     setLoading(true);
     setErrors({});
 
     try {
-      // Prepare cashprize distribution (only include non-empty values)
-      const cashprizeDistribution = {};
-      Object.entries(formData.cashprizeDistribution).forEach(([rank, amount]) => {
-        if (amount && !isNaN(parseFloat(amount))) {
-          cashprizeDistribution[rank] = parseFloat(amount);
-        }
-      });
-
-      // Prepare sponsors (only include non-empty sponsors)
-      const sponsors = formData.sponsors.filter(s => s.name.trim() || s.logo_url.trim());
-
-      // Prepare clips (only include non-empty clips)
-      const clips = formData.clips.filter(c => c.url.trim());
-
-      // Prepare stream URLs (only include non-empty URLs)
-      const streamUrls = {};
-      if (formData.streamUrls.twitch) streamUrls.twitch = formData.streamUrls.twitch;
-      if (formData.streamUrls.youtube) streamUrls.youtube = formData.streamUrls.youtube;
-
-      const tournamentData = {
+      // Préparer les données pour Convex
+      const tournamentId = await createTournamentMutation({
         name: formData.name,
         game: formData.game,
-        start_date: formData.date,
-        owner_id: session.user.id,
-        status: 'draft',
         format: formData.format,
-        best_of: formData.bestOf,
-        maps_pool: formData.mapsPool ? formData.mapsPool.split(',').map(m => m.trim()).filter(m => m) : null,
-        rules: formData.rules || '',
-        description: formData.description || '',
-        max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null,
-        registration_deadline: formData.registrationDeadline || null,
-        cashprize_total: formData.cashprizeTotal ? parseFloat(formData.cashprizeTotal) : null,
-        cashprize_distribution: Object.keys(cashprizeDistribution).length > 0 ? cashprizeDistribution : null,
-        sponsors: sponsors.length > 0 ? sponsors : null,
-        stream_urls: Object.keys(streamUrls).length > 0 ? streamUrls : null,
-        clips: clips.length > 0 ? clips : null,
-      };
-
-      const tournament = await createTournament(tournamentData);
+        maxTeams: formData.maxParticipants ? parseInt(formData.maxParticipants) : 32,
+        teamSize: formData.teamSize || 5,
+        startDate: formData.date ? new Date(formData.date).getTime() : undefined,
+        endDate: undefined,
+        description: formData.description || undefined,
+        rules: formData.rules || undefined,
+        prizePool: formData.cashprizeTotal ? `${formData.cashprizeTotal}€` : undefined,
+        checkInRequired: formData.checkInRequired,
+      });
 
       toast.success('Tournoi créé avec succès !');
-      navigate(`/tournament/${tournament.id}`);
+      navigate(`/tournament/${tournamentId}`);
     } catch (err) {
       console.error('Erreur création tournoi:', err);
-
-      if (err.issues && Array.isArray(err.issues)) {
-        const zodErrors = {};
-        err.issues.forEach((issue) => {
-          zodErrors[issue.path[0]] = issue.message;
-        });
-        setErrors(zodErrors);
-        toast.error('Erreur de validation : ' + Object.values(zodErrors)[0]);
-      } else {
-        const errorMessage = handleRateLimitError(err, 'créations de tournois');
-        toast.error(errorMessage);
-      }
+      toast.error(err.message || 'Erreur lors de la création du tournoi');
     } finally {
       setLoading(false);
     }
@@ -322,17 +300,29 @@ export default function CreateTournament() {
         errorMessage={errors.date}
       />
 
-      <Input
-        label="Nombre maximum d'équipes (Optionnel)"
-        type="number"
-        min={2}
-        max={1000}
-        placeholder="Ex: 16, 32, 64... (Laisser vide = illimité)"
-        value={formData.maxParticipants}
-        onChange={e => updateField('maxParticipants', e.target.value)}
-        error={!!errors.maxParticipants}
-        errorMessage={errors.maxParticipants}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="Nombre maximum d'équipes"
+          type="number"
+          min={2}
+          max={1000}
+          placeholder="Ex: 16, 32, 64..."
+          value={formData.maxParticipants}
+          onChange={e => updateField('maxParticipants', e.target.value)}
+          error={!!errors.maxParticipants}
+          errorMessage={errors.maxParticipants}
+        />
+
+        <Input
+          label="Joueurs par équipe"
+          type="number"
+          min={1}
+          max={20}
+          placeholder="Ex: 5"
+          value={formData.teamSize}
+          onChange={e => updateField('teamSize', parseInt(e.target.value) || 5)}
+        />
+      </div>
 
       <Input
         label="Date limite d'inscription (Optionnel)"
@@ -477,6 +467,23 @@ export default function CreateTournament() {
       )}
 
       <Card variant="outlined" padding="md" className="border-violet-500/30">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.checkInRequired}
+            onChange={e => updateField('checkInRequired', e.target.checked)}
+            className="w-5 h-5 rounded border-gray-500 bg-transparent text-violet-500 focus:ring-violet-500"
+          />
+          <span className="text-white font-body">
+            Exiger un check-in avant le début du tournoi
+          </span>
+        </label>
+        <p className="text-xs text-gray-400 mt-2 font-body ml-8">
+          Les équipes devront confirmer leur présence avant le début du tournoi
+        </p>
+      </Card>
+
+      <Card variant="outlined" padding="md" className="border-violet-500/30">
         <label className="block mb-3 text-white font-body font-bold">
           📺 Streams Officiels
         </label>
@@ -612,8 +619,19 @@ export default function CreateTournament() {
     </div>
   );
 
+  // Chargement
+  if (!isLoaded || convexUser === undefined) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-10 h-10 border-2 border-[#00F5FF]/30 border-t-[#00F5FF] rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout session={session}>
+    <DashboardLayout>
       <div className="w-full max-w-4xl mx-auto">
         <Card variant="glass" padding="xl" className="shadow-xl">
           {/* Header */}

@@ -1,16 +1,27 @@
+/**
+ * CREATE TEAM - Version Convex
+ * 
+ * Création d'équipe utilisant Convex au lieu de Supabase
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from "@clerk/clerk-react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
-import { handleRateLimitError } from './utils/rateLimitHandler';
 import DashboardLayout from './layouts/DashboardLayout';
-import { useAuth, useDebounce } from './shared/hooks';
-import { createTeam } from './shared/services/api/teams';
+import { useDebounce } from './shared/hooks';
 import { teamSchema } from './shared/utils/schemas/team';
 import { Button, Input, Card, GradientButton } from './shared/components/ui';
 
 export default function CreateTeam() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  const convexUser = useQuery(api.users.getCurrent);
+
+  // Mutation Convex
+  const createTeamMutation = useMutation(api.teamsMutations.create);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -71,7 +82,7 @@ export default function CreateTeam() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!session?.user) {
+    if (!isSignedIn || !convexUser) {
       toast.error('Vous devez être connecté pour créer une équipe');
       return;
     }
@@ -83,11 +94,10 @@ export default function CreateTeam() {
       // Validation avec Zod
       const validatedData = teamSchema.parse(formData);
 
-      // Créer l'équipe via le service API
-      const _team = await createTeam({
+      // Créer l'équipe via Convex
+      await createTeamMutation({
         name: validatedData.name,
         tag: validatedData.tag,
-        captain_id: session.user.id,
       });
 
       toast.success("Équipe créée avec succès !");
@@ -105,17 +115,25 @@ export default function CreateTeam() {
         const firstError = Object.values(zodErrors)[0];
         toast.error('Erreur de validation : ' + firstError);
       } else {
-        // Erreurs API
-        const errorMessage = handleRateLimitError(error, 'créations d\'équipes');
-        toast.error(errorMessage);
+        // Erreurs Convex
+        toast.error(error.message || 'Erreur lors de la création de l\'équipe');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // Chargement
+  if (!isLoaded || (isSignedIn && convexUser === undefined)) {
+    return (
+      <DashboardLayout>
+        <div className="text-white font-body text-center py-20">Chargement...</div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout session={session}>
+    <DashboardLayout>
       <div className="w-full max-w-2xl mx-auto">
         <Card variant="glass" padding="xl" className="shadow-xl">
           <h2 className="font-display text-4xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4 text-center drop-shadow-glow">

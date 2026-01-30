@@ -1,182 +1,141 @@
+/**
+ * USE AUTH HOOK - Version Clerk + Convex
+ * 
+ * Hook unifié pour l'authentification utilisant Clerk
+ * et les données utilisateur depuis Convex
+ */
+
 import { useEffect } from 'react';
+import { useUser, useClerk, useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import useAuthStore from '../../stores/authStore';
-import { supabase } from '../../supabaseClient';
-import { toast } from '../../utils/toast';
 import analytics from '../../utils/analytics';
 import monitoring from '../../utils/monitoring';
 
 /**
  * Hook personnalisé pour la gestion de l'authentification
- * Abstraction complète de la logique auth avec le store Zustand
+ * Abstraction complète de la logique auth avec Clerk + Convex
  */
 export const useAuth = () => {
+  // Clerk hooks
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  const { signOut: clerkSignOut } = useClerk();
+  const { getToken } = useClerkAuth();
+
+  // Convex user data
+  const convexUser = useQuery(api.users.getCurrent);
+
+  // Store Zustand
   const {
-    session,
-    user,
     userRole,
-    loading,
-    setSession,
+    loading: storeLoading,
+    setConvexUser,
     setUserRole,
     setLoading,
-    updateUserRole,
-    signOut: storeSignOut,
+    reset,
+    initialized,
     initialize,
   } = useAuthStore();
 
   /**
-   * Initialiser l'authentification au montage
+   * Synchroniser Convex user avec le store quand il change
    */
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    if (convexUser !== undefined) {
+      setConvexUser(convexUser);
 
-  /**
-   * Écouter les changements d'authentification de Supabase
-   */
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔐 [useAuth] Auth State Change:', event, session?.user?.email || 'No user');
-
-        if (event === 'SIGNED_IN' && session?.user) {
-          setSession(session);
-          
-          // Mettre à jour le rôle de manière non-bloquante
-          updateUserRole(session.user.id).catch(err => {
-            console.error('❌ [useAuth] Erreur updateUserRole:', err);
+      // Monitoring
+      if (convexUser) {
+        try {
+          monitoring.setUser({
+            id: convexUser._id,
+            email: convexUser.email,
+            username: convexUser.username,
           });
-          
-          // Monitoring
-          try {
-            monitoring.setUser({
-              id: session.user.id,
-              email: session.user.email,
-              username: session.user.user_metadata?.username,
-            });
-          } catch (err) {
-            console.warn('Erreur monitoring:', err);
-          }
-          
-          analytics.trackEvent('user_logged_in');
-          toast.success('✅ Connexion réussie !');
-        } else if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUserRole(null);
-          monitoring.setUser(null);
-          analytics.trackEvent('user_logged_out');
-          toast.info('👋 Vous avez été déconnecté');
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          setSession(session);
-          updateUserRole(session.user.id).catch(err => {
-            console.error('❌ [useAuth] Erreur updateUserRole (refresh):', err);
-          });
-        } else if (event === 'USER_UPDATED' && session?.user) {
-          setSession(session);
+        } catch (err) {
+          console.warn('Erreur monitoring:', err);
         }
       }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [setSession, setUserRole, updateUserRole]);
+    }
+  }, [convexUser, setConvexUser]);
 
   /**
-   * Connexion avec email/password
+   * Tracker les événements d'auth
    */
-  const signIn = async (email, password) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      return { data, error: null };
-    } catch (error) {
-      console.error('Erreur connexion:', error);
-      toast.error('Erreur de connexion: ' + error.message);
-      return { data: null, error };
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (isLoaded && isSignedIn && convexUser) {
+      analytics.trackEvent('user_session_active');
     }
-  };
-
-  /**
-   * Inscription avec email/password
-   */
-  const signUp = async (email, password, username) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      toast.success('✅ Inscription réussie ! Vérifiez votre email.');
-      return { data, error: null };
-    } catch (error) {
-      console.error('Erreur inscription:', error);
-      toast.error('Erreur d\'inscription: ' + error.message);
-      return { data: null, error };
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isLoaded, isSignedIn, convexUser]);
 
   /**
    * Déconnexion
    */
   const signOut = async () => {
     try {
-      await storeSignOut();
+      await clerkSignOut();
+      reset();
+      monitoring.setUser(null);
+      analytics.trackEvent('user_logged_out');
       return { error: null };
     } catch (error) {
       console.error('Erreur déconnexion:', error);
-      toast.error('Erreur de déconnexion');
       return { error };
     }
   };
 
-  /**
-   * Vérifier si l'utilisateur est authentifié
-   */
-  const isAuthenticated = !!session && !!user;
+  // États dérivés
+  const loading = !isLoaded || (isSignedIn && convexUser === undefined);
+  const isAuthenticated = isSignedIn && !!convexUser;
+  const isOrganizer = convexUser?.role === 'organizer';
+  const isAdmin = convexUser?.role === 'admin';
 
-  /**
-   * Vérifier si l'utilisateur est organisateur
-   */
-  const isOrganizer = userRole === 'organizer';
+  // Créer un objet session compatible avec l'ancien format
+  const session = isAuthenticated ? {
+    user: {
+      id: convexUser._id,
+      email: convexUser.email,
+      user_metadata: {
+        username: convexUser.username,
+        avatar_url: convexUser.avatarUrl,
+      },
+      created_at: convexUser.createdAt,
+    }
+  } : null;
 
-  /**
-   * Vérifier si l'utilisateur est admin
-   */
-  const isAdmin = userRole === 'admin';
+  // Objet user compatible
+  const user = isAuthenticated ? {
+    id: convexUser._id,
+    email: convexUser.email,
+    username: convexUser.username,
+    avatarUrl: convexUser.avatarUrl,
+    user_metadata: {
+      username: convexUser.username,
+      avatar_url: convexUser.avatarUrl,
+    },
+  } : null;
 
   return {
-    // État
+    // État - Compatible avec l'ancienne API
     session,
     user,
-    userRole,
+    userRole: convexUser?.role || 'player',
     loading,
     isAuthenticated,
     isOrganizer,
     isAdmin,
-    
+
+    // Nouvelles propriétés Clerk
+    clerkUser,
+    convexUser,
+    isLoaded,
+    isSignedIn,
+
     // Actions
-    signIn,
-    signUp,
     signOut,
-    updateUserRole: () => updateUserRole(user?.id),
+    getToken,
+    updateUserRole: (role) => setUserRole(role),
   };
 };
 

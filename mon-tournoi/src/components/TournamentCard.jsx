@@ -1,25 +1,20 @@
-import React, { memo, useState, useEffect } from 'react';
+/**
+ * TOURNAMENT CARD - Version Convex
+ * 
+ * Composant optimisé pour afficher une carte de tournoi
+ * Utilise Clerk pour l'auth au lieu de Supabase
+ */
+
+import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from "@clerk/clerk-react";
 import FollowButton from './FollowButton';
-import { supabase } from '../supabaseClient';
 import { GlassCard, NeonBadge, GradientButton } from '../shared/components/ui';
 import { ArrowRight, Gamepad2, Calendar, Users } from 'lucide-react';
 
 const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => {
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { isSignedIn } = useUser();
 
   const statusStyle = getStatusStyle(tournament.status);
 
@@ -43,15 +38,19 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
     });
   };
 
+  // Convex utilise _id, Supabase utilisait id
+  // On supporte les deux pour la compatibilité pendant la migration
+  const tournamentId = tournament._id || tournament.id;
+
   return (
-    <div onClick={() => navigate(`/tournament/${tournament.id}/public`)}>
+    <div onClick={() => navigate(`/tournament/${tournamentId}/public`)}>
       <GlassCard className="cursor-pointer">
         <div className="flex flex-col gap-4">
           {/* Header with icon and status */}
           <div className="flex items-start justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-violet-400">
-              {tournament.logo_url ? (
-                <img src={tournament.logo_url} alt="" className="w-full h-full rounded-lg object-cover" />
+              {tournament.logo_url || tournament.logoUrl ? (
+                <img src={tournament.logo_url || tournament.logoUrl} alt="" className="w-full h-full rounded-lg object-cover" />
               ) : (
                 <Gamepad2 className="h-6 w-6" />
               )}
@@ -73,19 +72,19 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2">
-            {tournament.start_date && (
+            {(tournament.start_date || tournament.startDate) && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
                 <Calendar className="h-3 w-3" />
-                {formatDate(tournament.start_date)}
+                {formatDate(tournament.start_date || tournament.startDate)}
               </span>
             )}
             <span className="rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
               📊 {getFormatLabel(tournament.format)}
             </span>
-            {tournament.max_participants && (
+            {(tournament.max_participants || tournament.maxTeams) && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
                 <Users className="h-3 w-3" />
-                {tournament.max_participants}
+                {tournament.max_participants || tournament.maxTeams}
               </span>
             )}
           </div>
@@ -99,9 +98,9 @@ const TournamentCard = memo(({ tournament, getStatusStyle, getFormatLabel }) => 
               </span>
             </GradientButton>
 
-            {session && (
+            {isSignedIn && (
               <div onClick={(e) => e.stopPropagation()}>
-                <FollowButton session={session} tournamentId={tournament.id} type="tournament" />
+                <FollowButton tournamentId={tournamentId} type="tournament" />
               </div>
             )}
           </div>

@@ -1,75 +1,68 @@
-import { useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../../supabaseClient';
+/**
+ * USE REALTIME - Remplacement de useSupabaseSubscription
+ * 
+ * Avec Convex, les queries sont AUTOMATIQUEMENT temps réel !
+ * Ce hook est maintenant un simple wrapper pour la compatibilité.
+ * 
+ * DEPRECATED: Utilisez directement useQuery de Convex - c'est déjà temps réel
+ */
+
+import { useEffect, useCallback } from 'react';
 
 /**
- * Hook personnalisé pour les abonnements Supabase Realtime
- * Gère automatiquement le cleanup et évite les fuites mémoire
+ * Hook de compatibilité pour remplacer useSupabaseSubscription
  * 
- * @param {string} channelName - Nom unique du canal
- * @param {Array} subscriptions - Array de config [{table, filter, event, callback}]
+ * IMPORTANT: Avec Convex, vous n'avez PAS BESOIN de ce hook !
+ * useQuery() de Convex est automatiquement réactif et temps réel.
+ * 
+ * @param {string} channelName - Ignoré (Convex gère automatiquement)
+ * @param {Array} subscriptions - Ignoré
  * @param {Object} options - Options (enabled)
- * @returns {Function} - unsubscribe function
+ * @returns {Function} - unsubscribe function (no-op)
+ * 
+ * @example
+ * // Ancien code avec Supabase:
+ * useSupabaseSubscription('matches', [
+ *   { table: 'matches', filter: `tournament_id=eq.${id}`, callback: refetch }
+ * ]);
+ * 
+ * // Nouveau code avec Convex - PAS BESOIN !
+ * const matches = useQuery(api.matches.listByTournament, { tournamentId });
+ * // ↑ C'est automatiquement temps réel
  */
 export const useSupabaseSubscription = (channelName, subscriptions = [], options = {}) => {
   const { enabled = true } = options;
-  const channelRef = useRef(null);
-  const isMountedRef = useRef(true);
-
-  // Cleanup au démontage
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  const unsubscribe = useCallback(() => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-  }, []);
 
   useEffect(() => {
-    if (!enabled || subscriptions.length === 0) {
-      unsubscribe();
-      return;
-    }
-
-    isMountedRef.current = true;
-
-    // Créer le canal
-    let channel = supabase.channel(channelName);
-
-    // Ajouter tous les abonnements
-    subscriptions.forEach(({ table, filter, event = '*', callback }) => {
-      channel = channel.on(
-        'postgres_changes',
-        {
-          event,
-          schema: 'public',
-          table,
-          ...(filter && { filter }),
-        },
-        (payload) => {
-          if (isMountedRef.current) {
-            callback(payload);
-          }
-        }
+    if (enabled && subscriptions.length > 0) {
+      console.log(
+        `[MIGRATION] useSupabaseSubscription("${channelName}") est déprécié. ` +
+        `Convex useQuery() est automatiquement temps réel ! ` +
+        `Tables: ${subscriptions.map(s => s.table).join(', ')}`
       );
-    });
+    }
+  }, [channelName, subscriptions, enabled]);
 
-    // S'abonner
-    channel.subscribe();
-    channelRef.current = channel;
-
-    // Cleanup
-    return () => {
-      isMountedRef.current = false;
-      unsubscribe();
-    };
-  }, [channelName, subscriptions, enabled, unsubscribe]);
+  // No-op unsubscribe (Convex gère automatiquement)
+  const unsubscribe = useCallback(() => {
+    // Rien à faire - Convex gère le cleanup automatiquement
+  }, []);
 
   return unsubscribe;
+};
+
+/**
+ * Hook pour écouter les changements Convex
+ * C'est juste un alias pour clarifier que c'est temps réel
+ */
+export const useConvexRealtime = (query, args) => {
+  // useQuery de Convex est DÉJÀ temps réel
+  // Importez useQuery directement depuis convex/react
+  console.log(
+    '[useConvexRealtime] Info: useQuery de Convex est déjà temps réel. ' +
+    'Utilisez directement useQuery(api.xxx.yyy, args)'
+  );
+  return null;
 };
 
 export default useSupabaseSubscription;

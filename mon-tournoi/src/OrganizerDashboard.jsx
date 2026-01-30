@@ -1,6 +1,14 @@
-import { useEffect, useState, useMemo } from 'react';
+/**
+ * ORGANIZER DASHBOARD - Version Convex
+ * 
+ * Dashboard organisateur utilisant Convex au lieu de Supabase
+ */
+
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { useUser } from "@clerk/clerk-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { AdminGamingAccountRequests } from './components/admin';
@@ -51,86 +59,58 @@ const filterConfig = [
   { key: 'completed', label: 'Terminés', color: 'from-blue-500 to-indigo-500', icon: CheckCircle2 },
 ];
 
-export default function OrganizerDashboard({ session }) {
-  const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function OrganizerDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [showGamingRequests, setShowGamingRequests] = useState(false);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const navigate = useNavigate();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
 
-  useEffect(() => {
-    if (session?.user) {
-      fetchData();
-      fetchPendingRequestsCount();
-    }
-  }, [session]);
+  // Données Convex
+  const convexUser = useQuery(api.users.getCurrent);
 
-  const fetchData = async () => {
-    if (!session?.user) return; // Safety check
+  // Tournois de l'organisateur
+  const tournaments = useQuery(
+    api.tournaments.listByOrganizer,
+    convexUser?._id ? { organizerId: convexUser._id } : "skip"
+  );
 
-    setLoading(true);
-    try {
-      const { data: tournamentsData, error: tError } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('owner_id', session.user.id)
-        .order('created_at', { ascending: false });
+  // Compteur de demandes en attente (si admin/organizer)
+  const pendingRequestsCount = useQuery(
+    api.gamingAccounts.countPending,
+    convexUser?.role === "organizer" ? {} : "skip"
+  );
 
-      if (tError) throw tError;
-      setTournaments(tournamentsData || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Mutation pour supprimer un tournoi
+  const deleteTournamentMutation = useMutation(api.tournamentsMutations.remove);
 
-  const fetchPendingRequestsCount = async () => {
-    try {
-      const { count, error } = await supabase
-        .from('gaming_account_change_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      if (!error) {
-        setPendingRequestsCount(count || 0);
-      }
-    } catch (error) {
-      console.log('Table gaming_account_change_requests not found');
-    }
-  };
-
-  const deleteTournament = async (e, id) => {
+  const deleteTournament = async (e, tournamentId) => {
     e.stopPropagation();
     e.preventDefault();
     if (!confirm("⚠️ Supprimer ce tournoi définitivement ?")) return;
 
-    const { error } = await supabase
-      .from('tournaments')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast.error("Erreur: " + error.message);
-    } else {
+    try {
+      await deleteTournamentMutation({ tournamentId });
       toast.success("Tournoi supprimé");
-      setTournaments(tournaments.filter(t => t.id !== id));
+    } catch (error) {
+      toast.error("Erreur: " + error.message);
     }
   };
 
-  // Stats
-  const stats = useMemo(() => ({
-    total: tournaments.length,
-    active: tournaments.filter(t => t.status === 'ongoing' || t.status === 'active').length,
-    draft: tournaments.filter(t => t.status === 'draft').length,
-    completed: tournaments.filter(t => t.status === 'completed').length,
-  }), [tournaments]);
+  // Stats calculées
+  const stats = useMemo(() => {
+    const list = tournaments || [];
+    return {
+      total: list.length,
+      active: list.filter(t => t.status === 'ongoing' || t.status === 'active').length,
+      draft: list.filter(t => t.status === 'draft').length,
+      completed: list.filter(t => t.status === 'completed').length,
+    };
+  }, [tournaments]);
 
   // Filter tournaments
   const filteredTournaments = useMemo(() => {
-    let filtered = tournaments;
+    let filtered = tournaments || [];
 
     if (activeFilter !== 'all') {
       if (activeFilter === 'active') {
@@ -159,9 +139,12 @@ export default function OrganizerDashboard({ session }) {
     return 0;
   };
 
+  // Chargement
+  const loading = !isLoaded || convexUser === undefined || tournaments === undefined;
+
   if (loading) {
     return (
-      <DashboardLayout session={session}>
+      <DashboardLayout>
         <div className="flex items-center justify-center py-20">
           <div className="w-10 h-10 border-2 border-[#00F5FF]/30 border-t-[#00F5FF] rounded-full animate-spin" />
         </div>
@@ -170,7 +153,7 @@ export default function OrganizerDashboard({ session }) {
   }
 
   return (
-    <DashboardLayout session={session}>
+    <DashboardLayout>
       {/* Background effects */}
       <div className="relative">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -200,7 +183,7 @@ export default function OrganizerDashboard({ session }) {
                 )}
               >
                 🎮 Demandes Gaming
-                {pendingRequestsCount > 0 && (
+                {(pendingRequestsCount || 0) > 0 && (
                   <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#FF3E9D] text-white text-xs rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(255,62,157,0.5)]">
                     {pendingRequestsCount}
                   </span>
@@ -218,7 +201,7 @@ export default function OrganizerDashboard({ session }) {
           {/* Gaming Account Requests Section */}
           {showGamingRequests && (
             <GlassCard className="mb-8">
-              <AdminGamingAccountRequests session={session} />
+              <AdminGamingAccountRequests userId={convexUser?._id} />
             </GlassCard>
           )}
 
@@ -263,7 +246,7 @@ export default function OrganizerDashboard({ session }) {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filteredTournaments.map((tournament) => (
                 <TournamentCard
-                  key={tournament.id}
+                  key={tournament._id}
                   tournament={tournament}
                   onDelete={deleteTournament}
                 />
@@ -337,8 +320,8 @@ function TournamentCard({ tournament, onDelete }) {
         {/* Game icon and status */}
         <div className="flex items-start justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-400 overflow-hidden">
-            {tournament.logo_url ? (
-              <img src={tournament.logo_url} alt="" className="w-full h-full object-cover" />
+            {tournament.logoUrl ? (
+              <img src={tournament.logoUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               <Gamepad2 className="h-6 w-6" />
             )}
@@ -358,29 +341,29 @@ function TournamentCard({ tournament, onDelete }) {
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2">
-          {tournament.start_date && (
+          {tournament.startDate && (
             <span className="rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
-              📅 {formatDate(tournament.start_date)}
+              📅 {formatDate(tournament.startDate)}
             </span>
           )}
           <span className="rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
             {tournament.format === 'double_elimination' ? '🔄' : '⚔️'} {getFormatLabel(tournament.format)}
           </span>
-          {tournament.max_participants && (
+          {tournament.maxTeams && (
             <span className="rounded-full bg-[#1a1a24] px-3 py-1 text-xs text-[#94A3B8]">
-              👥 {tournament.max_participants}
+              👥 {tournament.maxTeams}
             </span>
           )}
         </div>
 
-        {/* Actions - SAME NAVIGATION AS BEFORE */}
+        {/* Actions */}
         <div className="flex items-center gap-2 border-t border-[rgba(148,163,184,0.1)] pt-4">
           <GradientButton
             size="sm"
             className="flex-1"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/organizer/tournament/${tournament.id}`);
+              navigate(`/organizer/tournament/${tournament._id}`);
             }}
           >
             Gérer
@@ -388,14 +371,14 @@ function TournamentCard({ tournament, onDelete }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              window.open(`/tournament/${tournament.id}`, '_blank');
+              window.open(`/tournament/${tournament._id}`, '_blank');
             }}
             className="rounded-lg bg-[#1a1a24] p-2.5 text-[#94A3B8] transition-colors hover:bg-[#2a2a34] hover:text-[#00F5FF]"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
-            onClick={(e) => onDelete(e, tournament.id)}
+            onClick={(e) => onDelete(e, tournament._id)}
             className="rounded-lg bg-[#1a1a24] p-2.5 text-[#94A3B8] transition-colors hover:bg-red-500/20 hover:text-red-400"
           >
             <Trash2 className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import confetti from 'canvas-confetti';
 
 // Composants enfants
@@ -24,6 +25,7 @@ import {
   WaitlistSection
 } from './components/tournament';
 import { GradientButton, GlassCard } from './shared/components/ui';
+
 
 export default function Tournament({ session }) {
   const { id } = useParams();
@@ -59,9 +61,19 @@ export default function Tournament({ session }) {
   const [isSeedingModalOpen, setIsSeedingModalOpen] = useState(false);
   const [isSchedulingModalOpen, setIsSchedulingModalOpen] = useState(false);
   const [schedulingMatch, setSchedulingMatch] = useState(null);
-  const [_actionLoading, setActionLoading] = useState(false); // Pour les actions spécifiques (startTournament, etc.)
+  const [_actionLoading, setActionLoading] = useState(false);
 
-  const isOwner = tournoi && session && tournoi.owner_id === session.user.id;
+  // Mutations Convex
+  const updateTournamentStatus = useMutation(api.tournamentsMutations.updateStatus);
+  const batchCreateMatches = useMutation(api.matchesMutations.batchCreate);
+  const deleteAllMatches = useMutation(api.matchesMutations.deleteAllByTournament);
+  const updateMatchScore = useMutation(api.matchesMutations.updateScore);
+  const updateMatchTeams = useMutation(api.matchesMutations.updateTeams);
+  const removeParticipantMut = useMutation(api.tournamentRegistrationsMutations.removeParticipant);
+  const toggleCheckInMut = useMutation(api.tournamentRegistrationsMutations.toggleCheckIn);
+
+  // Note: organizerId est le champ Convex (Supabase utilisait owner_id)
+  const isOwner = tournoi && session && tournoi.organizerId === session.user?.convexId;
 
   // En mode organizer, forcer isOwner à true pour les propriétaires
   // En mode player, forcer isOwner à false même si c'est le propriétaire (pour une vue joueur pure)
@@ -173,8 +185,10 @@ export default function Tournament({ session }) {
 
     setActionLoading(true);
 
-    // On ne garde que les équipes prêtes (Checked-in)
-    const checkedInParticipants = participants.filter(p => p.checked_in && !p.disqualified);
+    // On ne garde que les équipes prêtes (Checked-in) - adapté pour schéma Convex
+    const checkedInParticipants = participants.filter(p =>
+      (p.status === 'checked_in' || p.checkedIn) && p.status !== 'disqualified'
+    );
 
     if (checkedInParticipants.length < 2) {
       toast.warning("Moins de 2 équipes ont fait leur check-in. Impossible de lancer.");
@@ -182,22 +196,28 @@ export default function Tournament({ session }) {
       return;
     }
 
-    // Utiliser uniquement les équipes check-in pour créer les matchs
-    const participantsForMatches = checkedInParticipants;
+    // Générer l'arbre avec mutations Convex
+    await generateBracketInternal(checkedInParticipants);
 
-    // Générer l'arbre
-    await generateBracketInternal(participantsForMatches);
-
-    // Mettre à jour le statut
-    await supabase.from('tournaments').update({ status: 'ongoing' }).eq('id', id);
+    // Mettre à jour le statut via mutation Convex
+    try {
+      await updateTournamentStatus({ tournamentId: id, status: 'ongoing' });
+    } catch (err) {
+      toast.error('Erreur mise à jour statut: ' + err.message);
+    }
     setActionLoading(false);
   };
 
   const generateBracketInternal = async (participantsList, deleteExisting = true) => {
     if (!tournoi || participantsList.length < 2) return;
 
+    // Supprimer les matchs existants via mutation Convex
     if (deleteExisting) {
-      await supabase.from('matches').delete().eq('tournament_id', id);
+      try {
+        await deleteAllMatches({ tournamentId: id });
+      } catch (err) {
+        console.error('Erreur suppression matchs:', err);
+      }
     }
 
     let matchesToCreate = [];
@@ -393,8 +413,20 @@ export default function Tournament({ session }) {
       });
     }
 
-    const { error: matchError } = await supabase.from('matches').insert(matchesToCreate);
-    if (matchError) toast.error("Erreur création matchs : " + matchError.message);
+    // Convertir les matchs au format Convex et insérer via mutation
+    try {
+      const convexMatches = matchesToCreate.map(m => ({
+        matchNumber: m.match_number,
+        round: m.round_number,
+        team1Id: m.player1_id || undefined,
+        team2Id: m.player2_id || undefined,
+        isLosersBracket: m.bracket_type === 'losers',
+        status: m.status,
+      }));
+      await batchCreateMatches({ tournamentId: id, matches: convexMatches });
+    } catch (matchError) {
+      toast.error("Erreur création matchs : " + matchError.message);
+    }
 
     refetch();
   };
@@ -464,31 +496,24 @@ export default function Tournament({ session }) {
   const removeParticipant = async (pid) => {
     if (!confirm("Exclure cette équipe ?")) return;
 
-    const { error } = await supabase.from('participants').delete().eq('id', pid);
-
-    if (error) {
+    try {
+      await removeParticipantMut({ registrationId: pid });
+      // Ne pas promouvoir automatiquement - l'admin choisira manuellement
+      refetch();
+    } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       toast.error('Erreur lors de la suppression : ' + error.message);
-      return;
     }
-
-    // Ne pas promouvoir automatiquement - l'admin choisira manuellement
-    refetch();
   };
 
   const handleAdminCheckIn = async (participantId, currentStatus) => {
-    const { error } = await supabase
-      .from('participants')
-      .update({ checked_in: !currentStatus, disqualified: false })
-      .eq('id', participantId);
-
-    if (error) {
+    try {
+      await toggleCheckInMut({ registrationId: participantId, checkedIn: !currentStatus });
+      refetch();
+    } catch (error) {
       console.error('Erreur lors du check-in:', error);
       toast.error('Erreur lors du check-in : ' + error.message);
-      return;
     }
-
-    refetch();
   };
 
   const copyPublicLink = () => {

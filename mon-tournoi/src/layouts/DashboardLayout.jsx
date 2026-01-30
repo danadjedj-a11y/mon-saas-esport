@@ -1,43 +1,38 @@
+/**
+ * DASHBOARD LAYOUT - Version Clerk + Convex
+ * 
+ * Utilise Clerk pour l'auth et Convex pour les données
+ */
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { getUserRole } from '../utils/userRole';
+import { useUser, useClerk } from "@clerk/clerk-react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { GradientButton } from '../shared/components/ui';
 import { Menu, X, Bell, User, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 
-export default function DashboardLayout({ children, session = null }) {
+export default function DashboardLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [userRole, setUserRole] = useState(null);
+  const { signOut } = useClerk();
+
+  // Clerk auth
+  const { isSignedIn, user, isLoaded } = useUser();
+
+  // Convex - récupérer l'utilisateur avec son rôle
+  const convexUser = useQuery(api.users.getCurrent);
+  const userRole = convexUser?.role || 'player';
+
+  // Notifications count depuis Convex
+  const notificationCount = useQuery(
+    api.notifications.countUnread,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  ) || 0;
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
-
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      if (session?.user) {
-        const role = await getUserRole(supabase, session.user.id);
-        setUserRole(role);
-      }
-    };
-    fetchUserRole();
-  }, [session]);
-
-  // Fetch notification count
-  useEffect(() => {
-    if (!session?.user) return;
-
-    const fetchNotifications = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .eq('read', false);
-      setNotificationCount(count || 0);
-    };
-    fetchNotifications();
-  }, [session]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -51,7 +46,7 @@ export default function DashboardLayout({ children, session = null }) {
   }, [isUserMenuOpen]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/');
   };
 
@@ -60,7 +55,7 @@ export default function DashboardLayout({ children, session = null }) {
     return location.pathname.startsWith(path);
   };
 
-  // Navigation - EXACTLY THE SAME AS BEFORE
+  // Navigation links
   const mainNavLinks = [
     { path: '/', label: 'Accueil' },
     { path: '/play', label: 'Explorer' },
@@ -81,9 +76,14 @@ export default function DashboardLayout({ children, session = null }) {
   // Combine all nav links for display
   const allNavLinks = [
     ...mainNavLinks,
-    ...(session ? playerNavLinks : []),
-    ...(session && userRole === 'organizer' ? organizerNavLinks : []),
+    ...(isSignedIn ? playerNavLinks : []),
+    ...(isSignedIn && userRole === 'organizer' ? organizerNavLinks : []),
   ];
+
+  // Obtenir les infos utilisateur depuis Clerk ou Convex
+  const username = convexUser?.username || user?.username || user?.firstName || 'Utilisateur';
+  const avatarUrl = convexUser?.avatarUrl || user?.imageUrl;
+  const userInitial = username.charAt(0).toUpperCase();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05050A]">
@@ -106,8 +106,6 @@ export default function DashboardLayout({ children, session = null }) {
           <img src="/Logo.png" alt="Fluky Boys" className="h-10 w-auto" />
         </button>
 
-        {/* ... (rest of nav code implied, but focusing on the div wrapper changes if needed) ... */}
-
         {/* Desktop Navigation Links */}
         <div className="hidden items-center gap-8 md:flex">
           {allNavLinks.map((link) => (
@@ -129,7 +127,7 @@ export default function DashboardLayout({ children, session = null }) {
         {/* Right side - Auth buttons or User menu */}
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          {session && notificationCount > 0 && (
+          {isSignedIn && notificationCount > 0 && (
             <Link
               to="/profile"
               className="relative p-2 text-[#94A3B8] hover:text-[#F8FAFC] transition-colors hidden md:block"
@@ -142,17 +140,21 @@ export default function DashboardLayout({ children, session = null }) {
           )}
 
           {/* User Menu or Auth Buttons */}
-          {session ? (
+          {isSignedIn ? (
             <div className="relative hidden md:block user-menu-container">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-[rgba(99,102,241,0.1)] transition-colors border border-transparent hover:border-[rgba(99,102,241,0.2)]"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#EC4899] flex items-center justify-center text-sm font-bold text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]">
-                  {session.user.user_metadata?.username?.charAt(0)?.toUpperCase() || '👤'}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#EC4899] flex items-center justify-center text-sm font-bold text-white shadow-[0_0_15px_rgba(139,92,246,0.3)] overflow-hidden">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    userInitial
+                  )}
                 </div>
                 <span className="text-sm text-[#F8FAFC]">
-                  {session.user.user_metadata?.username || 'Utilisateur'}
+                  {username}
                 </span>
                 <ChevronDown className="h-4 w-4 text-[#94A3B8]" />
               </button>
@@ -162,7 +164,7 @@ export default function DashboardLayout({ children, session = null }) {
                 <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[rgba(13,13,20,0.98)] backdrop-blur-xl border border-[rgba(99,102,241,0.15)] shadow-[0_0_30px_rgba(0,0,0,0.5)] z-50">
                   <div className="p-3 border-b border-[rgba(148,163,184,0.1)]">
                     <p className="text-sm font-medium text-[#F8FAFC]">
-                      {session.user.user_metadata?.username || 'Utilisateur'}
+                      {username}
                     </p>
                     <p className="text-xs text-[#94A3B8]">
                       {userRole === 'organizer' ? '⭐ Organisateur' : '🎮 Joueur'}
@@ -237,19 +239,23 @@ export default function DashboardLayout({ children, session = null }) {
               ))}
 
               {/* Mobile User Section */}
-              {session ? (
+              {isSignedIn ? (
                 <div className="pt-4 mt-4 border-t border-[rgba(148,163,184,0.1)] space-y-2">
                   <Link
                     to="/profile"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[rgba(99,102,241,0.1)]"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#EC4899] flex items-center justify-center text-sm font-bold text-white">
-                      {session.user.user_metadata?.username?.charAt(0)?.toUpperCase() || '👤'}
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#EC4899] flex items-center justify-center text-sm font-bold text-white overflow-hidden">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        userInitial
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-[#F8FAFC]">
-                        {session.user.user_metadata?.username || 'Profil'}
+                        {username}
                       </p>
                       <p className="text-xs text-[#94A3B8]">
                         {userRole === 'organizer' ? 'Organisateur' : 'Joueur'}

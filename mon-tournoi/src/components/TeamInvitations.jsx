@@ -1,52 +1,34 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * TEAM INVITATIONS - Version Convex
+ * 
+ * Composant pour afficher les invitations d'équipe reçues
+ * Utilise Convex au lieu de Supabase
+ */
+
+import React, { useState } from 'react';
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Card, Button, Avatar, Badge } from '../shared/components/ui';
-import { getUserInvitations, acceptInvitation, declineInvitation } from '../shared/services/api/teams';
 import { toast } from '../utils/toast';
 
-/**
- * Composant pour afficher les invitations d'équipe reçues
- * - Liste des invitations en attente
- * - Boutons Accepter/Refuser
- * - Mise à jour automatique après action
- */
-const TeamInvitations = ({ userId, onUpdate }) => {
-  const [invitations, setInvitations] = useState([]);
-  const [loading, setLoading] = useState(true);
+const TeamInvitations = ({ userId }) => {
   const [processingId, setProcessingId] = useState(null);
 
-  useEffect(() => {
-    if (userId) {
-      loadInvitations();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  // Récupération des invitations via Convex (temps réel)
+  const invitations = useQuery(
+    api.teams.listInvitations,
+    userId ? { userId, status: "pending" } : "skip"
+  );
 
-  const loadInvitations = async () => {
-    try {
-      setLoading(true);
-      const data = await getUserInvitations(userId);
-      setInvitations(data);
-    } catch (error) {
-      console.error('Erreur chargement invitations:', error);
-      toast.error('Erreur lors du chargement des invitations');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Mutations Convex
+  const acceptInvitation = useMutation(api.teamsMutations.acceptInvitation);
+  const declineInvitation = useMutation(api.teamsMutations.declineInvitation);
 
   const handleAccept = async (invitationId) => {
     try {
       setProcessingId(invitationId);
-      await acceptInvitation(invitationId);
+      await acceptInvitation({ invitationId });
       toast.success('✅ Invitation acceptée ! Vous faites maintenant partie de l\'équipe.');
-      
-      // Recharger les invitations
-      await loadInvitations();
-      
-      // Notifier le parent pour rafraîchir les données
-      if (onUpdate) {
-        onUpdate();
-      }
     } catch (error) {
       console.error('Erreur acceptation invitation:', error);
       toast.error('Erreur lors de l\'acceptation de l\'invitation');
@@ -58,11 +40,8 @@ const TeamInvitations = ({ userId, onUpdate }) => {
   const handleDecline = async (invitationId) => {
     try {
       setProcessingId(invitationId);
-      await declineInvitation(invitationId);
+      await declineInvitation({ invitationId });
       toast.success('Invitation refusée');
-      
-      // Recharger les invitations
-      await loadInvitations();
     } catch (error) {
       console.error('Erreur refus invitation:', error);
       toast.error('Erreur lors du refus de l\'invitation');
@@ -71,7 +50,8 @@ const TeamInvitations = ({ userId, onUpdate }) => {
     }
   };
 
-  if (loading) {
+  // Chargement
+  if (invitations === undefined) {
     return (
       <Card variant="glass" padding="lg">
         <div className="text-center py-8">
@@ -82,27 +62,20 @@ const TeamInvitations = ({ userId, onUpdate }) => {
     );
   }
 
-  if (invitations.length === 0) {
-    return (
-      <Card variant="outlined" padding="lg">
-        <div className="text-center py-8">
-          <div className="text-6xl mb-4">📬</div>
-          <h3 className="font-display text-xl text-gray-300 mb-2">
-            Aucune invitation
-          </h3>
-          <p className="text-gray-400 font-body text-sm">
-            Vous n'avez pas d'invitation d'équipe en attente
-          </p>
-        </div>
-      </Card>
-    );
+  // Pas d'invitations
+  if (!invitations || invitations.length === 0) {
+    return null; // Ne pas afficher de carte vide sur le dashboard
   }
 
   return (
     <div className="space-y-4">
+      <h3 className="font-display text-xl text-cyan-400 mb-4">
+        📬 Invitations en attente ({invitations.length})
+      </h3>
+
       {invitations.map((invitation) => (
         <Card
-          key={invitation.id}
+          key={invitation._id}
           variant="glass"
           padding="lg"
           className="border-violet-500/30"
@@ -111,7 +84,7 @@ const TeamInvitations = ({ userId, onUpdate }) => {
             {/* Informations de l'équipe */}
             <div className="flex items-center gap-4 flex-1">
               <Avatar
-                src={invitation.team?.logo_url}
+                src={invitation.team?.logoUrl}
                 name={invitation.team?.name || 'Équipe'}
                 size="lg"
               />
@@ -124,12 +97,12 @@ const TeamInvitations = ({ userId, onUpdate }) => {
                 </p>
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar
-                    src={invitation.invited_by_user?.avatar_url}
-                    name={invitation.invited_by_user?.username || 'Joueur'}
+                    src={invitation.inviter?.avatarUrl}
+                    name={invitation.inviter?.username || 'Joueur'}
                     size="xs"
                   />
                   <p className="text-xs text-gray-300 font-body">
-                    Invité par <span className="text-cyan-400">{invitation.invited_by_user?.username}</span>
+                    Invité par <span className="text-cyan-400">{invitation.inviter?.username}</span>
                   </p>
                 </div>
                 {invitation.message && (
@@ -140,7 +113,7 @@ const TeamInvitations = ({ userId, onUpdate }) => {
                   </div>
                 )}
                 <p className="text-xs text-gray-500 font-body mt-2">
-                  {new Date(invitation.created_at).toLocaleDateString('fr-FR', {
+                  {new Date(invitation._creationTime).toLocaleDateString('fr-FR', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
@@ -154,9 +127,9 @@ const TeamInvitations = ({ userId, onUpdate }) => {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => handleAccept(invitation.id)}
+                onClick={() => handleAccept(invitation._id)}
                 disabled={processingId !== null}
-                loading={processingId === invitation.id}
+                loading={processingId === invitation._id}
                 fullWidth
               >
                 ✓ Accepter
@@ -164,7 +137,7 @@ const TeamInvitations = ({ userId, onUpdate }) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleDecline(invitation.id)}
+                onClick={() => handleDecline(invitation._id)}
                 disabled={processingId !== null}
                 fullWidth
               >

@@ -1,213 +1,100 @@
-import React, { useState, useEffect, useCallback } from 'react';
+/**
+ * MY TEAM - Version Convex
+ * 
+ * Gestion des équipes utilisant Convex au lieu de Supabase
+ */
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from "@clerk/clerk-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { useAuth } from './shared/hooks';
-import { useTeam } from './features/teams/hooks/useTeam';
-import { supabase } from './supabaseClient';
 import InvitePlayerModal from './components/InvitePlayerModal';
-import { sendTeamInvitation, getPendingInvitations } from './shared/services/api/teams';
-import { notifyTeamInvitation } from './notificationUtils';
-import { sendTeamInvitationEmail } from './shared/services/emailService';
-import { Card, Badge, Button, GradientButton } from './shared/components/ui';
+import { Card, Badge, Button, GradientButton, Avatar } from './shared/components/ui';
 import MyTeamErrorBoundary from './shared/components/ErrorBoundary/MyTeamErrorBoundary';
 
 export default function MyTeam() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
 
-  // États pour toutes les équipes
-  const [allTeams, setAllTeams] = useState([]);
+  // Données Convex
+  const convexUser = useQuery(api.users.getCurrent);
+  const allTeams = useQuery(
+    api.teams.listByUser,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+
+  // États locaux
   const [selectedTeamId, setSelectedTeamId] = useState(null);
-  const [teamsLoading, setTeamsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [currentUserRole, setCurrentUserRole] = useState('player');
 
-  // Utiliser useTeam pour l'équipe sélectionnée
-  const {
-    team: currentTeam,
-    members,
-    loading: teamLoading,
-    error: teamError,
-    refetch: _refetchTeam,
-    removeMember,
-    updateTeam,
-    updateMemberRole,
-    isCaptain,
-    canManageMembers,
-  } = useTeam(selectedTeamId, {
-    enabled: !!selectedTeamId,
-    subscribe: true,
-    currentUserId: session?.user?.id,
-  });
+  // Mutations Convex
+  const inviteMember = useMutation(api.teamsMutations.inviteMember);
+  const removeMember = useMutation(api.teamsMutations.removeMember);
+  const updateMemberRole = useMutation(api.teamsMutations.updateMemberRole);
+  const updateTeam = useMutation(api.teamsMutations.update);
 
-  // Gestion d'erreur pour le chargement de l'équipe
+  // Sélectionner automatiquement la première équipe
   useEffect(() => {
-    if (teamError) {
-      console.error('Erreur chargement équipe:', teamError);
-      // Ne pas afficher de toast car l'ErrorBoundary gère l'affichage
+    if (allTeams && allTeams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(allTeams[0]._id);
     }
-  }, [teamError]);
+  }, [allTeams, selectedTeamId]);
 
-  // Calculer si l'utilisateur peut gérer les membres (inviter/exclure)
-  const canManage = isCaptain || canManageMembers(currentUserRole);
+  // Récupérer les données de l'équipe sélectionnée
+  const currentTeam = useQuery(
+    api.teams.getById,
+    selectedTeamId ? { teamId: selectedTeamId } : "skip"
+  );
 
-  // Charger toutes les équipes de l'utilisateur
-  const fetchAllMyTeams = useCallback(async () => {
-    if (!session?.user?.id) {
-      setTeamsLoading(false);
-      return;
-    }
+  // Récupérer les membres de l'équipe
+  const members = useQuery(
+    api.teams.getMembers,
+    selectedTeamId ? { teamId: selectedTeamId } : "skip"
+  );
 
-    try {
-      // 1. Récupérer les équipes où je suis CAPITAINE
-      const { data: captainTeams, error: captainError } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('captain_id', session.user.id)
-        .order('created_at', { ascending: true });
+  // Récupérer les invitations en attente
+  const pendingInvitations = useQuery(
+    api.teams.getPendingInvitations,
+    selectedTeamId ? { teamId: selectedTeamId } : "skip"
+  );
 
-      if (captainError) {
-        console.error('Erreur chargement équipes capitaine:', captainError);
-      }
+  // Calculer si l'utilisateur est capitaine
+  const isCaptain = useMemo(() => {
+    if (!currentTeam || !convexUser) return false;
+    return currentTeam.captainId === convexUser._id;
+  }, [currentTeam, convexUser]);
 
-      // 2. Récupérer les équipes où je suis MEMBRE
-      const { data: memberData, error: memberError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', session.user.id);
+  // Role de l'utilisateur actuel dans l'équipe
+  const currentUserRole = useMemo(() => {
+    if (!members || !convexUser) return 'player';
+    if (isCaptain) return 'captain';
+    const myMember = members.find(m => m.userId === convexUser._id);
+    return myMember?.role || 'player';
+  }, [members, convexUser, isCaptain]);
 
-      if (memberError) {
-        console.error('Erreur chargement membres:', memberError);
-      }
+  const canManage = isCaptain || ['manager', 'coach'].includes(currentUserRole);
 
-      let memberTeams = [];
-      if (memberData && memberData.length > 0) {
-        const ids = memberData.map(m => m.team_id).filter(Boolean);
-        if (ids.length > 0) {
-          const { data: teams, error: teamsError } = await supabase
-            .from('teams')
-            .select('*')
-            .in('id', ids)
-            .order('created_at', { ascending: true });
-
-          if (teamsError) {
-            console.error('Erreur chargement équipes membres:', teamsError);
-          }
-          memberTeams = teams || [];
-        }
-      }
-
-      // 3. Fusionner les deux listes (en évitant les doublons)
-      const mergedTeams = [...(captainTeams || []), ...memberTeams].filter(Boolean);
-      const uniqueTeams = Array.from(new Map(mergedTeams.map(item => [item.id, item])).values());
-
-      setAllTeams(uniqueTeams);
-    } catch (error) {
-      console.error('Erreur chargement équipes:', error);
-      // Toast seulement si c'est une erreur réseau/API, pas une erreur fatale
-      if (error.message && !error.message.includes('lexical declaration')) {
-        toast.error('Erreur lors du chargement des équipes');
-      }
-    } finally {
-      setTeamsLoading(false);
-    }
-  }, [session]);
-
-  // Charger les équipes au montage
-  useEffect(() => {
-    fetchAllMyTeams();
-  }, [fetchAllMyTeams]);
-
-  // Sélectionner la première équipe par défaut quand les équipes sont chargées
-  useEffect(() => {
-    if (allTeams.length > 0 && !selectedTeamId) {
-      setSelectedTeamId(allTeams[0].id);
-    }
-  }, [allTeams.length, selectedTeamId]);
-
-  // Charger les invitations en attente quand l'équipe change
-  useEffect(() => {
-    if (selectedTeamId) {
-      loadPendingInvitations();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTeamId]);
-
-  const loadPendingInvitations = async () => {
+  // Handlers
+  const handleInvitePlayer = async (userId, message) => {
     if (!selectedTeamId) return;
 
     try {
-      const invitations = await getPendingInvitations(selectedTeamId);
-      setPendingInvitations(invitations || []);
-    } catch (error) {
-      console.error('Erreur chargement invitations:', error);
-      // Ne pas afficher de toast ici pour éviter trop de notifications
-    }
-  };
-
-  const handleInvitePlayer = async (userId, message) => {
-    try {
       setInviting(true);
-
-      // Envoyer l'invitation
-      await sendTeamInvitation(selectedTeamId, userId, session.user.id, message);
-
-      // Récupérer les infos de l'équipe et de l'utilisateur invitant
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', session.user.id)
-        .single();
-
-      // Récupérer les infos de l'utilisateur invité
-      const { data: invitedUserData } = await supabase
-        .from('profiles')
-        .select('username, email')
-        .eq('id', userId)
-        .single();
-
-      // Envoyer la notification in-app
-      await notifyTeamInvitation(
-        userId,
-        selectedTeamId,
-        currentTeam.name,
-        profileData?.username || session.user.email
-      );
-
-      // Envoyer l'email d'invitation
-      // L'email est stocké dans profiles.email (synchronisé depuis auth.users)
-      const recipientEmail = invitedUserData?.email;
-
-      if (recipientEmail) {
-        try {
-          await sendTeamInvitationEmail({
-            recipientEmail: recipientEmail,
-            recipientName: invitedUserData.username,
-            teamName: currentTeam.name,
-            inviterName: profileData?.username || 'Un capitaine',
-            message: message,
-            invitationUrl: `${window.location.origin}/player/invitations`
-          });
-          console.log('✅ Email envoyé à:', recipientEmail);
-        } catch (emailError) {
-          console.warn('Email non envoyé:', emailError);
-        }
-      } else {
-        console.warn('⚠️ Pas d\'email trouvé pour le joueur invité');
-      }
-
+      await inviteMember({
+        teamId: selectedTeamId,
+        inviteeId: userId,
+        message,
+      });
       toast.success('✅ Invitation envoyée avec succès !');
       setShowInviteModal(false);
-
-      // Recharger les invitations
-      await loadPendingInvitations();
     } catch (error) {
       console.error('Erreur envoi invitation:', error);
-      toast.error('Erreur lors de l\'envoi de l\'invitation');
+      toast.error('Erreur lors de l\'envoi de l\'invitation: ' + error.message);
     } finally {
       setInviting(false);
     }
@@ -217,151 +104,111 @@ export default function MyTeam() {
     setSelectedTeamId(teamId);
   };
 
-  // Mettre à jour le rôle de l'utilisateur actuel quand les membres changent
-  useEffect(() => {
-    if (currentTeam && members.length > 0 && session?.user?.id) {
-      const myMember = members.find(m => m.user_id === session.user.id);
-      if (myMember) {
-        // Si on est le capitaine
-        if (currentTeam.captain_id === session.user.id) {
-          setCurrentUserRole('captain');
-        } else {
-          setCurrentUserRole(myMember.role || 'player');
-        }
-      }
-    }
-  }, [members, currentTeam, session]);
-
-  const uploadLogo = async (event) => {
-    if (!currentTeam || !isCaptain) return;
-
-    try {
-      setUploading(true);
-      if (!event.target.files || event.target.files.length === 0) throw new Error('Sélectionne une image !');
-
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentTeam.id}-${Date.now()}.${fileExt}`;
-
-      // Upload
-      const { error: uploadError } = await supabase.storage.from('team-logos').upload(fileName, file);
-      if (uploadError) throw uploadError;
-
-      // URL Publique
-      const { data: { publicUrl } } = supabase.storage.from('team-logos').getPublicUrl(fileName);
-
-      // Update DB via useTeam hook
-      const { error: updateError } = await updateTeam({ logo_url: publicUrl });
-      if (updateError) throw updateError;
-
-      // Mettre à jour aussi la liste globale
-      setAllTeams(prev => prev.map(t => t.id === currentTeam.id ? { ...t, logo_url: publicUrl } : t));
-
-      toast.success("Logo mis à jour !");
-    } catch (error) {
-      toast.error('Erreur : ' + error.message);
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const copyInviteLink = () => {
     if (!currentTeam) return;
-    const link = `${window.location.origin}/join-team/${currentTeam.id}`;
+    const link = `${window.location.origin}/join-team/${currentTeam._id}`;
     navigator.clipboard.writeText(link);
     toast.success("Lien d'invitation copié !");
   };
 
   const handleKickMember = async (userId) => {
     if (!confirm("Virer ce joueur ?")) return;
-    const { error } = await removeMember(userId);
-    if (error) {
-      toast.error('Erreur : ' + error.message);
-    } else {
+    try {
+      await removeMember({
+        teamId: selectedTeamId,
+        userId,
+      });
       toast.success('Joueur exclu avec succès');
+    } catch (error) {
+      toast.error('Erreur : ' + error.message);
     }
   };
 
   const handleChangeRole = async (userId, newRole) => {
-    const { error } = await updateMemberRole(userId, newRole);
-    if (error) {
-      toast.error('Erreur : ' + error.message);
-    } else {
+    try {
+      await updateMemberRole({
+        teamId: selectedTeamId,
+        userId,
+        role: newRole,
+      });
       toast.success('Rôle mis à jour avec succès');
+    } catch (error) {
+      toast.error('Erreur : ' + error.message);
     }
   };
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
-      case 'captain':
-        return 'bg-orange-500 text-white';
-      case 'manager':
-        return 'bg-blue-500 text-white';
-      case 'coach':
-        return 'bg-green-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
+      case 'captain': return 'bg-orange-500 text-white';
+      case 'manager': return 'bg-blue-500 text-white';
+      case 'coach': return 'bg-green-500 text-white';
+      default: return 'bg-gray-500 text-white';
     }
   };
 
   const getRoleLabel = (role) => {
     switch (role) {
-      case 'captain':
-        return 'CAPITAINE';
-      case 'manager':
-        return 'MANAGER';
-      case 'coach':
-        return 'COACH';
-      default:
-        return 'JOUEUR';
+      case 'captain': return 'CAPITAINE';
+      case 'manager': return 'MANAGER';
+      case 'coach': return 'COACH';
+      default: return 'JOUEUR';
     }
   };
 
-  const loading = teamsLoading || teamLoading;
+  // Chargement
+  const loading = !isLoaded || allTeams === undefined || (selectedTeamId && currentTeam === undefined);
 
-  // Si on charge les équipes ou si on charge l'équipe sélectionnée
-  if (loading) return (
-    <MyTeamErrorBoundary>
-      <DashboardLayout session={session}>
-        <div className="text-white font-body text-center py-20">Chargement...</div>
-      </DashboardLayout>
-    </MyTeamErrorBoundary>
-  );
-
-  // Si pas d'équipes du tout
-  if (allTeams.length === 0) return (
-    <MyTeamErrorBoundary>
-      <DashboardLayout session={session}>
-        <div className="text-center py-20">
-          <h2 className="font-display text-4xl text-cyan-400 mb-6" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>Tu n'as pas encore d'équipe.</h2>
-          <GradientButton
-            onClick={() => navigate('/create-team')}
-            size="lg"
-          >
-            Créer une Team
-          </GradientButton>
-        </div>
-      </DashboardLayout>
-    </MyTeamErrorBoundary>
-  );
-
-  // Si on a des équipes mais pas d'équipe sélectionnée OU si l'équipe est en cours de chargement
-  if (allTeams.length > 0 && (!selectedTeamId || !currentTeam)) {
+  if (loading) {
     return (
       <MyTeamErrorBoundary>
-        <DashboardLayout session={session}>
+        <DashboardLayout>
+          <div className="text-white font-body text-center py-20">
+            <div className="text-4xl mb-4 animate-pulse">⏳</div>
+            Chargement...
+          </div>
+        </DashboardLayout>
+      </MyTeamErrorBoundary>
+    );
+  }
+
+  // Pas d'équipes
+  if (!allTeams || allTeams.length === 0) {
+    return (
+      <MyTeamErrorBoundary>
+        <DashboardLayout>
+          <div className="text-center py-20">
+            <h2 className="font-display text-4xl text-cyan-400 mb-6" style={{ textShadow: '0 0 15px rgba(139, 92, 246, 0.5)' }}>
+              Tu n'as pas encore d'équipe.
+            </h2>
+            <GradientButton onClick={() => navigate('/create-team')} size="lg">
+              Créer une Team
+            </GradientButton>
+          </div>
+        </DashboardLayout>
+      </MyTeamErrorBoundary>
+    );
+  }
+
+  // Attente de l'équipe sélectionnée
+  if (!currentTeam) {
+    return (
+      <MyTeamErrorBoundary>
+        <DashboardLayout>
           <div className="text-white font-body text-center py-20">Chargement de l'équipe...</div>
         </DashboardLayout>
       </MyTeamErrorBoundary>
     );
   }
 
+  const membersList = members || [];
+  const invitationsList = pendingInvitations || [];
+
   return (
     <MyTeamErrorBoundary>
-      <DashboardLayout session={session}>
+      <DashboardLayout>
         <div className="w-full max-w-3xl mx-auto">
           <div className="flex justify-between items-center mb-6">
-            {/* SÉLECTEUR D'ÉQUIPE (Visible seulement si plusieurs équipes) */}
+            {/* SÉLECTEUR D'ÉQUIPE */}
             {allTeams.length > 1 && (
               <select
                 value={selectedTeamId || ''}
@@ -369,7 +216,7 @@ export default function MyTeam() {
                 className="px-4 py-2 bg-black/50 border-2 border-violet-500 text-white rounded-lg font-body text-base transition-all duration-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20"
               >
                 {allTeams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} [{t.tag}]</option>
+                  <option key={t._id} value={t._id}>{t.name} [{t.tag}]</option>
                 ))}
               </select>
             )}
@@ -380,30 +227,11 @@ export default function MyTeam() {
             {/* EN-TÊTE AVEC LOGO */}
             <div className="flex items-center gap-5 mb-8">
               <div className="relative w-20 h-20 flex-shrink-0">
-                <img
-                  src={currentTeam.logo_url || `https://ui-avatars.com/api/?name=${currentTeam.tag}&background=random&size=128`}
-                  alt="Team Logo"
-                  className="w-full h-full rounded-xl object-cover border-2 border-cyan-500"
+                <Avatar
+                  src={currentTeam.logoUrl}
+                  name={currentTeam.tag}
+                  size="xl"
                 />
-
-                {isCaptain && (
-                  <>
-                    <label
-                      htmlFor="logo-upload"
-                      className={`absolute -bottom-1 -right-1 bg-cyan-500 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-2 border-gray-900 font-bold text-lg transition-all duration-300 hover:bg-violet-600 hover:scale-110`}
-                    >
-                      {uploading ? '⏳' : '+'}
-                    </label>
-                    <input
-                      type="file"
-                      id="logo-upload"
-                      accept="image/*"
-                      onChange={uploadLogo}
-                      disabled={uploading}
-                      className="hidden"
-                    />
-                  </>
-                )}
               </div>
 
               <div className="flex-1 overflow-hidden">
@@ -420,9 +248,7 @@ export default function MyTeam() {
                   🔗 Lien
                 </button>
                 {canManage && (
-                  <GradientButton
-                    onClick={() => setShowInviteModal(true)}
-                  >
+                  <GradientButton onClick={() => setShowInviteModal(true)}>
                     👥 Inviter Joueur
                   </GradientButton>
                 )}
@@ -430,22 +256,22 @@ export default function MyTeam() {
             </div>
 
             {/* INVITATIONS EN ATTENTE */}
-            {canManage && pendingInvitations.length > 0 && (
+            {canManage && invitationsList.length > 0 && (
               <div className="mb-6">
                 <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-xl text-cyan-400 mb-4" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>
-                  Invitations envoyées ({pendingInvitations.length})
+                  Invitations envoyées ({invitationsList.length})
                 </h3>
                 <div className="space-y-2">
-                  {pendingInvitations.map((inv) => (
-                    <div key={inv.id} className="bg-black/30 border border-violet-500/30 rounded-lg p-3 flex items-center justify-between">
+                  {invitationsList.map((inv) => (
+                    <div key={inv._id} className="bg-black/30 border border-violet-500/30 rounded-lg p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={inv.invited_user?.avatar_url || `https://ui-avatars.com/api/?name=${inv.invited_user?.username || 'User'}`}
-                          className="w-6 h-6 rounded-full object-cover border border-cyan-500"
-                          alt=""
+                        <Avatar
+                          src={inv.invitee?.avatarUrl}
+                          name={inv.invitee?.username || 'User'}
+                          size="sm"
                         />
                         <span className="text-sm font-body text-white">
-                          {inv.invited_user?.username || 'Joueur'}
+                          {inv.invitee?.username || 'Joueur'}
                         </span>
                       </div>
                       <Badge variant="warning" size="sm">En attente</Badge>
@@ -456,53 +282,52 @@ export default function MyTeam() {
             )}
 
             {/* LISTE DES MEMBRES */}
-            <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-2xl text-cyan-400 mb-6" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>Roster ({members.length})</h3>
+            <h3 className="border-b-2 border-cyan-500 pb-3 font-display text-2xl text-cyan-400 mb-6" style={{ textShadow: '0 0 10px rgba(139, 92, 246, 0.5)' }}>
+              Roster ({membersList.length})
+            </h3>
             <ul className="list-none p-0">
-              {members.map(m => {
-                const isCurrentUser = m.user_id === session.user.id;
-                const memberRole = m.user_id === currentTeam.captain_id ? 'captain' : (m.role || 'player');
+              {membersList.map(m => {
+                const isCurrentUser = m.userId === convexUser?._id;
+                const memberRole = m.userId === currentTeam.captainId ? 'captain' : (m.role || 'player');
 
                 return (
-                  <li key={m.id} className="flex justify-between items-center py-4 border-b border-white/5">
+                  <li key={m._id} className="flex justify-between items-center py-4 border-b border-white/5">
                     <div className="flex items-center gap-3 flex-1">
-                      <img
-                        src={m.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${m.profiles?.username || 'User'}`}
-                        className="w-8 h-8 rounded-full object-cover border-2 border-cyan-500"
-                        alt=""
+                      <Avatar
+                        src={m.user?.avatarUrl}
+                        name={m.user?.username || 'User'}
+                        size="sm"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className={`font-body ${isCurrentUser ? 'text-cyan-400' : 'text-white'}`}>
-                            {m.profiles?.username || 'Joueur sans pseudo'}
+                            {m.user?.username || 'Joueur sans pseudo'}
                           </span>
                           <span className={`text-xs px-2 py-1 rounded font-body ${getRoleBadgeColor(memberRole)}`}>
                             {getRoleLabel(memberRole)}
                           </span>
                         </div>
-                        {/* Dropdown pour changer le rôle (uniquement capitaine et non pour lui-même) */}
+                        {/* Dropdown pour changer le rôle */}
                         {isCaptain && !isCurrentUser && memberRole !== 'captain' && (
                           <div className="mt-1">
                             <select
                               value={memberRole}
-                              onChange={(e) => handleChangeRole(m.user_id, e.target.value)}
+                              onChange={(e) => handleChangeRole(m.userId, e.target.value)}
                               className="px-2 py-1 text-xs bg-black/50 border border-violet-500/50 text-white rounded font-body transition-all duration-200 hover:border-cyan-500 focus:outline-none focus:border-cyan-500"
                             >
                               <option value="player">Joueur</option>
                               <option value="coach">Coach</option>
                               <option value="manager">Manager</option>
                             </select>
-                            <span className="ml-2 text-xs text-white/50 font-body">
-                              {canManageMembers(memberRole) && '🔑 Peut inviter/exclure'}
-                            </span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {canManage && !isCurrentUser && (
+                    {canManage && !isCurrentUser && memberRole !== 'captain' && (
                       <button
                         type="button"
-                        onClick={() => handleKickMember(m.user_id)}
+                        onClick={() => handleKickMember(m.userId)}
                         className="px-3 py-1 bg-transparent border-2 border-violet-500 text-white rounded-lg font-display text-xs uppercase tracking-wide transition-all duration-300 hover:bg-violet-600 hover:border-cyan-500"
                       >
                         Exclure
@@ -520,7 +345,7 @@ export default function MyTeam() {
           isOpen={showInviteModal}
           onClose={() => setShowInviteModal(false)}
           onInvite={handleInvitePlayer}
-          excludedUserIds={members.map(m => m.user_id)}
+          excludedUserIds={membersList.map(m => m.userId)}
           loading={inviting}
         />
       </DashboardLayout>

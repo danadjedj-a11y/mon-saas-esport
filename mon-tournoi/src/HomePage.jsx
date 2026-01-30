@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { supabase } from './supabaseClient';
+import { useUser } from "@clerk/clerk-react";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
 import logger from './utils/logger';
 import TournamentCard from './components/TournamentCard';
@@ -85,10 +87,15 @@ function FloatingParticles() {
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const [allTournaments, setAllTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState(null);
   const navigate = useNavigate();
+
+  // Clerk auth (remplace Supabase session)
+  const { isSignedIn, user } = useUser();
+
+  // Convex query - temps réel automatique ! Plus besoin de fetch manuel
+  const tournamentsData = useQuery(api.tournaments.listPublic, { limit: 100 });
+  const allTournaments = tournamentsData || [];
+  const loading = tournamentsData === undefined;
 
   // États pour recherche, filtres et pagination
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,69 +105,9 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState('date');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
-  const isFetchingRef = useRef(false);
 
-  const fetchTournaments = useCallback(async () => {
-    if (isFetchingRef.current) {
-      logger.debug('Chargement déjà en cours, ignoré');
-      return;
-    }
-
-    isFetchingRef.current = true;
-    setLoading(true);
-
-    try {
-      logger.debug('Chargement des tournois...');
-
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .in('status', ['draft', 'ongoing'])
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        logger.error('Erreur chargement tournois', error);
-        toast.error(`Erreur: ${error.message}`);
-        setAllTournaments([]);
-      } else {
-        logger.debug('Tournois chargés', { count: data?.length || 0 });
-        setAllTournaments(data || []);
-      }
-    } catch (err) {
-      logger.error('Erreur lors du chargement des tournois', { message: err.message });
-      toast.error(`Erreur de chargement: ${err.message || 'Erreur inconnue'}`);
-      setAllTournaments([]);
-    } finally {
-      setLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    let timeoutId;
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) setSession(session);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setSession(session);
-    });
-
-    timeoutId = setTimeout(() => {
-      if (mounted) {
-        fetchTournaments();
-      }
-    }, 300);
-
-    return () => {
-      mounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
-      subscription.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Créer un objet session compatible pour DashboardLayout
+  const session = isSignedIn ? { user: { email: user?.primaryEmailAddress?.emailAddress } } : null;
 
   const availableGames = useMemo(() => {
     const games = [...new Set(allTournaments.map(t => t.game).filter(Boolean))];
@@ -541,8 +488,8 @@ export default function HomePage() {
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={`w-10 h-10 rounded-xl text-sm transition-all ${currentPage === pageNum
-                              ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)]'
-                              : 'bg-[#0D0D14] border border-[rgba(148,163,184,0.1)] text-[#94A3B8] hover:border-[#6366F1] hover:text-[#F8FAFC]'
+                            ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.5)]'
+                            : 'bg-[#0D0D14] border border-[rgba(148,163,184,0.1)] text-[#94A3B8] hover:border-[#6366F1] hover:text-[#F8FAFC]'
                             }`}
                         >
                           {pageNum}

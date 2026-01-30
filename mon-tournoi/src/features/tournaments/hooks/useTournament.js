@@ -1,162 +1,93 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSupabaseSubscription } from '../../../shared/hooks/useSupabaseSubscription';
-import { getTournamentComplete } from '../../../shared/services/api/tournaments';
-import useTournamentStore from '../../../stores/tournamentStore';
+/**
+ * HOOK useTournament - Version Convex
+ * 
+ * Hook personnalisé pour gérer un tournoi
+ * Utilise Convex useQuery avec réactivité native (plus besoin de subscriptions manuelles)
+ */
+
+import { useMemo } from 'react';
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 /**
  * Hook personnalisé pour gérer un tournoi
- * Simplifie la logique de chargement, mise à jour, et subscriptions
+ * La réactivité est gérée automatiquement par Convex useQuery
+ * 
+ * @param {string} tournamentId - ID du tournoi Convex
+ * @param {Object} options - Options du hook
+ * @param {boolean} options.enabled - Activer le chargement (défaut: true)
+ * @param {string} options.currentUserId - ID de l'utilisateur courant (Convex Id)
+ * @returns {Object} Données et état du tournoi
  */
 export const useTournament = (tournamentId, options = {}) => {
-  const { enabled = true, subscribe = true } = options;
-  const { setActiveTournament, cacheTournament, getCachedTournament, invalidateCache } = useTournamentStore();
-  
-  const [tournament, setTournament] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [waitlist, setWaitlist] = useState([]);
-  const [swissScores, setSwissScores] = useState([]);
-  const [loading, setLoading] = useState(!!tournamentId && enabled);
-  const [error, setError] = useState(null);
-  
-  const fetchVersionRef = useRef(0);
+  const { enabled = true, currentUserId } = options;
 
-  // Charger les données du tournoi
-  const fetchTournament = useCallback(async () => {
-    if (!tournamentId || !enabled) {
-      setLoading(false);
-      setTournament(null);
-      setParticipants([]);
-      setMatches([]);
-      setWaitlist([]);
-      setSwissScores([]);
-      return;
-    }
-
-    const currentVersion = ++fetchVersionRef.current;
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Vérifier le cache d'abord
-      const cached = getCachedTournament(tournamentId);
-      if (cached) {
-        if (currentVersion === fetchVersionRef.current) {
-          setTournament(cached.tournament || cached.data?.tournament);
-          setParticipants(cached.participants || cached.data?.participants || []);
-          setMatches(cached.matches || cached.data?.matches || []);
-          setWaitlist(cached.waitlist || cached.data?.waitlist || []);
-          setSwissScores(cached.swissScores || cached.data?.swissScores || []);
-          setLoading(false);
-        }
-        return;
-      }
-
-      // Charger les données complètes
-      const data = await getTournamentComplete(tournamentId);
-
-      // Vérifier si c'est toujours la requête la plus récente
-      if (currentVersion !== fetchVersionRef.current) {
-        return;
-      }
-
-      // Mettre en cache
-      cacheTournament(tournamentId, {
-        tournament: data.tournament,
-        participants: data.participants,
-        matches: data.matches,
-        waitlist: data.waitlist,
-        swissScores: data.swissScores,
-      });
-
-      setTournament(data.tournament);
-      setParticipants(data.participants || []);
-      setMatches(data.matches || []);
-      setWaitlist(data.waitlist || []);
-      setSwissScores(data.swissScores || []);
-      setActiveTournament(tournamentId);
-      setError(null);
-      setLoading(false);
-    } catch (err) {
-      console.error('Erreur chargement tournoi:', err);
-      if (currentVersion === fetchVersionRef.current) {
-        setError(err);
-        setLoading(false);
-      }
-    }
-  }, [tournamentId, enabled, setActiveTournament, cacheTournament, getCachedTournament]);
-
-  // Charger au montage
-  useEffect(() => {
-    if (enabled && tournamentId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(true);
-      fetchTournament();
-    } else {
-      setLoading(false);
-      setTournament(null);
-      setParticipants([]);
-      setMatches([]);
-      setWaitlist([]);
-      setSwissScores([]);
-    }
-  }, [enabled, tournamentId, fetchTournament]);
-
-  // Subscription Realtime pour les mises à jour
-  useSupabaseSubscription(
-    `tournament-${tournamentId}`,
-    subscribe ? [
-      {
-        table: 'tournaments',
-        filter: `id=eq.${tournamentId}`,
-        event: 'UPDATE',
-        callback: (payload) => {
-          console.log('🔄 Tournoi mis à jour:', payload);
-          if (payload.new) {
-            setTournament(payload.new);
-            invalidateCache(tournamentId);
-          }
-        },
-      },
-      {
-        table: 'participants',
-        filter: `tournament_id=eq.${tournamentId}`,
-        event: '*',
-        callback: () => {
-          console.log('🔄 Participants mis à jour');
-          fetchTournament(); // Recharger pour avoir les données à jour
-        },
-      },
-      {
-        table: 'matches',
-        filter: `tournament_id=eq.${tournamentId}`,
-        event: '*',
-        callback: () => {
-          console.log('🔄 Matchs mis à jour');
-          fetchTournament();
-        },
-      },
-    ] : [],
-    { enabled: subscribe && !!tournamentId }
+  // Query principale - récupère le tournoi avec toutes ses relations
+  const tournament = useQuery(
+    api.tournaments.getById,
+    enabled && tournamentId ? { tournamentId } : "skip"
   );
 
-  // Fonction pour forcer un refresh
-  const refetch = useCallback(() => {
-    invalidateCache(tournamentId);
-    fetchTournament();
-  }, [tournamentId, fetchTournament, invalidateCache]);
+  // Participants (inscriptions confirmées)
+  const participants = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    enabled && tournamentId ? { tournamentId } : "skip"
+  );
+
+  // Matchs du tournoi
+  const matches = useQuery(
+    api.matches.listByTournament,
+    enabled && tournamentId ? { tournamentId } : "skip"
+  );
+
+  // Waitlist (si implémentée)
+  // const waitlist = useQuery(
+  //   api.tournamentWaitlist.listByTournament,
+  //   enabled && tournamentId ? { tournamentId } : "skip"
+  // );
+
+  // Swiss scores (si format suisse)
+  // const swissScores = useQuery(
+  //   api.swissScores.getByTournament,
+  //   enabled && tournamentId && tournament?.format === 'swiss' ? { tournamentId } : "skip"
+  // );
+
+  // Déterminer l'état de chargement
+  const loading = useMemo(() => {
+    if (!enabled || !tournamentId) return false;
+    return tournament === undefined || participants === undefined || matches === undefined;
+  }, [enabled, tournamentId, tournament, participants, matches]);
+
+  // Déterminer si l'utilisateur est l'organisateur
+  const isOrganizer = useMemo(() => {
+    if (!tournament || !currentUserId) return false;
+    return tournament.organizerId === currentUserId;
+  }, [tournament, currentUserId]);
+
+  // Déterminer si l'utilisateur est participant
+  const isParticipant = useMemo(() => {
+    if (!participants || !options.myTeamId) return false;
+    return participants.some(p => p.teamId === options.myTeamId || p.userId === currentUserId);
+  }, [participants, options.myTeamId, currentUserId]);
+
+  // Fonction refetch (Convex le fait automatiquement, mais on laisse pour compatibilité API)
+  const refetch = () => {
+    // Avec Convex, les données sont automatiquement mises à jour
+    // Cette fonction est gardée pour la compatibilité API
+    console.log('📡 Convex auto-syncs, refetch is automatic');
+  };
 
   return {
     tournament,
-    participants,
-    matches,
-    waitlist,
-    swissScores,
+    participants: participants || [],
+    matches: matches || [],
+    waitlist: [], // À implémenter si nécessaire
+    swissScores: [], // À implémenter si nécessaire
     loading,
-    error,
+    error: null, // Convex gère les erreurs via les query states
     refetch,
-    isOrganizer: tournament?.owner_id === options.currentUserId,
-    isParticipant: participants.some(p => p.team_id === options.myTeamId),
+    isOrganizer,
+    isParticipant,
   };
 };
 
