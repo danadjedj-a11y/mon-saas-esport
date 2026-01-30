@@ -305,4 +305,3 @@ function formatSeasonName(seasonId) {
   }
   return seasonId;
 }
-}
