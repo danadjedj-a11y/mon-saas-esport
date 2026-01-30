@@ -216,16 +216,17 @@ export default function Profile() {
     try {
       // Vérifier le compte
       const result = await verifyRiotAccount(riotId);
+      console.log('Riot verification result:', result);
       
       if (result.success) {
         setRiotAccountInfo(result.account);
         setRiotVerified(true);
         toast.success(`✅ Compte vérifié : ${result.account.name}#${result.account.tag}`);
         
-        // Essayer de récupérer le rang Valorant
-        const rank = await getValorantRank(riotId, result.account.region || 'eu');
-        if (rank) {
-          setValorantRank(rank);
+        // Les stats sont déjà dans result.account grâce au proxy
+        // Plus besoin d'appeler getValorantRank séparément
+        if (result.account.currentRank) {
+          console.log('Rank found:', result.account.currentRank);
         }
       }
     } catch (error) {
@@ -881,7 +882,10 @@ export default function Profile() {
                         {riotAccountInfo.name}#{riotAccountInfo.tag}
                       </p>
                       <p className="text-sm text-gray-400">
-                        Niveau <span className="text-cyan-400 font-medium">{riotAccountInfo.accountLevel || '?'}</span> • Région: <span className="text-cyan-400">{riotAccountInfo.region?.toUpperCase() || 'EU'}</span>
+                        {riotAccountInfo.accountLevel && (
+                          <>Niveau <span className="text-cyan-400 font-medium">{riotAccountInfo.accountLevel}</span> • </>
+                        )}
+                        Région: <span className="text-cyan-400">{riotAccountInfo.region?.toUpperCase() || 'EU'}</span>
                       </p>
                     </div>
                     <CheckCircle className="w-6 h-6 text-green-400" />

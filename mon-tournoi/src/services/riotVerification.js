@@ -6,13 +6,14 @@
 const HENRIK_API_BASE = 'https://api.henrikdev.xyz';
 
 // Utiliser notre API proxy en production, Henrik directement en dev
-const getApiUrl = (name, tag) => {
-  // En production (Vercel), utiliser notre proxy
+const getApiUrl = (name, tag, region = 'eu') => {
+  // En production (Vercel), utiliser notre proxy qui récupère tout
   if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('flukyboys')) {
-    return `/api/riot-verify?name=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}`;
+    return `/api/riot-verify?name=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}&region=${encodeURIComponent(region)}`;
   }
-  // En dev, essayer directement Henrik
-  return `${HENRIK_API_BASE}/valorant/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`;
+  // En dev local, utiliser aussi le proxy si possible (via dev server)
+  // Sinon fallback sur Henrik direct
+  return `/api/riot-verify?name=${encodeURIComponent(name)}&tag=${encodeURIComponent(tag)}&region=${encodeURIComponent(region)}`;
 };
 
 /**
