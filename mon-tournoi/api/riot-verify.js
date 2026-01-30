@@ -76,50 +76,6 @@ export default async function handler(req, res) {
       }
     } catch (e) { console.log('MMR error:', e.message); }
 
-    // 2b. Récupérer l'historique MMR (rangs des saisons précédentes)
-    let mmrHistory = null;
-    try {
-      const historyResponse = await fetchWithTimeout(
-        `https://api.henrikdev.xyz/valorant/v1/mmr-history/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-        headers, 10000
-      );
-      if (historyResponse.ok) {
-        const text = await historyResponse.text();
-        if (text.startsWith('{')) mmrHistory = JSON.parse(text);
-      }
-    } catch (e) { console.log('MMR history error:', e.message); }
-
-    // 2c. Récupérer les rangs par saison via l'endpoint v3 by-puuid
-    let seasonRanks = [];
-    if (account.puuid) {
-      try {
-        const seasonsResponse = await fetchWithTimeout(
-          `https://api.henrikdev.xyz/valorant/v3/mmr/${apiRegion}/pc/${account.puuid}`,
-          headers, 10000
-        );
-        if (seasonsResponse.ok) {
-          const text = await seasonsResponse.text();
-          if (text.startsWith('{')) {
-            const seasonsData = JSON.parse(text);
-            // Extraire les rangs de chaque saison
-            if (seasonsData.data?.seasonal) {
-              seasonRanks = Object.entries(seasonsData.data.seasonal)
-                .filter(([_, s]) => s.act_rank_wins && s.act_rank_wins.length > 0)
-                .map(([seasonId, s]) => ({
-                  season: seasonId,
-                  rank: s.final_rank_patched || s.old ? 'N/A' : null,
-                  rankTier: s.final_rank || 0,
-                  wins: s.wins || 0,
-                  games: s.number_of_games || 0,
-                  actRankWins: s.act_rank_wins || []
-                }))
-                .filter(s => s.rank || s.wins > 0);
-            }
-          }
-        }
-      } catch (e) { console.log('Season ranks error:', e.message); }
-    }
-
     // 3. Récupérer les matchs compétitifs
     let compMatches = [];
     try {
