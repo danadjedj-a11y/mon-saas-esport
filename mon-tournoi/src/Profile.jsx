@@ -1087,7 +1087,7 @@ export default function Profile() {
             type="text"
             value={lolInput}
             onChange={(e) => setLoLInput(e.target.value)}
-            placeholder="Nom d'invocateur (ex: FB Danette)"
+            placeholder="Riot ID (ex: FB Danette#EUW)"
             className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-yellow-500 focus:outline-none"
           />
           <select

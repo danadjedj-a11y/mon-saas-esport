@@ -91,22 +91,35 @@ export async function verifyValorantAccount(riotId, region = 'eu') {
 
 /**
  * Vérifie un compte LoL et récupère ses stats
- * @param {string} summonerName - Nom d'invocateur (ex: "FB Danette")
+ * @param {string} summonerName - Nom d'invocateur (ex: "FB Danette" ou "FB Danette#EUW")
  * @param {string} region - Région LoL (euw1, eun1, na1, kr, etc.)
  * @returns {Promise<object>} - Infos du compte
  */
 export async function verifyLoLAccount(summonerName, region = 'euw1') {
-  const name = summonerName.trim();
+  const input = summonerName.trim();
   
-  if (!name) {
+  if (!input) {
     throw new Error('Nom d\'invocateur requis');
+  }
+
+  // Parser le format: peut être "Name" ou "Name#TAG"
+  let name = input;
+  let tag = null;
+  
+  if (input.includes('#')) {
+    const parts = input.split('#');
+    name = parts[0];
+    tag = parts[1];
   }
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
     
-    const url = `/api/lol-verify?name=${encodeURIComponent(name)}&region=${encodeURIComponent(region)}`;
+    let url = `/api/lol-verify?name=${encodeURIComponent(name)}&region=${encodeURIComponent(region)}`;
+    if (tag) {
+      url += `&tag=${encodeURIComponent(tag)}`;
+    }
     
     const response = await fetch(url, {
       signal: controller.signal,
@@ -127,6 +140,7 @@ export async function verifyLoLAccount(summonerName, region = 'euw1') {
         validated: data.validated !== false,
         account: {
           name: d?.name || name,
+          tag: d?.tag || tag,
           puuid: d?.puuid,
           summonerId: d?.summonerId,
           region: d?.region || region,
