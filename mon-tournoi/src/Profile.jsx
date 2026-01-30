@@ -20,6 +20,43 @@ import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
 import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 
+// Fonction pour compresser une image avant upload
+const compressImage = async (file, maxWidth = 400, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Redimensionner si nécessaire
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 // Icônes pour les plateformes de jeu
 const GAMING_PLATFORMS = [
   { 
@@ -162,27 +199,31 @@ export default function Profile() {
       toast.error('Veuillez sélectionner une image');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 10MB');
       return;
     }
 
     try {
       setUploading(true);
       
-      // 1. Obtenir l'URL d'upload
+      // 1. Compresser l'image (400px max, qualité 80%)
+      const compressedFile = await compressImage(file, 400, 0.8);
+      console.log(`Image compressée: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB`);
+      
+      // 2. Obtenir l'URL d'upload
       const uploadUrl = await generateUploadUrl();
       
-      // 2. Upload le fichier
+      // 3. Upload le fichier compressé
       const result = await fetch(uploadUrl, {
         method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
+        headers: { 'Content-Type': compressedFile.type },
+        body: compressedFile,
       });
       
       const { storageId } = await result.json();
       
-      // 3. Mettre à jour le profil avec le storage ID
+      // 4. Mettre à jour le profil avec le storage ID
       await updateAvatar({ storageId });
       
       toast.success('✅ Avatar mis à jour !');
