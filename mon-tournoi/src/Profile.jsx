@@ -1031,6 +1031,28 @@ export default function Profile() {
               </div>
             )}
 
+            {/* Historique des rangs par saison */}
+            {valorantData.pastSeasons && valorantData.pastSeasons.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-3">📜 Historique des rangs</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {valorantData.pastSeasons.map((season, i) => (
+                    <div key={i} className="p-3 rounded-lg bg-dark-800/70 border border-white/5">
+                      <p className="text-xs text-gray-500 mb-1">{season.season}</p>
+                      <p className="font-semibold" style={{ 
+                        color: VALORANT_TIERS[season.rank]?.color || '#9CA3AF' 
+                      }}>
+                        {VALORANT_TIERS[season.rank]?.icon || '?'} {season.rank}
+                      </p>
+                      {season.wins > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">{season.wins} games</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Bouton pour modifier */}
             <button
               onClick={() => {

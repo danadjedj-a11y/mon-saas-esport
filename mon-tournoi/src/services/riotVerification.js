@@ -72,6 +72,7 @@ export async function verifyValorantAccount(riotId, region = 'eu') {
           rankImageLarge: d?.rank_image_large || null,
           highestRank: d?.highest_rank || null,
           highestRankSeason: d?.highest_rank_season || null,
+          pastSeasons: d?.past_seasons || [],
           stats: d?.stats || null,
           recentAgents: d?.recent_agents || [],
           recentMaps: d?.recent_maps || []

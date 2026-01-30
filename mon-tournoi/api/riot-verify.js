@@ -63,11 +63,11 @@ export default async function handler(req, res) {
 
     const account = accountData.data;
 
-    // 2. Récupérer le rang MMR
+    // 2. Récupérer le rang MMR (v2 pour plus de détails)
     let mmrData = null;
     try {
       const mmrResponse = await fetchWithTimeout(
-        `https://api.henrikdev.xyz/valorant/v1/mmr/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
+        `https://api.henrikdev.xyz/valorant/v2/mmr/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
         headers, 10000
       );
       if (mmrResponse.ok) {
@@ -75,6 +75,50 @@ export default async function handler(req, res) {
         if (text.startsWith('{')) mmrData = JSON.parse(text);
       }
     } catch (e) { console.log('MMR error:', e.message); }
+
+    // 2b. Récupérer l'historique MMR (rangs des saisons précédentes)
+    let mmrHistory = null;
+    try {
+      const historyResponse = await fetchWithTimeout(
+        `https://api.henrikdev.xyz/valorant/v1/mmr-history/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
+        headers, 10000
+      );
+      if (historyResponse.ok) {
+        const text = await historyResponse.text();
+        if (text.startsWith('{')) mmrHistory = JSON.parse(text);
+      }
+    } catch (e) { console.log('MMR history error:', e.message); }
+
+    // 2c. Récupérer les rangs par saison via l'endpoint v3 by-puuid
+    let seasonRanks = [];
+    if (account.puuid) {
+      try {
+        const seasonsResponse = await fetchWithTimeout(
+          `https://api.henrikdev.xyz/valorant/v3/mmr/${apiRegion}/pc/${account.puuid}`,
+          headers, 10000
+        );
+        if (seasonsResponse.ok) {
+          const text = await seasonsResponse.text();
+          if (text.startsWith('{')) {
+            const seasonsData = JSON.parse(text);
+            // Extraire les rangs de chaque saison
+            if (seasonsData.data?.seasonal) {
+              seasonRanks = Object.entries(seasonsData.data.seasonal)
+                .filter(([_, s]) => s.act_rank_wins && s.act_rank_wins.length > 0)
+                .map(([seasonId, s]) => ({
+                  season: seasonId,
+                  rank: s.final_rank_patched || s.old ? 'N/A' : null,
+                  rankTier: s.final_rank || 0,
+                  wins: s.wins || 0,
+                  games: s.number_of_games || 0,
+                  actRankWins: s.act_rank_wins || []
+                }))
+                .filter(s => s.rank || s.wins > 0);
+            }
+          }
+        }
+      } catch (e) { console.log('Season ranks error:', e.message); }
+    }
 
     // 3. Récupérer les matchs compétitifs
     let compMatches = [];
@@ -207,6 +251,33 @@ export default async function handler(req, res) {
     }
 
     const mmr = mmrData?.data;
+    
+    // Extraire l'historique des saisons depuis mmrData v2
+    let pastSeasons = [];
+    if (mmr?.by_season) {
+      pastSeasons = Object.entries(mmr.by_season)
+        .filter(([_, s]) => s.final_rank_patched || s.act_rank_wins?.length > 0)
+        .map(([seasonId, s]) => ({
+          season: formatSeasonName(seasonId),
+          seasonId: seasonId,
+          rank: s.final_rank_patched || 'Unrated',
+          rankTier: s.final_rank || 0,
+          wins: s.number_of_games || s.wins || 0,
+          actRankWins: s.act_rank_wins || []
+        }))
+        .sort((a, b) => {
+          // Trier par épisode puis acte (plus récent en premier)
+          const parseId = (id) => {
+            const match = id.match(/e(\d+)a(\d+)/i);
+            return match ? [parseInt(match[1]), parseInt(match[2])] : [0, 0];
+          };
+          const [e1, a1] = parseId(a.seasonId);
+          const [e2, a2] = parseId(b.seasonId);
+          if (e1 !== e2) return e2 - e1;
+          return a2 - a1;
+        })
+        .slice(0, 10); // 10 dernières saisons max
+    }
 
     return res.status(200).json({
       success: true,
@@ -223,18 +294,21 @@ export default async function handler(req, res) {
         last_update: account.last_update,
         last_update_raw: account.last_update_raw,
         
-        // Rang
-        current_rank: mmr?.currenttierpatched || 'Unrated',
-        current_rank_tier: mmr?.currenttier || 0,
-        ranking_in_tier: mmr?.ranking_in_tier || 0,
-        elo: mmr?.elo || null,
-        mmr_change: mmr?.mmr_change_to_last_game || null,
-        rank_image: mmr?.images?.small || null,
-        rank_image_large: mmr?.images?.large || null,
+        // Rang actuel
+        current_rank: mmr?.current_data?.currenttierpatched || mmr?.currenttierpatched || 'Unrated',
+        current_rank_tier: mmr?.current_data?.currenttier || mmr?.currenttier || 0,
+        ranking_in_tier: mmr?.current_data?.ranking_in_tier || mmr?.ranking_in_tier || 0,
+        elo: mmr?.current_data?.elo || mmr?.elo || null,
+        mmr_change: mmr?.current_data?.mmr_change_to_last_game || mmr?.mmr_change_to_last_game || null,
+        rank_image: mmr?.current_data?.images?.small || mmr?.images?.small || null,
+        rank_image_large: mmr?.current_data?.images?.large || mmr?.images?.large || null,
         
         // Plus haut rang
         highest_rank: mmr?.highest_rank?.patched_tier || null,
-        highest_rank_season: mmr?.highest_rank?.season || null,
+        highest_rank_season: mmr?.highest_rank?.season ? formatSeasonName(mmr.highest_rank.season) : null,
+        
+        // Historique des saisons
+        past_seasons: pastSeasons,
         
         // Stats
         stats: stats,
@@ -264,4 +338,15 @@ async function fetchWithTimeout(url, headers, timeout) {
     clearTimeout(timeoutId);
     throw error;
   }
+}
+
+// Formater le nom de la saison (e9a3 -> Episode 9 Act 3)
+function formatSeasonName(seasonId) {
+  if (!seasonId) return 'Unknown';
+  const match = seasonId.match(/e(\d+)a(\d+)/i);
+  if (match) {
+    return `Ep${match[1]} Act${match[2]}`;
+  }
+  return seasonId;
+}
 }
