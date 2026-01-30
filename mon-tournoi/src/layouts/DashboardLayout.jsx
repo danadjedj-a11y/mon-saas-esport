@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }) {
   const userInitial = username.charAt(0).toUpperCase();
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05050A]">
+    <div className="relative min-h-screen overflow-hidden bg-[#05050A] flex flex-col">
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-[#05050A] to-pink-900/10" />
 
@@ -298,14 +298,15 @@ export default function DashboardLayout({ children }) {
       )}
 
       {/* ======== MAIN CONTENT ======== */}
-      <main className="relative z-10">
+      <main className="relative z-10 flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {children}
         </div>
+      </main>
 
-        {/* Footer with legal links */}
-        <footer className="border-t border-white/5 bg-[rgba(5,5,10,0.6)] backdrop-blur-sm py-6 mt-12">
-          <div className="max-w-7xl mx-auto px-4 lg:px-8">
+      {/* Footer with legal links - Sticky at bottom */}
+      <footer className="relative z-10 border-t border-white/5 bg-[rgba(5,5,10,0.8)] backdrop-blur-sm py-6 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-[#94A3B8] text-sm">
                 <span>© {new Date().getFullYear()} Fluky Boys</span>
@@ -346,7 +347,6 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         </footer>
-      </main>
     </div>
   );
 }

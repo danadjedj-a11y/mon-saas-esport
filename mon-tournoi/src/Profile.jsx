@@ -10,19 +10,61 @@
  * 6. Paramètres
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useClerk } from "@clerk/clerk-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { Button, Card, Badge, Tabs, Avatar, Input, ImageUploader, GradientButton } from './shared/components/ui';
+import { Button, Card, Badge, Tabs, Avatar, Input, GradientButton } from './shared/components/ui';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
+import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
+
+// Icônes pour les plateformes de jeu
+const GAMING_PLATFORMS = [
+  { 
+    id: 'riotId', 
+    name: 'Riot Games', 
+    icon: '🎮',
+    placeholder: 'GameName#TAG',
+    games: 'Valorant, League of Legends, TFT',
+    color: 'from-red-500 to-red-600',
+    verifyUrl: 'https://developer.riotgames.com/'
+  },
+  { 
+    id: 'steamId', 
+    name: 'Steam', 
+    icon: '🎯',
+    placeholder: 'Votre ID Steam ou URL profil',
+    games: 'CS2, Dota 2, etc.',
+    color: 'from-blue-600 to-blue-700',
+    verifyUrl: 'https://steamcommunity.com/'
+  },
+  { 
+    id: 'epicGamesId', 
+    name: 'Epic Games', 
+    icon: '🚀',
+    placeholder: 'Votre Epic Games ID',
+    games: 'Fortnite, Rocket League',
+    color: 'from-gray-700 to-gray-800',
+    verifyUrl: 'https://www.epicgames.com/'
+  },
+  { 
+    id: 'battleNetId', 
+    name: 'Battle.net', 
+    icon: '⚔️',
+    placeholder: 'User#1234',
+    games: 'Overwatch 2, WoW, Diablo',
+    color: 'from-blue-500 to-indigo-600',
+    verifyUrl: 'https://battle.net/'
+  },
+];
 
 export default function Profile() {
   const navigate = useNavigate();
   const { user: clerkUser, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const fileInputRef = useRef(null);
 
   // Données Convex
   const convexUser = useQuery(api.users.getCurrent);
@@ -35,13 +77,17 @@ export default function Profile() {
 
   // Mutations
   const updateProfile = useMutation(api.usersMutations.updateProfile);
+  const generateUploadUrl = useMutation(api.usersMutations.generateUploadUrl);
+  const updateAvatar = useMutation(api.usersMutations.updateAvatar);
 
   // États locaux
+  const [activeTab, setActiveTab] = useState('overview');
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [savingGaming, setSavingGaming] = useState(false);
 
   // Gaming accounts state
   const [gamingAccounts, setGamingAccounts] = useState({
@@ -106,6 +152,48 @@ export default function Profile() {
   const stats = userStats || { totalMatches: 0, wins: 0, losses: 0, draws: 0, winRate: '0', tournamentsPlayed: 0, teamsCount: 0 };
   const badges = userBadges || [];
 
+  // Upload avatar via Convex Storage
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validation
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      // 1. Obtenir l'URL d'upload
+      const uploadUrl = await generateUploadUrl();
+      
+      // 2. Upload le fichier
+      const result = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      
+      const { storageId } = await result.json();
+      
+      // 3. Mettre à jour le profil avec le storage ID
+      await updateAvatar({ storageId });
+      
+      toast.success('✅ Avatar mis à jour !');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Erreur lors de l\'upload: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Sauvegarder les modifications du profil
   const handleSaveProfile = async () => {
     try {
@@ -123,26 +211,15 @@ export default function Profile() {
   // Sauvegarder les comptes gaming
   const handleSaveGamingAccounts = async () => {
     try {
+      setSavingGaming(true);
       await updateProfile({
         gamingAccounts: gamingAccounts,
       });
       toast.success('✅ Comptes gaming mis à jour !');
     } catch (error) {
       toast.error('Erreur: ' + error.message);
-    }
-  };
-
-  // Upload avatar (via Clerk)
-  const handleAvatarUpload = async (file) => {
-    try {
-      setUploading(true);
-      // Pour l'instant, on redirige vers Clerk pour la gestion de l'avatar
-      toast.info('Modifiez votre avatar via les paramètres Clerk');
-      window.open('https://accounts.clerk.dev/user', '_blank');
-    } catch (error) {
-      toast.error('Erreur: ' + error.message);
     } finally {
-      setUploading(false);
+      setSavingGaming(false);
     }
   };
 
@@ -220,11 +297,57 @@ export default function Profile() {
         <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
           Avatar
         </h3>
-        <ImageUploader
-          onUpload={handleAvatarUpload}
-          currentImage={avatarUrl}
-          loading={uploading}
-        />
+        
+        <div className="flex items-center gap-6">
+          {/* Avatar preview */}
+          <div className="relative group">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-violet-500/30">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-violet-500/30 to-cyan-500/30 flex items-center justify-center text-3xl font-bold text-white">
+                  {displayUsername.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            
+            {/* Upload overlay */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+            >
+              {uploading ? (
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              ) : (
+                <Camera className="w-6 h-6 text-white" />
+              )}
+            </button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+          </div>
+
+          <div className="flex-1">
+            <p className="text-white font-medium mb-1">Photo de profil</p>
+            <p className="text-sm text-gray-400 mb-3">
+              JPG, PNG ou GIF. Max 5MB.
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? 'Upload...' : '📷 Changer l\'avatar'}
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* Banner */}
@@ -451,45 +574,102 @@ export default function Profile() {
   // ONGLET 5 - COMPTES GAMING
   // ========================================
   const GamingAccountsTab = (
-    <Card variant="glass" padding="lg">
-      <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-6">
-        🎮 Comptes Gaming Liés
-      </h3>
+    <div className="space-y-6">
+      <Card variant="glass" padding="lg">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
+              🎮 Comptes Gaming Liés
+            </h3>
+            <p className="text-sm text-gray-400 mt-1">
+              Liez vos comptes pour faciliter la vérification lors des tournois
+            </p>
+          </div>
+        </div>
 
-      <div className="space-y-4">
-        <Input
-          label="Riot ID (LoL, Valorant)"
-          value={gamingAccounts.riotId}
-          onChange={(e) => setGamingAccounts({ ...gamingAccounts, riotId: e.target.value })}
-          placeholder="GameName#TAG"
-        />
+        <div className="space-y-4">
+          {GAMING_PLATFORMS.map((platform) => (
+            <div 
+              key={platform.id}
+              className="p-4 rounded-xl bg-[rgba(5,5,10,0.5)] border border-white/5 hover:border-violet-500/30 transition-colors"
+            >
+              <div className="flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${platform.color} flex items-center justify-center text-2xl flex-shrink-0`}>
+                  {platform.icon}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-semibold text-white">{platform.name}</h4>
+                    {gamingAccounts[platform.id] && (
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3">{platform.games}</p>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={gamingAccounts[platform.id]}
+                      onChange={(e) => setGamingAccounts({ 
+                        ...gamingAccounts, 
+                        [platform.id]: e.target.value 
+                      })}
+                      placeholder={platform.placeholder}
+                      className="flex-1 px-3 py-2 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                    <a
+                      href={platform.verifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors"
+                      title="Trouver mon ID"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
 
-        <Input
-          label="Steam ID"
-          value={gamingAccounts.steamId}
-          onChange={(e) => setGamingAccounts({ ...gamingAccounts, steamId: e.target.value })}
-          placeholder="Votre ID Steam..."
-        />
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <GradientButton 
+            onClick={handleSaveGamingAccounts}
+            disabled={savingGaming}
+            className="w-full sm:w-auto"
+          >
+            {savingGaming ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sauvegarde...
+              </span>
+            ) : (
+              '💾 Sauvegarder les comptes'
+            )}
+          </GradientButton>
+        </div>
+      </Card>
 
-        <Input
-          label="Epic Games ID"
-          value={gamingAccounts.epicGamesId}
-          onChange={(e) => setGamingAccounts({ ...gamingAccounts, epicGamesId: e.target.value })}
-          placeholder="Votre Epic Games ID..."
-        />
-
-        <Input
-          label="Battle.net ID"
-          value={gamingAccounts.battleNetId}
-          onChange={(e) => setGamingAccounts({ ...gamingAccounts, battleNetId: e.target.value })}
-          placeholder="User#1234"
-        />
-
-        <GradientButton onClick={handleSaveGamingAccounts}>
-          💾 Sauvegarder les comptes
-        </GradientButton>
-      </div>
-    </Card>
+      {/* Info OAuth */}
+      <Card variant="outlined" padding="lg" className="border-cyan-500/30">
+        <div className="flex items-start gap-4">
+          <div className="p-2 rounded-lg bg-cyan-500/10">
+            <AlertCircle className="w-5 h-5 text-cyan-400" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-cyan-400 mb-1">
+              Connexion directe aux plateformes
+            </h4>
+            <p className="text-sm text-gray-400">
+              La connexion OAuth directe avec Riot Games, Steam et autres plateformes sera disponible prochainement. 
+              En attendant, entrez manuellement vos identifiants ci-dessus.
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 
   // ========================================

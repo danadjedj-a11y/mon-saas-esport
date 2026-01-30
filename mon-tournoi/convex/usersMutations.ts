@@ -145,3 +145,48 @@ export const updateRole = mutation({
         return args.userId;
     },
 });
+
+/**
+ * Génère une URL d'upload pour l'avatar
+ */
+export const generateUploadUrl = mutation({
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+        return await ctx.storage.generateUploadUrl();
+    },
+});
+
+/**
+ * Met à jour l'avatar avec un fichier uploadé via Convex Storage
+ */
+export const updateAvatar = mutation({
+    args: { storageId: v.id("_storage") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email!))
+            .first();
+
+        if (!user) {
+            throw new Error("Utilisateur non trouvé");
+        }
+
+        // Obtenir l'URL publique du fichier
+        const avatarUrl = await ctx.storage.getUrl(args.storageId);
+
+        await ctx.db.patch(user._id, {
+            avatarUrl: avatarUrl,
+            updatedAt: Date.now(),
+        });
+
+        return { success: true, avatarUrl };
+    },
+});
