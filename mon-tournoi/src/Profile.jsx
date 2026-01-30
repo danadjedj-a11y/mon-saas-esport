@@ -862,33 +862,35 @@ export default function Profile() {
         </div>
 
         {/* Input pour vérifier - toujours visible */}
-        <div className="flex gap-2 mb-4">
+        <div className="space-y-2 mb-4">
           <input
             type="text"
             value={valorantInput}
             onChange={(e) => setValorantInput(e.target.value)}
-            placeholder="GameName#TAG (ex: FB Danette#FBoys)"
-            className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-red-500 focus:outline-none"
+            placeholder="Riot ID (ex: FB Danette#FBoys)"
+            className="w-full px-4 py-3 rounded-lg bg-dark-700 border border-white/20 text-white placeholder-gray-400 text-base focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
           />
-          <select
-            value={valorantRegion}
-            onChange={(e) => setValorantRegion(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
-          >
-            <option value="eu">EU</option>
-            <option value="na">NA</option>
-            <option value="ap">AP</option>
-            <option value="kr">KR</option>
-            <option value="br">BR</option>
-          </select>
-          <button
-            onClick={handleVerifyValorant}
-            disabled={verifyingValorant || !valorantInput}
-            className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-          >
-            {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Vérifier
-          </button>
+          <div className="flex gap-2">
+            <select
+              value={valorantRegion}
+              onChange={(e) => setValorantRegion(e.target.value)}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-dark-700 border border-white/20 text-white text-sm"
+            >
+              <option value="eu">🇪🇺 Europe</option>
+              <option value="na">🇺🇸 North America</option>
+              <option value="ap">🌏 Asia Pacific</option>
+              <option value="kr">🇰🇷 Korea</option>
+              <option value="br">🇧🇷 Brazil</option>
+            </select>
+            <button
+              onClick={handleVerifyValorant}
+              disabled={verifyingValorant || !valorantInput}
+              className="px-6 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap transition-colors"
+            >
+              {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Vérifier
+            </button>
+          </div>
         </div>
 
         {/* Détails Valorant */}
@@ -1082,39 +1084,41 @@ export default function Profile() {
         </div>
 
         {/* Input pour vérifier - toujours visible */}
-        <div className="flex gap-2 mb-4">
+        <div className="space-y-2 mb-4">
           <input
             type="text"
             value={lolInput}
             onChange={(e) => setLoLInput(e.target.value)}
-            placeholder="Riot ID (ex: FB Danette#EUW)"
-            className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-yellow-500 focus:outline-none"
+            placeholder="Riot ID (ex: FB Danette#FBoys)"
+            className="w-full px-4 py-3 rounded-lg bg-dark-700 border border-white/20 text-white placeholder-gray-400 text-base focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
           />
-          <select
-            value={lolRegion}
-            onChange={(e) => setLoLRegion(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
-          >
-            <option value="euw1">EUW</option>
-            <option value="eun1">EUNE</option>
-            <option value="na1">NA</option>
-            <option value="kr">KR</option>
-            <option value="br1">BR</option>
-            <option value="jp1">JP</option>
-            <option value="la1">LAN</option>
-            <option value="la2">LAS</option>
-            <option value="oc1">OCE</option>
-            <option value="tr1">TR</option>
-            <option value="ru">RU</option>
-          </select>
-          <button
-            onClick={handleVerifyLoL}
-            disabled={verifyingLoL || !lolInput}
-            className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-black font-medium text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-          >
-            {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Vérifier
-          </button>
+          <div className="flex gap-2">
+            <select
+              value={lolRegion}
+              onChange={(e) => setLoLRegion(e.target.value)}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-dark-700 border border-white/20 text-white text-sm"
+            >
+              <option value="euw1">🇪🇺 EUW (Europe West)</option>
+              <option value="eun1">🇪🇺 EUNE (Europe Nordic)</option>
+              <option value="na1">🇺🇸 NA (North America)</option>
+              <option value="kr">🇰🇷 KR (Korea)</option>
+              <option value="br1">🇧🇷 BR (Brazil)</option>
+              <option value="jp1">🇯🇵 JP (Japan)</option>
+              <option value="la1">🌎 LAN (Latin America North)</option>
+              <option value="la2">🌎 LAS (Latin America South)</option>
+              <option value="oc1">🇦🇺 OCE (Oceania)</option>
+              <option value="tr1">🇹🇷 TR (Turkey)</option>
+              <option value="ru">🇷🇺 RU (Russia)</option>
+            </select>
+            <button
+              onClick={handleVerifyLoL}
+              disabled={verifyingLoL || !lolInput}
+              className="px-6 py-2.5 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-black font-semibold text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap transition-colors"
+            >
+              {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Vérifier
+            </button>
+          </div>
         </div>
 
         {/* Aperçu compte vérifié */}
