@@ -74,10 +74,15 @@ export const updateProfile = mutation({
         bio: v.optional(v.string()),
         avatarUrl: v.optional(v.string()),
         gamingAccounts: v.optional(v.object({
+            discordId: v.optional(v.string()),
             riotId: v.optional(v.string()),
             steamId: v.optional(v.string()),
             epicGamesId: v.optional(v.string()),
             battleNetId: v.optional(v.string()),
+            // Valorant full data
+            valorantData: v.optional(v.any()),
+            // LoL full data
+            lolData: v.optional(v.any()),
         })),
     },
     handler: async (ctx, args) => {
