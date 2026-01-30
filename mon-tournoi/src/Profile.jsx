@@ -116,7 +116,7 @@ const GAMING_PLATFORMS = [
 export default function Profile() {
   const navigate = useNavigate();
   const { user: clerkUser, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { signOut, openUserProfile } = useClerk();
   const fileInputRef = useRef(null);
 
   // Données Convex
@@ -174,46 +174,17 @@ export default function Profile() {
   };
 
   // Connecter Discord via Clerk OAuth
-  const handleConnectDiscord = async () => {
-    if (!clerkUser) return;
-    
-    setConnectingDiscord(true);
-    try {
-      // Créer une connexion externe avec Discord
-      await clerkUser.createExternalAccount({
-        strategy: 'oauth_discord',
-        redirectUrl: window.location.href,
-      });
-      toast.success('🔗 Redirection vers Discord...');
-    } catch (error) {
-      console.error('Erreur connexion Discord:', error);
-      if (error.errors?.[0]?.message) {
-        toast.error(error.errors[0].message);
-      } else {
-        toast.error('Erreur lors de la connexion à Discord');
-      }
-      setConnectingDiscord(false);
-    }
+  const handleConnectDiscord = () => {
+    // Ouvrir le modal Clerk qui gère la vérification automatiquement
+    openUserProfile();
+    toast.info('💡 Allez dans "Comptes connectés" pour lier Discord');
   };
 
   // Déconnecter Discord
-  const handleDisconnectDiscord = async () => {
-    if (!clerkUser) return;
-    
-    const discordAccount = clerkUser.externalAccounts?.find(
-      account => account.provider === 'discord' || account.provider === 'oauth_discord'
-    );
-    
-    if (discordAccount) {
-      try {
-        await discordAccount.destroy();
-        setGamingAccounts(prev => ({ ...prev, discordId: '' }));
-        toast.success('Discord déconnecté');
-      } catch (error) {
-        console.error('Erreur déconnexion Discord:', error);
-        toast.error('Erreur lors de la déconnexion');
-      }
-    }
+  const handleDisconnectDiscord = () => {
+    // Ouvrir le modal Clerk pour gérer les connexions
+    openUserProfile();
+    toast.info('💡 Allez dans "Comptes connectés" pour délier Discord');
   };
 
   // Sync initial values when data loads
