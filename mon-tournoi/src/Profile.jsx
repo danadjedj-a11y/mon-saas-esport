@@ -18,8 +18,8 @@ import { api } from "../convex/_generated/api";
 import { Button, Card, Badge, Tabs, Avatar, Input, GradientButton } from './shared/components/ui';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2, Shield, Search } from 'lucide-react';
-import { verifyRiotAccount, getValorantRank, VALORANT_TIERS } from './services/riotVerification';
+import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2, Shield, Search, ChevronDown, ChevronUp, Trophy, Target, Swords, TrendingUp } from 'lucide-react';
+import { verifyValorantAccount, verifyLoLAccount, VALORANT_TIERS, LOL_TIERS } from './services/riotVerification';
 
 // Icône Discord SVG
 const DiscordIcon = () => (
@@ -145,10 +145,18 @@ export default function Profile() {
   const [connectingDiscord, setConnectingDiscord] = useState(false);
 
   // États pour la vérification Riot
-  const [verifyingRiot, setVerifyingRiot] = useState(false);
-  const [riotVerified, setRiotVerified] = useState(false);
-  const [riotAccountInfo, setRiotAccountInfo] = useState(null);
-  const [valorantRank, setValorantRank] = useState(null);
+  const [verifyingValorant, setVerifyingValorant] = useState(false);
+  const [verifyingLoL, setVerifyingLoL] = useState(false);
+  const [valorantData, setValorantData] = useState(null);
+  const [lolData, setLoLData] = useState(null);
+  const [valorantExpanded, setValorantExpanded] = useState(false);
+  const [lolExpanded, setLoLExpanded] = useState(false);
+  
+  // États pour les inputs des jeux
+  const [valorantInput, setValorantInput] = useState('');
+  const [lolInput, setLoLInput] = useState('');
+  const [valorantRegion, setValorantRegion] = useState('eu');
+  const [lolRegion, setLoLRegion] = useState('euw');
 
   // Gaming accounts state
   const [gamingAccounts, setGamingAccounts] = useState({
@@ -194,60 +202,86 @@ export default function Profile() {
     toast.info('💡 Allez dans "Comptes connectés" pour délier Discord');
   };
 
-  // Vérifier un compte Riot via l'API Henrik
-  const handleVerifyRiot = async () => {
-    const riotId = gamingAccounts.riotId?.trim();
+  // Vérifier un compte Valorant
+  const handleVerifyValorant = async () => {
+    const riotId = valorantInput?.trim() || gamingAccounts.riotId?.trim();
     
-    if (!riotId) {
-      toast.error('Entrez votre Riot ID (ex: Player#EUW)');
-      return;
-    }
-    
-    if (!riotId.includes('#')) {
+    if (!riotId || !riotId.includes('#')) {
       toast.error('Format invalide. Utilisez: GameName#TAG');
       return;
     }
     
-    setVerifyingRiot(true);
-    setRiotVerified(false);
-    setRiotAccountInfo(null);
-    setValorantRank(null);
+    setVerifyingValorant(true);
     
     try {
-      // Vérifier le compte
-      const result = await verifyRiotAccount(riotId);
-      console.log('Riot verification result:', result);
+      const result = await verifyValorantAccount(riotId, valorantRegion);
+      console.log('Valorant verification result:', result);
       
       if (result.success) {
-        setRiotAccountInfo(result.account);
-        setRiotVerified(true);
-        toast.success(`✅ Compte vérifié : ${result.account.name}#${result.account.tag}`);
+        setValorantData(result.account);
+        setValorantExpanded(true);
+        setGamingAccounts(prev => ({ ...prev, riotId: `${result.account.name}#${result.account.tag}` }));
+        toast.success(`✅ Valorant vérifié : ${result.account.name}#${result.account.tag}`);
         
-        // Les stats sont déjà dans result.account grâce au proxy
-        // Plus besoin d'appeler getValorantRank séparément
-        if (result.account.currentRank) {
-          console.log('Rank found:', result.account.currentRank);
-        }
+        // Sauvegarder automatiquement
+        await saveGamingAccount('valorant', result.account);
       }
     } catch (error) {
-      console.error('Riot verification failed:', error);
-      
-      // Si l'API ne répond pas, proposer de sauvegarder quand même
-      if (error.message.includes('Erreur') || error.message.includes('Timeout') || error.message.includes('réseau')) {
-        toast.error(error.message + ' Vous pouvez quand même sauvegarder votre Riot ID.');
-        // Marquer comme non-vérifié mais permettre la sauvegarde
-        setRiotVerified(false);
-        setRiotAccountInfo({
-          name: riotId.split('#')[0],
-          tag: riotId.split('#')[1],
-          unverified: true
-        });
-      } else {
-        toast.error(error.message);
-        setRiotVerified(false);
-      }
+      console.error('Valorant verification failed:', error);
+      toast.error(error.message || 'Erreur de vérification');
     } finally {
-      setVerifyingRiot(false);
+      setVerifyingValorant(false);
+    }
+  };
+
+  // Vérifier un compte LoL
+  const handleVerifyLoL = async () => {
+    const riotId = lolInput?.trim() || gamingAccounts.riotId?.trim();
+    
+    if (!riotId || !riotId.includes('#')) {
+      toast.error('Format invalide. Utilisez: GameName#TAG');
+      return;
+    }
+    
+    setVerifyingLoL(true);
+    
+    try {
+      const result = await verifyLoLAccount(riotId, lolRegion);
+      console.log('LoL verification result:', result);
+      
+      if (result.success) {
+        setLoLData(result.account);
+        setLoLExpanded(true);
+        toast.success(`✅ League of Legends vérifié : ${result.account.name}#${result.account.tag}`);
+        
+        // Sauvegarder automatiquement
+        await saveGamingAccount('lol', result.account);
+      }
+    } catch (error) {
+      console.error('LoL verification failed:', error);
+      toast.error(error.message || 'Erreur de vérification');
+    } finally {
+      setVerifyingLoL(false);
+    }
+  };
+
+  // Sauvegarder un compte gaming dans Convex
+  const saveGamingAccount = async (game, accountData) => {
+    try {
+      const newAccounts = { ...gamingAccounts };
+      if (game === 'valorant') {
+        newAccounts.valorantData = accountData;
+        newAccounts.riotId = `${accountData.name}#${accountData.tag}`;
+      } else if (game === 'lol') {
+        newAccounts.lolData = accountData;
+      }
+      
+      await updateProfile({
+        clerkUserId: clerkUser.id,
+        gamingAccounts: newAccounts
+      });
+    } catch (error) {
+      console.error('Failed to save gaming account:', error);
     }
   };
 
@@ -262,15 +296,31 @@ export default function Profile() {
       const clerkDiscord = getDiscordFromClerk();
       
       if (convexUser.gamingAccounts) {
+        const ga = convexUser.gamingAccounts;
         setGamingAccounts({
-          discordId: convexUser.gamingAccounts.discordId || clerkDiscord || '',
-          riotId: convexUser.gamingAccounts.riotId || '',
-          steamId: convexUser.gamingAccounts.steamId || '',
-          epicGamesId: convexUser.gamingAccounts.epicGamesId || '',
-          battleNetId: convexUser.gamingAccounts.battleNetId || '',
+          discordId: ga.discordId || clerkDiscord || '',
+          riotId: ga.riotId || '',
+          steamId: ga.steamId || '',
+          epicGamesId: ga.epicGamesId || '',
+          battleNetId: ga.battleNetId || '',
+          valorantData: ga.valorantData || null,
+          lolData: ga.lolData || null,
         });
+        
+        // Charger les données sauvegardées
+        if (ga.valorantData) {
+          setValorantData(ga.valorantData);
+          setValorantInput(ga.riotId || '');
+        }
+        if (ga.lolData) {
+          setLoLData(ga.lolData);
+          setLoLInput(ga.riotId || '');
+        }
+        if (ga.riotId) {
+          setValorantInput(ga.riotId);
+          setLoLInput(ga.riotId);
+        }
       } else if (clerkDiscord) {
-        // Si pas de gaming accounts mais Discord via Clerk
         setGamingAccounts(prev => ({
           ...prev,
           discordId: clerkDiscord
@@ -744,7 +794,7 @@ export default function Profile() {
   // ========================================
   const GamingAccountsTab = (
     <div className="space-y-6">
-      {/* Discord OAuth - Section spéciale */}
+      {/* Discord OAuth */}
       <Card variant="glass" padding="lg" className="border border-indigo-500/30">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -761,340 +811,403 @@ export default function Profile() {
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-400 mb-4">
-              Connectez votre compte Discord pour synchroniser automatiquement votre profil
-            </p>
+            <p className="text-sm text-gray-400 mb-4">Communication & Communauté</p>
             
             {isDiscordConnected() ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                  <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center">
-                    <DiscordIcon />
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{getDiscordFromClerk()}</p>
-                    <p className="text-xs text-gray-500">Compte Discord lié</p>
-                  </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                <DiscordIcon />
+                <div>
+                  <p className="text-white font-medium">{getDiscordFromClerk()}</p>
+                  <p className="text-xs text-gray-500">Compte Discord lié</p>
                 </div>
-                <button
-                  onClick={handleDisconnectDiscord}
-                  className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                >
-                  Déconnecter Discord
-                </button>
               </div>
             ) : (
               <button
                 onClick={handleConnectDiscord}
-                disabled={connectingDiscord}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] text-white font-medium transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] text-white font-medium transition-colors"
               >
-                {connectingDiscord ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Connexion...
-                  </>
-                ) : (
-                  <>
-                    <DiscordIcon />
-                    Connecter avec Discord
-                  </>
-                )}
+                <DiscordIcon />
+                Connecter Discord
               </button>
             )}
           </div>
         </div>
       </Card>
 
-      {/* Autres comptes gaming */}
-      <Card variant="glass" padding="lg">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
-              🎮 Comptes Gaming Liés
-            </h3>
-            <p className="text-sm text-gray-400 mt-1">
-              Liez vos comptes pour faciliter la vérification lors des tournois
-            </p>
-          </div>
-        </div>
-
-        {/* Section spéciale Riot Games avec vérification */}
-        <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20">
+      {/* VALORANT */}
+      <Card variant="glass" padding="lg" className="border border-red-500/30">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => valorantData && setValorantExpanded(!valorantExpanded)}
+        >
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-2xl flex-shrink-0">
-              🎮
+              🎯
             </div>
-            
-            <div className="flex-1">
+            <div>
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-semibold text-white text-lg">Riot Games</h4>
-                {riotVerified && (
+                <h3 className="font-display text-xl text-white">VALORANT</h3>
+                {valorantData && (
                   <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                    <Shield className="w-3 h-3" />
+                    <CheckCircle className="w-3 h-3" />
                     Vérifié
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mb-3">Valorant, League of Legends, TFT</p>
-              
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={gamingAccounts.riotId}
-                  onChange={(e) => {
-                    setGamingAccounts({ ...gamingAccounts, riotId: e.target.value });
-                    setRiotVerified(false);
-                    setRiotAccountInfo(null);
-                    setValorantRank(null);
-                  }}
-                  placeholder="GameName#TAG"
-                  className="flex-1 px-3 py-2 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-red-500 transition-colors"
-                />
-                <button
-                  onClick={handleVerifyRiot}
-                  disabled={verifyingRiot || !gamingAccounts.riotId}
-                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {verifyingRiot ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                  Vérifier
-                </button>
-              </div>
-              
-              {/* Affichage des infos du compte vérifié */}
-              {riotVerified && riotAccountInfo && (
-                <div className="p-4 rounded-lg bg-[rgba(5,5,10,0.6)] border border-green-500/20 space-y-3">
-                  {/* En-tête avec carte et infos de base */}
-                  <div className="flex items-center gap-3">
-                    {riotAccountInfo.card && (
-                      <img 
-                        src={riotAccountInfo.card} 
-                        alt="Card" 
-                        className="w-12 h-12 rounded-lg"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <p className="text-white font-semibold text-lg">
-                        {riotAccountInfo.name}#{riotAccountInfo.tag}
-                      </p>
-                      {(riotAccountInfo.accountLevel || riotAccountInfo.region) && (
-                        <p className="text-sm text-gray-400">
-                          {riotAccountInfo.accountLevel && (
-                            <>Niveau <span className="text-cyan-400 font-medium">{riotAccountInfo.accountLevel}</span> • </>
-                          )}
-                          Région: <span className="text-cyan-400">{riotAccountInfo.region?.toUpperCase() || 'EU'}</span>
-                        </p>
-                      )}
-                      {riotAccountInfo.message && !riotAccountInfo.accountLevel && (
-                        <p className="text-sm text-yellow-400/80">{riotAccountInfo.message}</p>
-                      )}
-                    </div>
-                    <CheckCircle className="w-6 h-6 text-green-400" />
-                  </div>
-                  
-                  {/* Rang actuel */}
-                  {riotAccountInfo.currentRank && (
-                    <div className="pt-3 border-t border-white/10">
-                      <p className="text-xs text-gray-500 mb-2">Rang Compétitif</p>
-                      <div className="flex items-center gap-3">
-                        {riotAccountInfo.rankImage && (
-                          <img 
-                            src={riotAccountInfo.rankImage} 
-                            alt={riotAccountInfo.currentRank} 
-                            className="w-12 h-12"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <p className="font-bold text-lg" style={{ color: VALORANT_TIERS[riotAccountInfo.currentRank]?.color || '#fff' }}>
-                            {VALORANT_TIERS[riotAccountInfo.currentRank]?.icon} {riotAccountInfo.currentRank}
-                          </p>
-                          <div className="flex items-center gap-3 text-sm">
-                            <span className="text-gray-400">
-                              <span className="text-white font-medium">{riotAccountInfo.rankingInTier}</span> RR
-                            </span>
-                            {riotAccountInfo.elo && (
-                              <span className="text-gray-400">
-                                <span className="text-white font-medium">{riotAccountInfo.elo}</span> ELO
-                              </span>
-                            )}
-                            {riotAccountInfo.mmrChange !== null && riotAccountInfo.mmrChange !== undefined && (
-                              <span className={riotAccountInfo.mmrChange >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                {riotAccountInfo.mmrChange >= 0 ? '+' : ''}{riotAccountInfo.mmrChange}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Plus haut rang */}
-                      {riotAccountInfo.highestRank && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          🏆 Plus haut rang: <span className="text-yellow-400">{riotAccountInfo.highestRank}</span>
-                          {riotAccountInfo.highestRankSeason && <span className="text-gray-600"> ({riotAccountInfo.highestRankSeason})</span>}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Stats récentes */}
-                  {riotAccountInfo.stats && (
-                    <div className="pt-3 border-t border-white/10">
-                      <p className="text-xs text-gray-500 mb-2">Stats récentes ({riotAccountInfo.stats.matches} matchs)</p>
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="text-center p-2 rounded bg-white/5">
-                          <p className="text-lg font-bold text-white">{riotAccountInfo.stats.kills}</p>
-                          <p className="text-xs text-gray-500">Kills</p>
-                        </div>
-                        <div className="text-center p-2 rounded bg-white/5">
-                          <p className="text-lg font-bold text-white">{riotAccountInfo.stats.deaths}</p>
-                          <p className="text-xs text-gray-500">Deaths</p>
-                        </div>
-                        <div className="text-center p-2 rounded bg-white/5">
-                          <p className="text-lg font-bold text-white">{riotAccountInfo.stats.assists}</p>
-                          <p className="text-xs text-gray-500">Assists</p>
-                        </div>
-                        <div className="text-center p-2 rounded bg-white/5">
-                          <p className="text-lg font-bold text-cyan-400">{riotAccountInfo.stats.kd}</p>
-                          <p className="text-xs text-gray-500">K/D</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Fallback: ancien affichage rang si nouvelle API pas dispo */}
-                  {!riotAccountInfo.currentRank && valorantRank && (
-                    <div className="pt-3 border-t border-white/10 flex items-center gap-3">
-                      {valorantRank.currentTierIcon && (
-                        <img 
-                          src={valorantRank.currentTierIcon} 
-                          alt={valorantRank.currentTier} 
-                          className="w-10 h-10"
-                        />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium" style={{ color: VALORANT_TIERS[valorantRank.currentTier]?.color || '#fff' }}>
-                          {VALORANT_TIERS[valorantRank.currentTier]?.icon} {valorantRank.currentTier}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {valorantRank.rankingInTier} RR • {valorantRank.elo} ELO
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Affichage si non vérifié mais ID saisi */}
-              {!riotVerified && riotAccountInfo?.unverified && (
-                <div className="p-3 rounded-lg bg-[rgba(5,5,10,0.6)] border border-yellow-500/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-yellow-500/20 flex items-center justify-center">
-                      <AlertCircle className="w-5 h-5 text-yellow-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white font-medium">
-                        {riotAccountInfo.name}#{riotAccountInfo.tag}
-                      </p>
-                      <p className="text-xs text-yellow-400">
-                        Non vérifié - L'API est temporairement indisponible
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Vous pouvez sauvegarder votre Riot ID. La vérification sera faite ultérieurement.
-                  </p>
-                </div>
-              )}
+              <p className="text-sm text-gray-400">
+                {valorantData ? `${valorantData.name}#${valorantData.tag}` : 'FPS tactique par Riot Games'}
+              </p>
             </div>
           </div>
+          {valorantData && (
+            <div className="flex items-center gap-2">
+              {valorantData.currentRank && (
+                <span className="text-sm font-medium" style={{ color: VALORANT_TIERS[valorantData.currentRank]?.color || '#fff' }}>
+                  {VALORANT_TIERS[valorantData.currentRank]?.icon} {valorantData.currentRank}
+                </span>
+              )}
+              {valorantExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </div>
+          )}
         </div>
 
-        {/* Autres comptes gaming (sans Discord et Riot) */}
-        <div className="space-y-4">
-          {GAMING_PLATFORMS.filter(p => p.id !== 'discordId' && p.id !== 'riotId').map((platform) => (
-            <div 
-              key={platform.id}
-              className="p-4 rounded-xl bg-[rgba(5,5,10,0.5)] border border-white/5 hover:border-violet-500/30 transition-colors"
+        {/* Input pour vérifier */}
+        {!valorantData && (
+          <div className="mt-4 flex gap-2">
+            <input
+              type="text"
+              value={valorantInput}
+              onChange={(e) => setValorantInput(e.target.value)}
+              placeholder="GameName#TAG"
+              className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-red-500"
+            />
+            <select
+              value={valorantRegion}
+              onChange={(e) => setValorantRegion(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
             >
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${platform.color} flex items-center justify-center text-2xl flex-shrink-0`}>
-                  {platform.icon}
+              <option value="eu">EU</option>
+              <option value="na">NA</option>
+              <option value="ap">AP</option>
+              <option value="kr">KR</option>
+              <option value="br">BR</option>
+            </select>
+            <button
+              onClick={handleVerifyValorant}
+              disabled={verifyingValorant || !valorantInput}
+              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+            >
+              {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Vérifier
+            </button>
+          </div>
+        )}
+
+        {/* Détails Valorant expandés */}
+        {valorantData && valorantExpanded && (
+          <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
+            {/* Infos compte */}
+            <div className="flex items-center gap-4">
+              {valorantData.card && (
+                <img src={valorantData.card} alt="Card" className="w-16 h-16 rounded-lg" />
+              )}
+              <div>
+                <p className="text-xl font-bold text-white">{valorantData.name}#{valorantData.tag}</p>
+                <div className="flex items-center gap-4 text-sm text-gray-400">
+                  {valorantData.accountLevel && (
+                    <span>Niveau <span className="text-cyan-400 font-semibold">{valorantData.accountLevel}</span></span>
+                  )}
+                  <span>Région <span className="text-cyan-400">{valorantData.region?.toUpperCase()}</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rang actuel */}
+            {valorantData.currentRank && (
+              <div className="p-4 rounded-lg bg-dark-800/50">
+                <div className="flex items-center gap-4">
+                  {valorantData.rankImage && (
+                    <img src={valorantData.rankImage} alt={valorantData.currentRank} className="w-16 h-16" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-2xl font-bold" style={{ color: VALORANT_TIERS[valorantData.currentRank]?.color || '#fff' }}>
+                      {VALORANT_TIERS[valorantData.currentRank]?.icon} {valorantData.currentRank}
+                    </p>
+                    <div className="flex items-center gap-4 mt-1">
+                      <span className="text-gray-400">{valorantData.rankingInTier} <span className="text-xs">RR</span></span>
+                      {valorantData.elo && <span className="text-gray-400">{valorantData.elo} <span className="text-xs">ELO</span></span>}
+                      {valorantData.mmrChange !== null && valorantData.mmrChange !== undefined && (
+                        <span className={valorantData.mmrChange >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          {valorantData.mmrChange >= 0 ? '+' : ''}{valorantData.mmrChange}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-white">{platform.name}</h4>
-                    {gamingAccounts[platform.id] && (
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                    )}
+                {valorantData.highestRank && (
+                  <p className="mt-3 text-sm text-gray-500">
+                    <Trophy className="w-4 h-4 inline text-yellow-400 mr-1" />
+                    Plus haut rang: <span className="text-yellow-400 font-medium">{valorantData.highestRank}</span>
+                    {valorantData.highestRankSeason && <span className="text-gray-600 ml-1">({valorantData.highestRankSeason})</span>}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Stats */}
+            {valorantData.stats && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Stats récentes ({valorantData.stats.matches} matchs)
+                </p>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-white">{valorantData.stats.kills}</p>
+                    <p className="text-xs text-gray-500">Kills</p>
                   </div>
-                  <p className="text-xs text-gray-500 mb-3">{platform.games}</p>
-                  
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={gamingAccounts[platform.id]}
-                      onChange={(e) => setGamingAccounts({ 
-                        ...gamingAccounts, 
-                        [platform.id]: e.target.value 
-                      })}
-                      placeholder={platform.placeholder}
-                      className="flex-1 px-3 py-2 rounded-lg bg-[rgba(5,5,10,0.6)] border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-violet-500 transition-colors"
-                    />
-                    <a
-                      href={platform.verifyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-2 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors"
-                      title="Trouver mon ID"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-white">{valorantData.stats.deaths}</p>
+                    <p className="text-xs text-gray-500">Deaths</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-white">{valorantData.stats.assists}</p>
+                    <p className="text-xs text-gray-500">Assists</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-cyan-400">{valorantData.stats.kd}</p>
+                    <p className="text-xs text-gray-500">K/D</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-green-400">{valorantData.stats.winRate}%</p>
+                    <p className="text-xs text-gray-500">Win Rate</p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Bouton pour modifier */}
+            <button
+              onClick={() => {
+                setValorantData(null);
+                setValorantInput('');
+              }}
+              className="text-sm text-red-400 hover:text-red-300"
+            >
+              Changer de compte
+            </button>
+          </div>
+        )}
+      </Card>
+
+      {/* LEAGUE OF LEGENDS */}
+      <Card variant="glass" padding="lg" className="border border-yellow-500/30">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => lolData && setLoLExpanded(!lolExpanded)}
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-2xl flex-shrink-0">
+              ⚔️
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-display text-xl text-white">League of Legends</h3>
+                {lolData && (
+                  <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                    <CheckCircle className="w-3 h-3" />
+                    Vérifié
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-400">
+                {lolData ? `${lolData.name}#${lolData.tag}` : 'MOBA par Riot Games'}
+              </p>
+            </div>
+          </div>
+          {lolData && (
+            <div className="flex items-center gap-2">
+              {lolData.soloRank && lolData.soloRank !== 'Unranked' && (
+                <span className="text-sm font-medium text-yellow-400">
+                  🏆 {lolData.soloRank}
+                </span>
+              )}
+              {lolExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </div>
+          )}
+        </div>
+
+        {/* Input pour vérifier */}
+        {!lolData && (
+          <div className="mt-4 flex gap-2">
+            <input
+              type="text"
+              value={lolInput}
+              onChange={(e) => setLoLInput(e.target.value)}
+              placeholder="GameName#TAG"
+              className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-yellow-500"
+            />
+            <select
+              value={lolRegion}
+              onChange={(e) => setLoLRegion(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
+            >
+              <option value="euw">EUW</option>
+              <option value="eune">EUNE</option>
+              <option value="na">NA</option>
+              <option value="kr">KR</option>
+              <option value="br">BR</option>
+              <option value="jp">JP</option>
+            </select>
+            <button
+              onClick={handleVerifyLoL}
+              disabled={verifyingLoL || !lolInput}
+              className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-black font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+            >
+              {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Vérifier
+            </button>
+          </div>
+        )}
+
+        {/* Détails LoL expandés */}
+        {lolData && lolExpanded && (
+          <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
+            {/* Infos compte */}
+            <div className="flex items-center gap-4">
+              {lolData.profileIcon && (
+                <img src={lolData.profileIcon} alt="Icon" className="w-16 h-16 rounded-lg" />
+              )}
+              <div>
+                <p className="text-xl font-bold text-white">{lolData.name}#{lolData.tag}</p>
+                <div className="flex items-center gap-4 text-sm text-gray-400">
+                  {lolData.summonerLevel && (
+                    <span>Niveau <span className="text-yellow-400 font-semibold">{lolData.summonerLevel}</span></span>
+                  )}
+                  <span>Région <span className="text-yellow-400">{lolData.region?.toUpperCase()}</span></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rangs */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Solo/Duo */}
+              <div className="p-4 rounded-lg bg-dark-800/50">
+                <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                  <Swords className="w-3 h-3" /> Solo/Duo
+                </p>
+                {lolData.soloRank && lolData.soloRank !== 'Unranked' ? (
+                  <>
+                    <p className="text-xl font-bold text-yellow-400">{lolData.soloRank}</p>
+                    <p className="text-sm text-gray-400">{lolData.soloLP} LP</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {lolData.soloWins}W / {lolData.soloLosses}L
+                      {lolData.soloWinrate && <span className="text-green-400 ml-2">{lolData.soloWinrate}%</span>}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-500">Unranked</p>
+                )}
+              </div>
+
+              {/* Flex */}
+              <div className="p-4 rounded-lg bg-dark-800/50">
+                <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> Flex
+                </p>
+                {lolData.flexRank && lolData.flexRank !== 'Unranked' ? (
+                  <>
+                    <p className="text-xl font-bold text-blue-400">{lolData.flexRank}</p>
+                    <p className="text-sm text-gray-400">{lolData.flexLP} LP</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {lolData.flexWins}W / {lolData.flexLosses}L
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-500">Unranked</p>
+                )}
+              </div>
+            </div>
+
+            {/* Stats */}
+            {lolData.stats && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Stats récentes ({lolData.stats.matches} matchs)
+                </p>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-white">{lolData.stats.kills}</p>
+                    <p className="text-xs text-gray-500">Kills</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-white">{lolData.stats.deaths}</p>
+                    <p className="text-xs text-gray-500">Deaths</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-white">{lolData.stats.assists}</p>
+                    <p className="text-xs text-gray-500">Assists</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-yellow-400">{lolData.stats.kda}</p>
+                    <p className="text-xs text-gray-500">KDA</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-2xl font-bold text-green-400">{lolData.stats.winRate}%</p>
+                    <p className="text-xs text-gray-500">Win Rate</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bouton pour modifier */}
+            <button
+              onClick={() => {
+                setLoLData(null);
+                setLoLInput('');
+              }}
+              className="text-sm text-yellow-400 hover:text-yellow-300"
+            >
+              Changer de compte
+            </button>
+          </div>
+        )}
+      </Card>
+
+      {/* Autres comptes gaming */}
+      <Card variant="glass" padding="lg">
+        <h3 className="font-display text-xl text-white mb-4">Autres comptes</h3>
+        <div className="space-y-4">
+          {GAMING_PLATFORMS.filter(p => p.id !== 'discordId' && p.id !== 'riotId').map((platform) => (
+            <div key={platform.id} className="flex gap-3 items-center">
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${platform.color} flex items-center justify-center text-xl`}>
+                {platform.icon}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-white">{platform.name}</p>
+                <input
+                  type="text"
+                  value={gamingAccounts[platform.id] || ''}
+                  onChange={(e) => setGamingAccounts({ ...gamingAccounts, [platform.id]: e.target.value })}
+                  placeholder={platform.placeholder}
+                  className="w-full mt-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm"
+                />
               </div>
             </div>
           ))}
         </div>
-
-        <div className="mt-6 pt-6 border-t border-white/10">
+        
+        <div className="mt-4">
           <GradientButton 
             onClick={handleSaveGamingAccounts}
             disabled={savingGaming}
-            className="w-full sm:w-auto"
+            size="sm"
           >
-            {savingGaming ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Sauvegarde...
-              </span>
-            ) : (
-              '💾 Sauvegarder les comptes'
-            )}
+            {savingGaming ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Sauvegarder
           </GradientButton>
-        </div>
-      </Card>
-
-      {/* Info vérification */}
-      <Card variant="outlined" padding="lg" className="border-green-500/30">
-        <div className="flex items-start gap-4">
-          <div className="p-2 rounded-lg bg-green-500/10">
-            <Shield className="w-5 h-5 text-green-400" />
-          </div>
-          <div>
-            <h4 className="font-semibold text-green-400 mb-1">
-              Vérification des comptes
-            </h4>
-            <p className="text-sm text-gray-400">
-              <strong>Discord</strong> : Connectez-vous via le bouton OAuth ci-dessus.<br/>
-              <strong>Riot Games</strong> : Entrez votre Riot ID et cliquez sur "Vérifier" pour valider votre compte Valorant/LoL.<br/>
-              <strong>Autres</strong> : Entrez manuellement vos identifiants, la vérification sera faite lors des tournois.
-            </p>
-          </div>
         </div>
       </Card>
     </div>
