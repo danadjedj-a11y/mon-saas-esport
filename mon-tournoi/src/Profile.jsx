@@ -881,12 +881,17 @@ export default function Profile() {
                       <p className="text-white font-semibold text-lg">
                         {riotAccountInfo.name}#{riotAccountInfo.tag}
                       </p>
-                      <p className="text-sm text-gray-400">
-                        {riotAccountInfo.accountLevel && (
-                          <>Niveau <span className="text-cyan-400 font-medium">{riotAccountInfo.accountLevel}</span> • </>
-                        )}
-                        Région: <span className="text-cyan-400">{riotAccountInfo.region?.toUpperCase() || 'EU'}</span>
-                      </p>
+                      {(riotAccountInfo.accountLevel || riotAccountInfo.region) && (
+                        <p className="text-sm text-gray-400">
+                          {riotAccountInfo.accountLevel && (
+                            <>Niveau <span className="text-cyan-400 font-medium">{riotAccountInfo.accountLevel}</span> • </>
+                          )}
+                          Région: <span className="text-cyan-400">{riotAccountInfo.region?.toUpperCase() || 'EU'}</span>
+                        </p>
+                      )}
+                      {riotAccountInfo.message && !riotAccountInfo.accountLevel && (
+                        <p className="text-sm text-yellow-400/80">{riotAccountInfo.message}</p>
+                      )}
                     </div>
                     <CheckCircle className="w-6 h-6 text-green-400" />
                   </div>
