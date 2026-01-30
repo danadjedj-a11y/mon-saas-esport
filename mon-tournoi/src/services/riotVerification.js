@@ -61,6 +61,7 @@ export async function verifyValorantAccount(riotId, region = 'eu') {
           accountLevel: d?.account_level,
           card: d?.card || null,
           cardWide: d?.card_wide || null,
+          lastUpdate: d?.last_update || null,
           message: d?.message,
           currentRank: d?.current_rank || 'Unrated',
           currentRankTier: d?.current_rank_tier || null,
@@ -71,7 +72,9 @@ export async function verifyValorantAccount(riotId, region = 'eu') {
           rankImageLarge: d?.rank_image_large || null,
           highestRank: d?.highest_rank || null,
           highestRankSeason: d?.highest_rank_season || null,
-          stats: d?.stats || null
+          stats: d?.stats || null,
+          recentAgents: d?.recent_agents || [],
+          recentMaps: d?.recent_maps || []
         }
       };
     }

@@ -1,12 +1,9 @@
 // Proxy API pour Henrik's Valorant API
-// Récupère le compte + rang + stats
+// Récupère le compte + rang + stats + matchs récents (ranked ET unrated)
 
-// Clé API Henrik (gratuite, à obtenir sur https://henrikdev.xyz/)
-// Variable d'environnement HENRIK_API_KEY sur Vercel
 const HENRIK_API_KEY = process.env.HENRIK_API_KEY || '';
 
 export default async function handler(req, res) {
-  // Activer CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,10 +15,7 @@ export default async function handler(req, res) {
   const { name, tag, region = 'eu' } = req.query;
 
   if (!name || !tag) {
-    return res.status(400).json({ 
-      error: true, 
-      message: 'Name and tag are required' 
-    });
+    return res.status(400).json({ error: true, message: 'Name and tag are required' });
   }
 
   const headers = {
@@ -29,143 +23,149 @@ export default async function handler(req, res) {
     'User-Agent': 'FlukyBoys-Tournament-Platform/1.0'
   };
   
-  // Ajouter la clé API si disponible
   if (HENRIK_API_KEY) {
     headers['Authorization'] = HENRIK_API_KEY;
   }
 
+  const regionMap = { 'eu': 'eu', 'na': 'na', 'ap': 'ap', 'kr': 'kr', 'latam': 'latam', 'br': 'br' };
+  const apiRegion = regionMap[region.toLowerCase()] || 'eu';
+
   try {
-    // 1. Récupérer les infos du compte (V1 - plus stable)
-    console.log(`Fetching account: ${name}#${tag}`);
+    // 1. Récupérer les infos du compte
     const accountResponse = await fetchWithTimeout(
       `https://api.henrikdev.xyz/valorant/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-      headers,
-      10000
+      headers, 15000
     );
-    
-    // Vérifier si l'API demande une authentification
+
     if (accountResponse.status === 401) {
-      console.log('Henrik API requires authentication');
-      // Valider le format quand même
       return res.status(200).json({
-        success: true,
-        validated: true,
-        data: {
-          name: name,
-          tag: tag,
-          region: region,
-          message: 'Riot ID enregistré (vérification API en maintenance)'
-        }
+        success: true, validated: true,
+        data: { name, tag, region, message: 'API Key invalide' }
       });
     }
 
     if (accountResponse.status === 404) {
-      return res.status(404).json({
-        error: true,
-        message: 'Compte introuvable'
-      });
+      return res.status(404).json({ error: true, message: 'Compte introuvable' });
     }
 
     let accountData = null;
     if (accountResponse.ok) {
-      try {
-        const text = await accountResponse.text();
-        console.log('Account response:', text.substring(0, 200));
-        if (text.startsWith('{') || text.startsWith('[')) {
-          accountData = JSON.parse(text);
-        }
-      } catch (e) {
-        console.log('Account parse error:', e.message);
-      }
+      const text = await accountResponse.text();
+      if (text.startsWith('{')) accountData = JSON.parse(text);
     }
 
-    // Si on n'a pas pu récupérer le compte
     if (!accountData?.data) {
       return res.status(200).json({
-        success: true,
-        validated: true, // On valide quand même le format
-        data: {
-          name: name,
-          tag: tag,
-          region: region,
-          account_level: null,
-          message: 'Compte validé - Détails non disponibles (profil privé ou API limitée)'
-        }
+        success: true, validated: true,
+        data: { name, tag, region, message: 'Compte validé - API indisponible' }
       });
     }
 
     const account = accountData.data;
-    
-    // 2. Récupérer le rang/MMR avec l'endpoint V1 (plus fiable)
+
+    // 2. Récupérer le rang MMR
     let mmrData = null;
-    const regionMap = {
-      'eu': 'eu',
-      'na': 'na', 
-      'ap': 'ap',
-      'kr': 'kr',
-      'latam': 'latam',
-      'br': 'br'
-    };
-    const apiRegion = regionMap[region.toLowerCase()] || 'eu';
-    
     try {
-      console.log(`Fetching MMR for region: ${apiRegion}`);
       const mmrResponse = await fetchWithTimeout(
         `https://api.henrikdev.xyz/valorant/v1/mmr/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-        headers,
-        10000
+        headers, 10000
       );
-      
       if (mmrResponse.ok) {
         const text = await mmrResponse.text();
-        console.log('MMR response:', text.substring(0, 300));
-        if (text.startsWith('{') || text.startsWith('[')) {
-          mmrData = JSON.parse(text);
-        }
-      } else {
-        console.log('MMR response status:', mmrResponse.status);
+        if (text.startsWith('{')) mmrData = JSON.parse(text);
       }
-    } catch (e) {
-      console.log('MMR fetch error:', e.message);
-    }
+    } catch (e) { console.log('MMR error:', e.message); }
 
-    // 3. Récupérer les derniers matchs compétitifs
-    let matchHistory = null;
+    // 3. Récupérer les matchs compétitifs
+    let compMatches = [];
     try {
-      const matchResponse = await fetchWithTimeout(
-        `https://api.henrikdev.xyz/valorant/v3/matches/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?filter=competitive&size=5`,
-        headers,
-        10000
+      const compResponse = await fetchWithTimeout(
+        `https://api.henrikdev.xyz/valorant/v3/matches/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?filter=competitive&size=10`,
+        headers, 10000
       );
-      
-      if (matchResponse.ok) {
-        const text = await matchResponse.text();
-        if (text.startsWith('{') || text.startsWith('[')) {
-          matchHistory = JSON.parse(text);
+      if (compResponse.ok) {
+        const text = await compResponse.text();
+        if (text.startsWith('{')) {
+          const data = JSON.parse(text);
+          compMatches = data.data || [];
         }
       }
-    } catch (e) {
-      console.log('Match history error:', e.message);
+    } catch (e) { console.log('Comp matches error:', e.message); }
+
+    // 4. Si pas de matchs ranked, récupérer les unrated
+    let unratedMatches = [];
+    if (compMatches.length === 0) {
+      try {
+        const unratedResponse = await fetchWithTimeout(
+          `https://api.henrikdev.xyz/valorant/v3/matches/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?filter=unrated&size=10`,
+          headers, 10000
+        );
+        if (unratedResponse.ok) {
+          const text = await unratedResponse.text();
+          if (text.startsWith('{')) {
+            const data = JSON.parse(text);
+            unratedMatches = data.data || [];
+          }
+        }
+      } catch (e) { console.log('Unrated matches error:', e.message); }
     }
 
-    // Calculer les stats depuis les matchs
+    // 5. Récupérer TOUS les matchs récents (peu importe le mode)
+    let allMatches = [];
+    try {
+      const allResponse = await fetchWithTimeout(
+        `https://api.henrikdev.xyz/valorant/v3/matches/${apiRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?size=20`,
+        headers, 10000
+      );
+      if (allResponse.ok) {
+        const text = await allResponse.text();
+        if (text.startsWith('{')) {
+          const data = JSON.parse(text);
+          allMatches = data.data || [];
+        }
+      }
+    } catch (e) { console.log('All matches error:', e.message); }
+
+    // Utiliser les matchs disponibles pour les stats
+    const matchesForStats = compMatches.length > 0 ? compMatches : (unratedMatches.length > 0 ? unratedMatches : allMatches);
+    
+    // Calculer les stats
     let stats = null;
-    if (matchHistory?.data?.length > 0) {
-      const matches = matchHistory.data;
+    let recentAgents = [];
+    let recentMaps = [];
+    
+    if (matchesForStats.length > 0) {
       let totalKills = 0, totalDeaths = 0, totalAssists = 0, wins = 0;
+      let headshots = 0, bodyshots = 0, legshots = 0;
+      const agentCount = {};
+      const mapCount = {};
       
-      matches.forEach(match => {
+      matchesForStats.forEach(match => {
         const players = match.players?.all_players || [];
         const player = players.find(p => 
           p.name?.toLowerCase() === name.toLowerCase() && 
           p.tag?.toLowerCase() === tag.toLowerCase()
         );
+        
         if (player) {
           totalKills += player.stats?.kills || 0;
           totalDeaths += player.stats?.deaths || 0;
           totalAssists += player.stats?.assists || 0;
+          headshots += player.stats?.headshots || 0;
+          bodyshots += player.stats?.bodyshots || 0;
+          legshots += player.stats?.legshots || 0;
           
-          // Check win
+          // Agent
+          if (player.character) {
+            agentCount[player.character] = (agentCount[player.character] || 0) + 1;
+          }
+          
+          // Map
+          if (match.metadata?.map) {
+            mapCount[match.metadata.map] = (mapCount[match.metadata.map] || 0) + 1;
+          }
+          
+          // Win check
           const playerTeam = player.team?.toLowerCase();
           const redWon = match.teams?.red?.has_won;
           const blueWon = match.teams?.blue?.has_won;
@@ -175,26 +175,44 @@ export default async function handler(req, res) {
         }
       });
       
-      if (totalKills > 0 || totalDeaths > 0) {
-        stats = {
-          matches: matches.length,
-          kills: totalKills,
-          deaths: totalDeaths,
-          assists: totalAssists,
-          kd: totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : totalKills.toString(),
-          winRate: matches.length > 0 ? Math.round((wins / matches.length) * 100) : 0
-        };
-      }
+      const totalShots = headshots + bodyshots + legshots;
+      
+      stats = {
+        matches: matchesForStats.length,
+        matchType: compMatches.length > 0 ? 'Competitive' : (unratedMatches.length > 0 ? 'Unrated' : 'All modes'),
+        kills: totalKills,
+        deaths: totalDeaths,
+        assists: totalAssists,
+        kd: totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : totalKills.toString(),
+        kda: totalDeaths > 0 ? ((totalKills + totalAssists) / totalDeaths).toFixed(2) : (totalKills + totalAssists).toString(),
+        winRate: matchesForStats.length > 0 ? Math.round((wins / matchesForStats.length) * 100) : 0,
+        wins: wins,
+        losses: matchesForStats.length - wins,
+        headshotPct: totalShots > 0 ? Math.round((headshots / totalShots) * 100) : 0,
+        avgKills: matchesForStats.length > 0 ? (totalKills / matchesForStats.length).toFixed(1) : 0,
+        avgDeaths: matchesForStats.length > 0 ? (totalDeaths / matchesForStats.length).toFixed(1) : 0,
+      };
+      
+      // Top agents
+      recentAgents = Object.entries(agentCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([agent, count]) => ({ agent, count }));
+      
+      // Top maps
+      recentMaps = Object.entries(mapCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([map, count]) => ({ map, count }));
     }
 
-    // Extraire les données MMR
     const mmr = mmrData?.data;
-    
+
     return res.status(200).json({
       success: true,
       validated: true,
       data: {
-        // Infos compte
+        // Compte
         name: account.name,
         tag: account.tag,
         puuid: account.puuid,
@@ -203,52 +221,43 @@ export default async function handler(req, res) {
         card: account.card?.small || account.card?.large || null,
         card_wide: account.card?.wide || null,
         last_update: account.last_update,
+        last_update_raw: account.last_update_raw,
         
-        // Rang actuel (V1 MMR)
-        current_rank: mmr?.currenttierpatched || null,
-        current_rank_tier: mmr?.currenttier || null,
+        // Rang
+        current_rank: mmr?.currenttierpatched || 'Unrated',
+        current_rank_tier: mmr?.currenttier || 0,
         ranking_in_tier: mmr?.ranking_in_tier || 0,
         elo: mmr?.elo || null,
         mmr_change: mmr?.mmr_change_to_last_game || null,
         rank_image: mmr?.images?.small || null,
         rank_image_large: mmr?.images?.large || null,
         
-        // Plus haut rang (dans V1, c'est dans les données de base)
+        // Plus haut rang
         highest_rank: mmr?.highest_rank?.patched_tier || null,
         highest_rank_season: mmr?.highest_rank?.season || null,
         
-        // Stats récentes
-        stats: stats
+        // Stats
+        stats: stats,
+        recent_agents: recentAgents,
+        recent_maps: recentMaps,
       }
     });
 
   } catch (error) {
     console.error('Henrik API error:', error);
-
-    // En cas d'erreur, on valide quand même le format du Riot ID
     return res.status(200).json({
-      success: true,
-      validated: true,
-      data: {
-        name: name,
-        tag: tag,
-        region: region,
-        message: 'Compte validé - API temporairement indisponible'
-      }
+      success: true, validated: true,
+      data: { name, tag, region, message: 'API temporairement indisponible' }
     });
   }
 }
 
-// Fetch avec timeout
 async function fetchWithTimeout(url, headers, timeout) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers
-    });
+    const response = await fetch(url, { signal: controller.signal, headers });
     clearTimeout(timeoutId);
     return response;
   } catch (error) {

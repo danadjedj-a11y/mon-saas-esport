@@ -957,32 +957,76 @@ export default function Profile() {
 
             {/* Stats */}
             {valorantData.stats && (
-              <div>
-                <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500 flex items-center gap-2">
                   <Target className="w-4 h-4" />
-                  Stats récentes ({valorantData.stats.matches} matchs)
+                  Stats récentes ({valorantData.stats.matches} matchs - {valorantData.stats.matchType || 'All modes'})
                 </p>
-                <div className="grid grid-cols-5 gap-2">
+                
+                {/* Stats principales */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-white">{valorantData.stats.kills}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-white">{valorantData.stats.kills}</p>
                     <p className="text-xs text-gray-500">Kills</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-white">{valorantData.stats.deaths}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-white">{valorantData.stats.deaths}</p>
                     <p className="text-xs text-gray-500">Deaths</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-white">{valorantData.stats.assists}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-white">{valorantData.stats.assists}</p>
                     <p className="text-xs text-gray-500">Assists</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-cyan-400">{valorantData.stats.kd}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-cyan-400">{valorantData.stats.kd}</p>
                     <p className="text-xs text-gray-500">K/D</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-green-400">{valorantData.stats.winRate}%</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-400">{valorantData.stats.winRate}%</p>
                     <p className="text-xs text-gray-500">Win Rate</p>
                   </div>
+                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                    <p className="text-xl sm:text-2xl font-bold text-red-400">{valorantData.stats.headshotPct}%</p>
+                    <p className="text-xs text-gray-500">Headshot</p>
+                  </div>
+                </div>
+
+                {/* Stats moyennes */}
+                <div className="flex gap-4 text-sm">
+                  <span className="text-gray-400">
+                    📊 Moyenne: <span className="text-cyan-400">{valorantData.stats.avgKills}</span> K / <span className="text-red-400">{valorantData.stats.avgDeaths}</span> D
+                  </span>
+                  <span className="text-gray-400">
+                    W/L: <span className="text-green-400">{valorantData.stats.wins}</span>/<span className="text-red-400">{valorantData.stats.losses}</span>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Agents favoris */}
+            {valorantData.recentAgents && valorantData.recentAgents.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2">🎭 Agents favoris</p>
+                <div className="flex gap-2 flex-wrap">
+                  {valorantData.recentAgents.map((a, i) => (
+                    <span key={i} className="px-3 py-1.5 rounded-full bg-red-500/20 text-red-400 text-sm font-medium">
+                      {a.agent} <span className="text-red-300/60">({a.count})</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Maps */}
+            {valorantData.recentMaps && valorantData.recentMaps.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2">🗺️ Maps récentes</p>
+                <div className="flex gap-2 flex-wrap">
+                  {valorantData.recentMaps.map((m, i) => (
+                    <span key={i} className="px-3 py-1.5 rounded-full bg-gray-700/50 text-gray-300 text-sm">
+                      {m.map} <span className="text-gray-500">({m.count})</span>
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
