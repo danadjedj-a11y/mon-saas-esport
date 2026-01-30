@@ -236,23 +236,23 @@ export default function Profile() {
 
   // Vérifier un compte LoL
   const handleVerifyLoL = async () => {
-    const riotId = lolInput?.trim() || gamingAccounts.riotId?.trim();
+    const summonerName = lolInput?.trim();
     
-    if (!riotId || !riotId.includes('#')) {
-      toast.error('Format invalide. Utilisez: GameName#TAG');
+    if (!summonerName) {
+      toast.error('Entrez un nom d\'invocateur');
       return;
     }
     
     setVerifyingLoL(true);
     
     try {
-      const result = await verifyLoLAccount(riotId, lolRegion);
+      const result = await verifyLoLAccount(summonerName, lolRegion);
       console.log('LoL verification result:', result);
       
       if (result.success) {
         setLoLData(result.account);
         setLoLExpanded(true);
-        toast.success(`✅ League of Legends vérifié : ${result.account.name}#${result.account.tag}`);
+        toast.success(`✅ League of Legends vérifié : ${result.account.name}`);
         
         // Sauvegarder automatiquement
         await saveGamingAccount('lol', result.account);
@@ -836,92 +836,92 @@ export default function Profile() {
 
       {/* VALORANT */}
       <Card variant="glass" padding="lg" className="border border-red-500/30">
-        <div 
-          className="flex items-center justify-between cursor-pointer"
-          onClick={() => valorantData && setValorantExpanded(!valorantExpanded)}
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-2xl flex-shrink-0">
-              🎯
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-display text-xl text-white">VALORANT</h3>
-                {valorantData && (
-                  <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                    <CheckCircle className="w-3 h-3" />
-                    Vérifié
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-400">
-                {valorantData ? `${valorantData.name}#${valorantData.tag}` : 'FPS tactique par Riot Games'}
-              </p>
-            </div>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-2xl flex-shrink-0">
+            🎯
           </div>
-          {valorantData && (
-            <div className="flex items-center gap-2">
-              {valorantData.currentRank && (
-                <span className="text-sm font-medium" style={{ color: VALORANT_TIERS[valorantData.currentRank]?.color || '#fff' }}>
-                  {VALORANT_TIERS[valorantData.currentRank]?.icon} {valorantData.currentRank}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-display text-xl text-white">VALORANT</h3>
+              {valorantData && (
+                <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                  <CheckCircle className="w-3 h-3" />
+                  Vérifié
                 </span>
               )}
-              {valorantExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </div>
+            <p className="text-sm text-gray-400">FPS tactique par Riot Games</p>
+          </div>
+          {valorantData && (
+            <div className="text-right">
+              <span className="text-sm font-medium" style={{ color: VALORANT_TIERS[valorantData.currentRank]?.color || '#fff' }}>
+                {VALORANT_TIERS[valorantData.currentRank]?.icon} {valorantData.currentRank}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Input pour vérifier */}
-        {!valorantData && (
-          <div className="mt-4 flex gap-2">
-            <input
-              type="text"
-              value={valorantInput}
-              onChange={(e) => setValorantInput(e.target.value)}
-              placeholder="GameName#TAG"
-              className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-red-500"
-            />
-            <select
-              value={valorantRegion}
-              onChange={(e) => setValorantRegion(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
-            >
-              <option value="eu">EU</option>
-              <option value="na">NA</option>
-              <option value="ap">AP</option>
-              <option value="kr">KR</option>
-              <option value="br">BR</option>
-            </select>
-            <button
-              onClick={handleVerifyValorant}
-              disabled={verifyingValorant || !valorantInput}
-              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium text-sm disabled:opacity-50 flex items-center gap-2"
-            >
-              {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Vérifier
-            </button>
+        {/* Input pour vérifier - toujours visible */}
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={valorantInput}
+            onChange={(e) => setValorantInput(e.target.value)}
+            placeholder="GameName#TAG (ex: FB Danette#FBoys)"
+            className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-red-500 focus:outline-none"
+          />
+          <select
+            value={valorantRegion}
+            onChange={(e) => setValorantRegion(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
+          >
+            <option value="eu">EU</option>
+            <option value="na">NA</option>
+            <option value="ap">AP</option>
+            <option value="kr">KR</option>
+            <option value="br">BR</option>
+          </select>
+          <button
+            onClick={handleVerifyValorant}
+            disabled={verifyingValorant || !valorantInput}
+            className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+          >
+            {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            Vérifier
+          </button>
+        </div>
+
+        {/* Détails Valorant */}
+        {valorantData && (
+          <div 
+            className="cursor-pointer"
+            onClick={() => setValorantExpanded(!valorantExpanded)}
+          >
+            <div className="flex items-center justify-between p-3 rounded-lg bg-dark-800/30 border border-white/5">
+              <div className="flex items-center gap-3">
+                {valorantData.card && (
+                  <img src={valorantData.card} alt="Card" className="w-12 h-12 rounded-lg" />
+                )}
+                <div>
+                  <p className="font-bold text-white">{valorantData.name}#{valorantData.tag}</p>
+                  <p className="text-xs text-gray-400">
+                    Niveau {valorantData.accountLevel} • {valorantData.region?.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {valorantData.rankImage && (
+                  <img src={valorantData.rankImage} alt={valorantData.currentRank} className="w-8 h-8" />
+                )}
+                {valorantExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Détails Valorant expandés */}
+        {/* Détails expandés */}
         {valorantData && valorantExpanded && (
           <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
-            {/* Infos compte */}
-            <div className="flex items-center gap-4">
-              {valorantData.card && (
-                <img src={valorantData.card} alt="Card" className="w-16 h-16 rounded-lg" />
-              )}
-              <div>
-                <p className="text-xl font-bold text-white">{valorantData.name}#{valorantData.tag}</p>
-                <div className="flex items-center gap-4 text-sm text-gray-400">
-                  {valorantData.accountLevel && (
-                    <span>Niveau <span className="text-cyan-400 font-semibold">{valorantData.accountLevel}</span></span>
-                  )}
-                  <span>Région <span className="text-cyan-400">{valorantData.region?.toUpperCase()}</span></span>
-                </div>
-              </div>
-            </div>
-
             {/* Rang actuel */}
             {valorantData.currentRank && (
               <div className="p-4 rounded-lg bg-dark-800/50">
@@ -1052,110 +1052,102 @@ export default function Profile() {
                 </div>
               </div>
             )}
-
-            {/* Bouton pour modifier */}
-            <button
-              onClick={() => {
-                setValorantData(null);
-                setValorantInput('');
-              }}
-              className="text-sm text-red-400 hover:text-red-300"
-            >
-              Changer de compte
-            </button>
           </div>
         )}
       </Card>
 
       {/* LEAGUE OF LEGENDS */}
       <Card variant="glass" padding="lg" className="border border-yellow-500/30">
-        <div 
-          className="flex items-center justify-between cursor-pointer"
-          onClick={() => lolData && setLoLExpanded(!lolExpanded)}
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-2xl flex-shrink-0">
-              ⚔️
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-display text-xl text-white">League of Legends</h3>
-                {lolData && (
-                  <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                    <CheckCircle className="w-3 h-3" />
-                    Vérifié
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-400">
-                {lolData ? `${lolData.name}#${lolData.tag}` : 'MOBA par Riot Games'}
-              </p>
-            </div>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-2xl flex-shrink-0">
+            ⚔️
           </div>
-          {lolData && (
-            <div className="flex items-center gap-2">
-              {lolData.soloRank && lolData.soloRank !== 'Unranked' && (
-                <span className="text-sm font-medium text-yellow-400">
-                  🏆 {lolData.soloRank}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-display text-xl text-white">League of Legends</h3>
+              {lolData && (
+                <span className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                  <CheckCircle className="w-3 h-3" />
+                  Vérifié
                 </span>
               )}
-              {lolExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </div>
+            <p className="text-sm text-gray-400">MOBA par Riot Games</p>
+          </div>
+          {lolData && lolData.soloRank && lolData.soloRank !== 'Unranked' && (
+            <span className="text-sm font-medium text-yellow-400">
+              🏆 {lolData.soloRank}
+            </span>
           )}
         </div>
 
-        {/* Input pour vérifier */}
-        {!lolData && (
-          <div className="mt-4 flex gap-2">
-            <input
-              type="text"
-              value={lolInput}
-              onChange={(e) => setLoLInput(e.target.value)}
-              placeholder="GameName#TAG"
-              className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-yellow-500"
-            />
-            <select
-              value={lolRegion}
-              onChange={(e) => setLoLRegion(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
-            >
-              <option value="euw">EUW</option>
-              <option value="eune">EUNE</option>
-              <option value="na">NA</option>
-              <option value="kr">KR</option>
-              <option value="br">BR</option>
-              <option value="jp">JP</option>
-            </select>
-            <button
-              onClick={handleVerifyLoL}
-              disabled={verifyingLoL || !lolInput}
-              className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-black font-medium text-sm disabled:opacity-50 flex items-center gap-2"
-            >
-              {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Vérifier
-            </button>
+        {/* Input pour vérifier - toujours visible */}
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={lolInput}
+            onChange={(e) => setLoLInput(e.target.value)}
+            placeholder="Nom d'invocateur (ex: FB Danette)"
+            className="flex-1 px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-yellow-500 focus:outline-none"
+          />
+          <select
+            value={lolRegion}
+            onChange={(e) => setLoLRegion(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-dark-800/50 border border-white/10 text-white text-sm"
+          >
+            <option value="euw1">EUW</option>
+            <option value="eun1">EUNE</option>
+            <option value="na1">NA</option>
+            <option value="kr">KR</option>
+            <option value="br1">BR</option>
+            <option value="jp1">JP</option>
+            <option value="la1">LAN</option>
+            <option value="la2">LAS</option>
+            <option value="oc1">OCE</option>
+            <option value="tr1">TR</option>
+            <option value="ru">RU</option>
+          </select>
+          <button
+            onClick={handleVerifyLoL}
+            disabled={verifyingLoL || !lolInput}
+            className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-black font-medium text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+          >
+            {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            Vérifier
+          </button>
+        </div>
+
+        {/* Aperçu compte vérifié */}
+        {lolData && (
+          <div 
+            className="cursor-pointer"
+            onClick={() => setLoLExpanded(!lolExpanded)}
+          >
+            <div className="flex items-center justify-between p-3 rounded-lg bg-dark-800/30 border border-white/5">
+              <div className="flex items-center gap-3">
+                {lolData.profileIcon && (
+                  <img src={lolData.profileIcon} alt="Icon" className="w-12 h-12 rounded-lg" />
+                )}
+                <div>
+                  <p className="font-bold text-white">{lolData.name}</p>
+                  <p className="text-xs text-gray-400">
+                    Niveau {lolData.summonerLevel} • {lolData.region?.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {lolData.soloRank && lolData.soloRank !== 'Unranked' && (
+                  <span className="text-yellow-400 font-medium">{lolData.soloRank}</span>
+                )}
+                {lolExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+              </div>
+            </div>
           </div>
         )}
 
         {/* Détails LoL expandés */}
         {lolData && lolExpanded && (
           <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
-            {/* Infos compte */}
-            <div className="flex items-center gap-4">
-              {lolData.profileIcon && (
-                <img src={lolData.profileIcon} alt="Icon" className="w-16 h-16 rounded-lg" />
-              )}
-              <div>
-                <p className="text-xl font-bold text-white">{lolData.name}#{lolData.tag}</p>
-                <div className="flex items-center gap-4 text-sm text-gray-400">
-                  {lolData.summonerLevel && (
-                    <span>Niveau <span className="text-yellow-400 font-semibold">{lolData.summonerLevel}</span></span>
-                  )}
-                  <span>Région <span className="text-yellow-400">{lolData.region?.toUpperCase()}</span></span>
-                </div>
-              </div>
-            </div>
-
             {/* Rangs */}
             <div className="grid grid-cols-2 gap-4">
               {/* Solo/Duo */}

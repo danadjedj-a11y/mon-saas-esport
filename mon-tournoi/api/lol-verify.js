@@ -1,7 +1,7 @@
-// Proxy API pour Henrik's League of Legends API
-// Récupère le compte + rang + stats LoL
+// API pour vérifier un compte League of Legends
+// Utilise l'API officielle Riot Games
 
-const HENRIK_API_KEY = process.env.HENRIK_API_KEY || '';
+const RIOT_API_KEY = process.env.RIOT_LOL_API_KEY || process.env.RIOT_API_KEY || '';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,234 +12,239 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { name, tag, region = 'euw' } = req.query;
+  const { name, region = 'euw1' } = req.query;
 
-  if (!name || !tag) {
-    return res.status(400).json({ 
-      error: true, 
-      message: 'Name and tag are required' 
-    });
+  if (!name) {
+    return res.status(400).json({ error: true, message: 'Summoner name is required' });
   }
 
-  const headers = {
-    'Accept': 'application/json',
-    'User-Agent': 'FlukyBoys-Tournament-Platform/1.0'
+  // Mapping des régions pour l'API Riot
+  const regionRouting = {
+    'euw1': 'europe',
+    'eun1': 'europe',
+    'tr1': 'europe',
+    'ru': 'europe',
+    'na1': 'americas',
+    'br1': 'americas',
+    'la1': 'americas',
+    'la2': 'americas',
+    'kr': 'asia',
+    'jp1': 'asia',
+    'oc1': 'sea',
+    'ph2': 'sea',
+    'sg2': 'sea',
+    'th2': 'sea',
+    'tw2': 'sea',
+    'vn2': 'sea',
   };
-  
-  if (HENRIK_API_KEY) {
-    headers['Authorization'] = HENRIK_API_KEY;
-  }
 
-  try {
-    // 1. Récupérer les infos du compte Riot (même endpoint)
-    console.log(`Fetching LoL account: ${name}#${tag}`);
-    const accountResponse = await fetchWithTimeout(
-      `https://api.henrikdev.xyz/valorant/v1/account/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-      headers,
-      10000
-    );
-    
-    if (accountResponse.status === 401) {
-      return res.status(200).json({
-        success: true,
-        validated: true,
-        data: {
-          name: name,
-          tag: tag,
-          region: region,
-          message: 'Riot ID enregistré (API en maintenance)'
-        }
-      });
-    }
+  const routingRegion = regionRouting[region] || 'europe';
+  const platformRegion = region;
 
-    if (accountResponse.status === 404) {
-      return res.status(404).json({
-        error: true,
-        message: 'Compte introuvable'
-      });
-    }
-
-    let accountData = null;
-    if (accountResponse.ok) {
-      try {
-        const text = await accountResponse.text();
-        if (text.startsWith('{') || text.startsWith('[')) {
-          accountData = JSON.parse(text);
-        }
-      } catch (e) {
-        console.log('Account parse error:', e.message);
-      }
-    }
-
-    if (!accountData?.data) {
-      return res.status(200).json({
-        success: true,
-        validated: true,
-        data: {
-          name: name,
-          tag: tag,
-          region: region,
-          message: 'Compte validé - Détails non disponibles'
-        }
-      });
-    }
-
-    const account = accountData.data;
-    const puuid = account.puuid;
-    
-    // 2. Récupérer le profil LoL via l'API Henrik
-    let lolProfile = null;
-    const lolRegionMap = {
-      'euw': 'euw1',
-      'eune': 'eun1',
-      'na': 'na1',
-      'kr': 'kr',
-      'jp': 'jp1',
-      'br': 'br1',
-      'lan': 'la1',
-      'las': 'la2',
-      'oce': 'oc1',
-      'tr': 'tr1',
-      'ru': 'ru'
-    };
-    const lolRegion = lolRegionMap[region.toLowerCase()] || 'euw1';
-    
-    try {
-      const lolResponse = await fetchWithTimeout(
-        `https://api.henrikdev.xyz/lol/v1/profile/${lolRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-        headers,
-        10000
-      );
-      
-      if (lolResponse.ok) {
-        const text = await lolResponse.text();
-        if (text.startsWith('{') || text.startsWith('[')) {
-          lolProfile = JSON.parse(text);
-        }
-      }
-    } catch (e) {
-      console.log('LoL profile error:', e.message);
-    }
-
-    // 3. Récupérer les rangs LoL
-    let lolRanked = null;
-    try {
-      const rankedResponse = await fetchWithTimeout(
-        `https://api.henrikdev.xyz/lol/v1/ranked/${lolRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`,
-        headers,
-        10000
-      );
-      
-      if (rankedResponse.ok) {
-        const text = await rankedResponse.text();
-        if (text.startsWith('{') || text.startsWith('[')) {
-          lolRanked = JSON.parse(text);
-        }
-      }
-    } catch (e) {
-      console.log('LoL ranked error:', e.message);
-    }
-
-    // 4. Récupérer l'historique des matchs LoL
-    let lolMatches = null;
-    try {
-      const matchResponse = await fetchWithTimeout(
-        `https://api.henrikdev.xyz/lol/v1/matches/${lolRegion}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?count=10`,
-        headers,
-        10000
-      );
-      
-      if (matchResponse.ok) {
-        const text = await matchResponse.text();
-        if (text.startsWith('{') || text.startsWith('[')) {
-          lolMatches = JSON.parse(text);
-        }
-      }
-    } catch (e) {
-      console.log('LoL matches error:', e.message);
-    }
-
-    // Calculer les stats depuis les matchs
-    let stats = null;
-    if (lolMatches?.data?.length > 0) {
-      const matches = lolMatches.data;
-      let totalKills = 0, totalDeaths = 0, totalAssists = 0, wins = 0;
-      
-      matches.forEach(match => {
-        const participant = match.info?.participants?.find(p => 
-          p.puuid === puuid || 
-          (p.riotIdGameName?.toLowerCase() === name.toLowerCase() && 
-           p.riotIdTagline?.toLowerCase() === tag.toLowerCase())
-        );
-        if (participant) {
-          totalKills += participant.kills || 0;
-          totalDeaths += participant.deaths || 0;
-          totalAssists += participant.assists || 0;
-          if (participant.win) wins++;
-        }
-      });
-      
-      if (totalKills > 0 || totalDeaths > 0) {
-        stats = {
-          matches: matches.length,
-          kills: totalKills,
-          deaths: totalDeaths,
-          assists: totalAssists,
-          kd: totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : totalKills.toString(),
-          kda: totalDeaths > 0 ? ((totalKills + totalAssists) / totalDeaths).toFixed(2) : (totalKills + totalAssists).toString(),
-          winRate: matches.length > 0 ? Math.round((wins / matches.length) * 100) : 0
-        };
-      }
-    }
-
-    // Extraire les rangs
-    const soloQ = lolRanked?.data?.find(r => r.queueType === 'RANKED_SOLO_5x5');
-    const flexQ = lolRanked?.data?.find(r => r.queueType === 'RANKED_FLEX_SR');
-    const profile = lolProfile?.data;
-
-    return res.status(200).json({
-      success: true,
-      validated: true,
-      data: {
-        // Infos compte
-        name: account.name,
-        tag: account.tag,
-        puuid: puuid,
-        region: region,
-        
-        // Profil LoL
-        summoner_level: profile?.summonerLevel || null,
-        profile_icon: profile?.profileIconId ? `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${profile.profileIconId}.png` : null,
-        
-        // Solo/Duo
-        solo_rank: soloQ ? `${soloQ.tier} ${soloQ.rank}` : null,
-        solo_lp: soloQ?.leaguePoints || 0,
-        solo_wins: soloQ?.wins || 0,
-        solo_losses: soloQ?.losses || 0,
-        solo_winrate: soloQ ? Math.round((soloQ.wins / (soloQ.wins + soloQ.losses)) * 100) : null,
-        
-        // Flex
-        flex_rank: flexQ ? `${flexQ.tier} ${flexQ.rank}` : null,
-        flex_lp: flexQ?.leaguePoints || 0,
-        flex_wins: flexQ?.wins || 0,
-        flex_losses: flexQ?.losses || 0,
-        
-        // Stats récentes
-        stats: stats
-      }
-    });
-
-  } catch (error) {
-    console.error('Henrik LoL API error:', error);
-
+  // Si pas de clé API Riot, on utilise des données de démonstration
+  if (!RIOT_API_KEY) {
+    console.log('No RIOT_API_KEY found, returning demo data');
     return res.status(200).json({
       success: true,
       validated: true,
       data: {
         name: name,
-        tag: tag,
         region: region,
-        message: 'Compte validé - API temporairement indisponible'
+        summonerLevel: null,
+        profileIcon: null,
+        soloRank: 'Unranked',
+        flexRank: 'Unranked',
+        message: 'Clé API Riot non configurée. Ajoutez RIOT_LOL_API_KEY dans Vercel.'
+      }
+    });
+  }
+
+  const headers = {
+    'X-Riot-Token': RIOT_API_KEY,
+    'Accept': 'application/json'
+  };
+
+  try {
+    // 1. Chercher le compte par nom d'invocateur (Summoner-V4)
+    console.log(`Fetching summoner: ${name} on ${platformRegion}`);
+    
+    const summonerResponse = await fetchWithTimeout(
+      `https://${platformRegion}.api.riotgames.com/lol/summoner/v4/summoners/by-name/${encodeURIComponent(name)}`,
+      headers,
+      10000
+    );
+
+    if (summonerResponse.status === 404) {
+      return res.status(404).json({ error: true, message: 'Invocateur introuvable' });
+    }
+
+    if (summonerResponse.status === 401 || summonerResponse.status === 403) {
+      return res.status(200).json({
+        success: true,
+        validated: true,
+        data: {
+          name: name,
+          region: region,
+          message: 'Clé API Riot expirée ou invalide'
+        }
+      });
+    }
+
+    if (!summonerResponse.ok) {
+      const errorText = await summonerResponse.text();
+      console.log('Summoner API error:', summonerResponse.status, errorText);
+      return res.status(200).json({
+        success: true,
+        validated: true,
+        data: {
+          name: name,
+          region: region,
+          message: 'API temporairement indisponible'
+        }
+      });
+    }
+
+    const summoner = await summonerResponse.json();
+    
+    // 2. Récupérer les rangs (League-V4)
+    let rankedData = [];
+    try {
+      const rankedResponse = await fetchWithTimeout(
+        `https://${platformRegion}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summoner.id}`,
+        headers,
+        10000
+      );
+      
+      if (rankedResponse.ok) {
+        rankedData = await rankedResponse.json();
+      }
+    } catch (e) {
+      console.log('Ranked API error:', e.message);
+    }
+
+    // Parser les rangs
+    const soloQueue = rankedData.find(r => r.queueType === 'RANKED_SOLO_5x5');
+    const flexQueue = rankedData.find(r => r.queueType === 'RANKED_FLEX_SR');
+
+    const formatRank = (queue) => {
+      if (!queue) return null;
+      return `${queue.tier} ${queue.rank}`;
+    };
+
+    const soloRank = formatRank(soloQueue);
+    const flexRank = formatRank(flexQueue);
+
+    // 3. Récupérer les matchs récents (Match-V5)
+    let matchStats = null;
+    try {
+      // D'abord récupérer les IDs des matchs
+      const matchIdsResponse = await fetchWithTimeout(
+        `https://${routingRegion}.api.riotgames.com/lol/match/v5/matches/by-puuid/${summoner.puuid}/ids?start=0&count=20`,
+        headers,
+        10000
+      );
+
+      if (matchIdsResponse.ok) {
+        const matchIds = await matchIdsResponse.json();
+        
+        // Récupérer les détails des 10 premiers matchs
+        let totalKills = 0, totalDeaths = 0, totalAssists = 0, wins = 0;
+        let champCount = {};
+        let matchCount = 0;
+
+        for (const matchId of matchIds.slice(0, 10)) {
+          try {
+            const matchResponse = await fetchWithTimeout(
+              `https://${routingRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`,
+              headers,
+              5000
+            );
+
+            if (matchResponse.ok) {
+              const match = await matchResponse.json();
+              const participant = match.info.participants.find(p => p.puuid === summoner.puuid);
+              
+              if (participant) {
+                totalKills += participant.kills;
+                totalDeaths += participant.deaths;
+                totalAssists += participant.assists;
+                if (participant.win) wins++;
+                matchCount++;
+
+                // Comptage des champions
+                const champ = participant.championName;
+                champCount[champ] = (champCount[champ] || 0) + 1;
+              }
+            }
+          } catch (e) {
+            // Ignorer les erreurs individuelles de match
+          }
+        }
+
+        if (matchCount > 0) {
+          matchStats = {
+            matches: matchCount,
+            kills: totalKills,
+            deaths: totalDeaths,
+            assists: totalAssists,
+            kda: totalDeaths > 0 ? ((totalKills + totalAssists) / totalDeaths).toFixed(2) : (totalKills + totalAssists).toString(),
+            winRate: Math.round((wins / matchCount) * 100),
+            wins: wins,
+            losses: matchCount - wins,
+            topChampions: Object.entries(champCount)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([champ, count]) => ({ champion: champ, games: count }))
+          };
+        }
+      }
+    } catch (e) {
+      console.log('Match history error:', e.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      validated: true,
+      data: {
+        name: summoner.name,
+        puuid: summoner.puuid,
+        summonerId: summoner.id,
+        accountId: summoner.accountId,
+        region: region,
+        summonerLevel: summoner.summonerLevel,
+        profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${summoner.profileIconId}.png`,
+        
+        // Rangs
+        soloRank: soloRank || 'Unranked',
+        soloTier: soloQueue?.tier || null,
+        soloDivision: soloQueue?.rank || null,
+        soloLP: soloQueue?.leaguePoints || 0,
+        soloWins: soloQueue?.wins || 0,
+        soloLosses: soloQueue?.losses || 0,
+        soloWinrate: soloQueue ? Math.round((soloQueue.wins / (soloQueue.wins + soloQueue.losses)) * 100) : null,
+        
+        flexRank: flexRank || 'Unranked',
+        flexTier: flexQueue?.tier || null,
+        flexDivision: flexQueue?.rank || null,
+        flexLP: flexQueue?.leaguePoints || 0,
+        flexWins: flexQueue?.wins || 0,
+        flexLosses: flexQueue?.losses || 0,
+        flexWinrate: flexQueue ? Math.round((flexQueue.wins / (flexQueue.wins + flexQueue.losses)) * 100) : null,
+        
+        // Stats
+        stats: matchStats
+      }
+    });
+
+  } catch (error) {
+    console.error('Riot API error:', error);
+    return res.status(200).json({
+      success: true,
+      validated: true,
+      data: {
+        name: name,
+        region: region,
+        message: 'API temporairement indisponible'
       }
     });
   }
@@ -250,10 +255,7 @@ async function fetchWithTimeout(url, headers, timeout) {
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers
-    });
+    const response = await fetch(url, { signal: controller.signal, headers });
     clearTimeout(timeoutId);
     return response;
   } catch (error) {

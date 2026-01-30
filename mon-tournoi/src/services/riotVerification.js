@@ -91,27 +91,24 @@ export async function verifyValorantAccount(riotId, region = 'eu') {
 
 /**
  * Vérifie un compte LoL et récupère ses stats
- * @param {string} riotId - Format "GameName#TAG"
- * @param {string} region - Région LoL (euw, eune, na, kr)
+ * @param {string} summonerName - Nom d'invocateur (ex: "FB Danette")
+ * @param {string} region - Région LoL (euw1, eun1, na1, kr, etc.)
  * @returns {Promise<object>} - Infos du compte
  */
-export async function verifyLoLAccount(riotId, region = 'euw') {
-  const parts = riotId.split('#');
-  if (parts.length !== 2) {
-    throw new Error('Format invalide. Utilisez: GameName#TAG');
-  }
+export async function verifyLoLAccount(summonerName, region = 'euw1') {
+  const name = summonerName.trim();
   
-  const [name, tag] = parts;
-  
-  if (!name || !tag) {
-    throw new Error('Format invalide. Utilisez: GameName#TAG');
+  if (!name) {
+    throw new Error('Nom d\'invocateur requis');
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
     
-    const response = await fetch(getLoLApiUrl(name, tag, region), {
+    const url = `/api/lol-verify?name=${encodeURIComponent(name)}&region=${encodeURIComponent(region)}`;
+    
+    const response = await fetch(url, {
       signal: controller.signal,
       headers: { 'Accept': 'application/json' }
     });
@@ -120,7 +117,7 @@ export async function verifyLoLAccount(riotId, region = 'euw') {
     const data = await response.json();
     
     if (response.status === 404 || data.error) {
-      throw new Error(data.message || 'Compte LoL introuvable');
+      throw new Error(data.message || 'Invocateur introuvable');
     }
 
     if (data.success) {
@@ -130,23 +127,28 @@ export async function verifyLoLAccount(riotId, region = 'euw') {
         validated: data.validated !== false,
         account: {
           name: d?.name || name,
-          tag: d?.tag || tag,
           puuid: d?.puuid,
+          summonerId: d?.summonerId,
           region: d?.region || region,
-          summonerLevel: d?.summoner_level,
-          profileIcon: d?.profile_icon,
+          summonerLevel: d?.summonerLevel,
+          profileIcon: d?.profileIcon,
           message: d?.message,
           // Solo/Duo
-          soloRank: d?.solo_rank || 'Unranked',
-          soloLP: d?.solo_lp || 0,
-          soloWins: d?.solo_wins || 0,
-          soloLosses: d?.solo_losses || 0,
-          soloWinrate: d?.solo_winrate,
+          soloRank: d?.soloRank || 'Unranked',
+          soloTier: d?.soloTier,
+          soloDivision: d?.soloDivision,
+          soloLP: d?.soloLP || 0,
+          soloWins: d?.soloWins || 0,
+          soloLosses: d?.soloLosses || 0,
+          soloWinrate: d?.soloWinrate,
           // Flex
-          flexRank: d?.flex_rank || null,
-          flexLP: d?.flex_lp || 0,
-          flexWins: d?.flex_wins || 0,
-          flexLosses: d?.flex_losses || 0,
+          flexRank: d?.flexRank || 'Unranked',
+          flexTier: d?.flexTier,
+          flexDivision: d?.flexDivision,
+          flexLP: d?.flexLP || 0,
+          flexWins: d?.flexWins || 0,
+          flexLosses: d?.flexLosses || 0,
+          flexWinrate: d?.flexWinrate,
           // Stats
           stats: d?.stats || null
         }
