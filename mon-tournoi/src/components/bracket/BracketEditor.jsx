@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { Button, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import clsx from 'clsx';
@@ -206,74 +207,37 @@ export default function BracketEditor() {
   const navigate = useNavigate();
   const context = useOutletContext();
   
-  const [phase, setPhase] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState('bracket'); // 'bracket', 'placement', 'results'
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showMatchEditor, setShowMatchEditor] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [tournamentId, phaseId]);
+  // Convex queries
+  const phase = useQuery(
+    api.tournamentPhases.getById,
+    phaseId ? { phaseId } : "skip"
+  );
+  
+  const participantsData = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId, status: "confirmed" } : "skip"
+  );
+  
+  const matchesData = useQuery(
+    api.matches.listByPhase,
+    phaseId ? { phaseId } : "skip"
+  );
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Charger la phase
-      const { data: phaseData, error: phaseError } = await supabase
-        .from('tournament_phases')
-        .select('*')
-        .eq('id', phaseId)
-        .single();
-
-      if (phaseError) throw phaseError;
-      setPhase(phaseData);
-
-      // Charger les participants
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          team:teams(id, name, logo_url)
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('seed_order', { ascending: true });
-
-      if (!participantsError && participantsData) {
-        setParticipants(participantsData);
-      }
-
-      // Charger les matchs de cette phase
-      const { data: matchesData, error: matchesError } = await supabase
-        .from('matches')
-        .select(`
-          *,
-          team1:teams!matches_team1_id_fkey(id, name, logo_url),
-          team2:teams!matches_team2_id_fkey(id, name, logo_url)
-        `)
-        .eq('phase_id', phaseId)
-        .order('round_number', { ascending: true });
-
-      if (!matchesError && matchesData) {
-        setMatches(matchesData);
-      }
-    } catch (error) {
-      console.error('Erreur chargement:', error);
-      toast.error('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = phase === undefined || participantsData === undefined || matchesData === undefined;
+  const participants = participantsData || [];
+  const matches = matchesData || [];
 
   // Calculer la structure du bracket
   const bracketStructure = useMemo(() => {
     if (!phase) return null;
     return calculateBracketStructure(
       phase.format, 
-      phase.config?.size || 8,
-      phase.config
+      phase.settings?.maxTeams || 8,
+      phase.settings
     );
   }, [phase]);
 
@@ -283,7 +247,7 @@ export default function BracketEditor() {
   };
 
   const handleMatchSaved = () => {
-    fetchData(); // Rafraîchir les données après sauvegarde
+    // Convex will auto-refresh the data
     setShowMatchEditor(false);
     setSelectedMatch(null);
   };
@@ -363,7 +327,7 @@ export default function BracketEditor() {
             Modifier l'arbre de la phase "{phase.name}"
           </h1>
           <p className="text-gray-400">
-            {PHASE_LABELS[phase.format] || phase.format} • {phase.config?.size || 8} équipes
+            {PHASE_LABELS[phase.format] || phase.format} • {phase.settings?.maxTeams || 8} équipes
           </p>
         </div>
         
@@ -504,9 +468,8 @@ export default function BracketEditor() {
           <PlacementManager
             phaseId={phaseId}
             tournamentId={tournamentId}
-            size={phase.config?.size || 8}
+            size={phase.settings?.maxTeams || 8}
             format={phase.format}
-            onPlacementChange={fetchData}
           />
         </div>
       )}
@@ -529,25 +492,25 @@ export default function BracketEditor() {
             <div className="space-y-4">
               {matches.map(match => (
                 <div 
-                  key={match.id}
+                  key={match._id}
                   onClick={() => handleMatchClick(match)}
                   className="flex items-center gap-4 p-4 bg-[#1e2235] rounded-lg border border-white/10 hover:border-violet/30 cursor-pointer transition-all"
                 >
                   {/* Round info */}
                   <div className="text-sm text-gray-500 w-24">
-                    Round {match.round_number}
+                    Round {match.roundNumber}
                   </div>
                   
                   {/* Team 1 */}
                   <div className={clsx(
                     'flex-1 flex items-center gap-2 p-2 rounded',
-                    match.winner_id === match.team1_id && 'bg-green-500/10'
+                    match.winnerId === match.team1Id && 'bg-green-500/10'
                   )}>
-                    {match.team1?.logo_url && (
-                      <img src={match.team1.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
+                    {match.team1?.logoUrl && (
+                      <img src={match.team1.logoUrl} alt="" className="w-6 h-6 rounded object-cover" />
                     )}
                     <span className="text-white">{match.team1?.name || 'TBD'}</span>
-                    <span className="ml-auto font-bold text-cyan-400">{match.team1_score ?? '-'}</span>
+                    <span className="ml-auto font-bold text-cyan-400">{match.scoreTeam1 ?? '-'}</span>
                   </div>
                   
                   <span className="text-gray-500">VS</span>
@@ -555,13 +518,13 @@ export default function BracketEditor() {
                   {/* Team 2 */}
                   <div className={clsx(
                     'flex-1 flex items-center gap-2 p-2 rounded',
-                    match.winner_id === match.team2_id && 'bg-green-500/10'
+                    match.winnerId === match.team2Id && 'bg-green-500/10'
                   )}>
-                    {match.team2?.logo_url && (
-                      <img src={match.team2.logo_url} alt="" className="w-6 h-6 rounded object-cover" />
+                    {match.team2?.logoUrl && (
+                      <img src={match.team2.logoUrl} alt="" className="w-6 h-6 rounded object-cover" />
                     )}
                     <span className="text-white">{match.team2?.name || 'TBD'}</span>
-                    <span className="ml-auto font-bold text-cyan-400">{match.team2_score ?? '-'}</span>
+                    <span className="ml-auto font-bold text-cyan-400">{match.scoreTeam2}</span>
                   </div>
 
                   {/* Status */}
@@ -609,9 +572,9 @@ export default function BracketEditor() {
             setSelectedMatch(null);
           }}
           onSave={handleMatchSaved}
-          matchFormat={phase.config?.match_format || 'best_of'}
-          bestOf={phase.config?.best_of || 3}
-          fixedGames={phase.config?.fixed_games || 1}
+          matchFormat={phase.settings?.matchFormat || 'best_of'}
+          bestOf={phase.settings?.bestOf || 3}
+          fixedGames={phase.settings?.fixedGames || 1}
         />
       )}
     </div>

@@ -1,61 +1,18 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { getBadgeRarityColor, getRarityLabel, getCategoryLabel } from '../utils/badges';
 import Skeleton from './Skeleton';
 import { EmptyBadges } from './EmptyState';
 
 export default function BadgeDisplay({ userId, _session, compact = false }) {
-  const [badges, setBadges] = useState([]);
-  const [userLevel, setUserLevel] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Convex queries - returns undefined while loading
+  const badges = useQuery(api.gamification.getUserBadges, userId ? { userId } : 'skip');
+  const userLevel = useQuery(api.gamification.getUserLevel, userId ? { userId } : 'skip');
 
-  useEffect(() => {
-    if (userId) {
-      fetchBadges();
-      fetchUserLevel();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  const loading = badges === undefined || userLevel === undefined;
 
-  const fetchBadges = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_badges')
-        .select(`
-          *,
-          badges (*)
-        `)
-        .eq('user_id', userId)
-        .order('earned_at', { ascending: false });
-
-      if (error) throw error;
-
-      setBadges(data || []);
-    } catch (err) {
-      console.error('Erreur chargement badges:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUserLevel = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_levels')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      setUserLevel(data || { level: 1, xp: 0, total_xp: 0 });
-    } catch (err) {
-      console.error('Erreur chargement niveau:', err);
-      setUserLevel({ level: 1, xp: 0, total_xp: 0 });
-    }
-  };
+  // Default level if no data
+  const levelData = userLevel ?? { level: 1, xp: 0, totalXp: 0 };
 
   if (loading) {
     return (
@@ -78,23 +35,23 @@ export default function BadgeDisplay({ userId, _session, compact = false }) {
   if (compact) {
     return (
       <div className="flex items-center gap-3 flex-wrap">
-        {userLevel && (
+        {levelData && (
           <div className="glass-card border-violet-500/50 px-3 py-2 rounded-lg">
             <span className="font-display text-violet-400 text-sm">
-              Niveau {userLevel.level}
+              Niveau {levelData.level}
             </span>
           </div>
         )}
-        {badges.slice(0, 5).map((ub) => (
+        {(badges || []).slice(0, 5).map((badge) => (
           <div
-            key={ub.id}
-            title={`${ub.badges.name} - ${ub.badges.description}`}
+            key={badge.badgeId}
+            title={`${badge.name} - ${badge.description}`}
             className="text-2xl cursor-pointer transition-transform duration-300 hover:scale-125"
           >
-            {ub.badges.icon}
+            {badge.icon}
           </div>
         ))}
-        {badges.length > 5 && (
+        {(badges || []).length > 5 && (
           <span className="text-violet-400 text-sm">
             +{badges.length - 5}
           </span>
@@ -106,21 +63,21 @@ export default function BadgeDisplay({ userId, _session, compact = false }) {
   return (
     <div className="glass-card border-violet-500/30 p-8 rounded-2xl shadow-glow-sm">
       {/* Niveau et XP */}
-      {userLevel && (
+      {levelData && (
         <div className="mb-8">
           <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 mb-4">
-            Niveau {userLevel.level}
+            Niveau {levelData.level}
           </h3>
           <div className="glass-card border-violet-500/20 p-4 rounded-xl">
             <div className="flex justify-between mb-3 text-gray-400 text-sm">
-              <span>XP Total: <span className="text-white">{userLevel.total_xp}</span></span>
-              <span>XP Actuel: <span className="text-cyan-400">{userLevel.xp}</span></span>
+              <span>XP Total: <span className="text-white">{levelData.totalXp}</span></span>
+              <span>XP Actuel: <span className="text-cyan-400">{levelData.xp}</span></span>
             </div>
             <div className="w-full h-3 bg-dark-700 rounded-full overflow-hidden border border-violet-500/30">
               <div 
                 className="h-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all duration-500 rounded-full"
                 style={{ 
-                  width: `${Math.min(100, (userLevel.xp / (Math.pow(userLevel.level, 2) * 100 - Math.pow(userLevel.level - 1, 2) * 100)) * 100)}%` 
+                  width: `${Math.min(100, (levelData.xp / (Math.pow(levelData.level, 2) * 100 - Math.pow(levelData.level - 1, 2) * 100)) * 100)}%` 
                 }}
               />
             </div>
@@ -130,18 +87,17 @@ export default function BadgeDisplay({ userId, _session, compact = false }) {
 
       {/* Liste des badges */}
       <h3 className="font-display text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400 mb-6">
-        Badges ({badges.length})
+        Badges ({(badges || []).length})
       </h3>
 
-      {badges.length > 0 ? (
+      {(badges || []).length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {badges.map((ub) => {
-            const badge = ub.badges;
+          {badges.map((badge) => {
             const rarityColor = getBadgeRarityColor(badge.rarity);
             
             return (
               <div
-                key={ub.id}
+                key={badge.badgeId}
                 className="glass-card p-5 rounded-xl text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-glow-violet group"
                 style={{ borderColor: `${rarityColor}40` }}
               >
@@ -163,7 +119,7 @@ export default function BadgeDisplay({ userId, _session, compact = false }) {
                   </span>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  Obtenu le {new Date(ub.earned_at).toLocaleDateString('fr-FR')}
+                  Obtenu le {new Date(badge.earnedAt).toLocaleDateString('fr-FR')}
                 </div>
               </div>
             );

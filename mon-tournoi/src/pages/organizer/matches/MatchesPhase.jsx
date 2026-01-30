@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { toast } from '../../../utils/toast';
 
 export default function MatchesPhase() {
@@ -12,62 +13,49 @@ export default function MatchesPhase() {
   const [phase, setPhase] = useState(null);
   const [matches, setMatches] = useState([]);
   const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  const tournamentSize = tournament?.max_participants || tournament?.size || 4;
+  const tournamentSize = tournament?.maxParticipants || tournament?.size || 4;
+
+  // Charger via Convex
+  const phaseData = useQuery(
+    api.tournamentPhases.getById,
+    phaseId && phaseId !== 'default' ? { phaseId } : "skip"
+  );
+  const matchesData = useQuery(
+    api.matches.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const registrationsData = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = matchesData === undefined || registrationsData === undefined;
+
+  // Initialiser les données
+  useEffect(() => {
+    if (phaseId === 'default') {
+      setPhase({
+        _id: 'default',
+        name: 'Playoffs',
+        type: tournament?.bracketType || 'double_elimination',
+      });
+    } else if (phaseData) {
+      setPhase(phaseData);
+    }
+  }, [phaseId, phaseData, tournament]);
 
   useEffect(() => {
-    fetchData();
-  }, [tournamentId, phaseId]);
-
-  const fetchData = async () => {
-    try {
-      // Fetch phase
-      if (phaseId !== 'default') {
-        const { data: phaseData } = await supabase
-          .from('tournament_phases')
-          .select('*')
-          .eq('id', phaseId)
-          .single();
-        setPhase(phaseData);
-      } else {
-        setPhase({
-          id: 'default',
-          name: 'Playoffs',
-          type: tournament?.bracket_type || 'double_elimination',
-        });
-      }
-
-      // Fetch matches for this phase
-      const { data: matchesData } = await supabase
-        .from('matches')
-        .select(`
-          *,
-          participant1:team1_id (id, name, logo_url),
-          participant2:team2_id (id, name, logo_url)
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('round', { ascending: true })
-        .order('match_number', { ascending: true });
-
-      setMatches(matchesData || []);
-
-      // Fetch participants
-      const { data: participantsData } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          team:team_id (id, name, logo_url)
-        `)
-        .eq('tournament_id', tournamentId);
-
-      setParticipants(participantsData || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
+    if (matchesData) {
+      setMatches(matchesData);
     }
-  };
+  }, [matchesData]);
+
+  useEffect(() => {
+    if (registrationsData) {
+      setParticipants(registrationsData);
+    }
+  }, [registrationsData]);
 
   // Generate bracket structure for visualization
   const generateBracketStructure = () => {
@@ -85,17 +73,17 @@ export default function MatchesPhase() {
         // Find actual match or create placeholder
         const actualMatch = matches.find(
           match => match.round === round && 
-                   match.match_number === m + 1 && 
-                   match.bracket_type !== 'losers'
+                   match.matchNumber === m + 1 && 
+                   match.bracketType !== 'losers'
         );
         
         roundMatches.push({
-          id: actualMatch?.id || `wb-${round}-${m}`,
+          id: actualMatch?._id || `wb-${round}-${m}`,
           name: `WB ${round}.${m + 1}`,
-          participant1: actualMatch?.participant1 || null,
-          participant2: actualMatch?.participant2 || null,
-          score1: actualMatch?.team1_score,
-          score2: actualMatch?.team2_score,
+          participant1: actualMatch?.team1 || null,
+          participant2: actualMatch?.team2 || null,
+          score1: actualMatch?.team1Score,
+          score2: actualMatch?.team2Score,
           status: actualMatch?.status || 'pending',
           seed1: round === 1 ? m * 2 + 1 : null,
           seed2: round === 1 ? m * 2 + 2 : null,
@@ -118,17 +106,17 @@ export default function MatchesPhase() {
         for (let m = 0; m < matchesInRound; m++) {
           const actualMatch = matches.find(
             match => match.round === round && 
-                     match.match_number === m + 1 && 
-                     match.bracket_type === 'losers'
+                     match.matchNumber === m + 1 && 
+                     match.bracketType === 'losers'
           );
           
           roundMatches.push({
-            id: actualMatch?.id || `lb-${round}-${m}`,
+            id: actualMatch?._id || `lb-${round}-${m}`,
             name: `LB ${round}.${m + 1}`,
-            participant1: actualMatch?.participant1 || null,
-            participant2: actualMatch?.participant2 || null,
-            score1: actualMatch?.team1_score,
-            score2: actualMatch?.team2_score,
+            participant1: actualMatch?.team1 || null,
+            participant2: actualMatch?.team2 || null,
+            score1: actualMatch?.team1Score,
+            score2: actualMatch?.team2Score,
             status: actualMatch?.status || 'pending',
           });
         }
@@ -226,7 +214,7 @@ export default function MatchesPhase() {
                 {round.matches.map((match, matchIdx) => (
                   <div
                     key={match.id}
-                    onClick={() => match.id && !match.id.startsWith('wb-') && navigate(`/organizer/tournament/${tournamentId}/matches/${match.id}`)}
+                    onClick={() => match.id && !String(match.id).startsWith('wb-') && navigate(`/organizer/tournament/${tournamentId}/matches/${match.id}`)}
                     className="w-36 border border-white/20 rounded-lg bg-[#1a1d2e] overflow-hidden cursor-pointer hover:border-cyan/50 transition-colors"
                     style={{ marginBottom: roundIdx > 0 ? `${Math.pow(2, roundIdx) * 32 - 16}px` : 0 }}
                   >

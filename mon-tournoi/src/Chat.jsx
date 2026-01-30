@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { toast } from './utils/toast';
 import { messageSchema } from './shared/utils/schemas/message';
 
-export default function Chat({ tournamentId, matchId, session, supabase }) {
-  const [messages, setMessages] = useState([]);
+export default function Chat({ tournamentId, matchId, session }) {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
@@ -18,7 +19,33 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
   const MIN_TIME_BETWEEN_MESSAGES = 1000;
 
   const isMatchChat = !!matchId;
-  const channelContext = isMatchChat ? `match-${matchId}` : `tournament-${tournamentId}`;
+
+  // Queries Convex - se mettent à jour automatiquement en temps réel
+  const matchMessages = useQuery(
+    api.chat.listByMatch,
+    isMatchChat && matchId ? { matchId, limit: 100 } : "skip"
+  );
+  
+  // Pour le chat tournoi, on n'a pas encore de table séparée dans Convex
+  // On utilise matchChat pour les matchs uniquement
+  const rawMessages = matchMessages ?? [];
+  
+  // Adapter les messages pour l'affichage
+  const messages = useMemo(() => {
+    return rawMessages.map(msg => ({
+      ...msg,
+      id: msg._id,
+      user_id: msg.userId,
+      created_at: msg.createdAt,
+      profiles: msg.user ? {
+        username: msg.user.username,
+        avatar_url: msg.user.avatarUrl
+      } : null
+    }));
+  }, [rawMessages]);
+
+  // Mutation Convex pour envoyer un message
+  const sendMessageMut = useMutation(api.chat.send);
 
   // Cleanup au démontage
   useEffect(() => {
@@ -34,68 +61,6 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
       container.scrollTop = container.scrollHeight;
     }
   }, []);
-
-  // Mémoriser fetchMessages avec toutes les dépendances
-  const fetchMessages = useCallback(async () => {
-    if (!tournamentId && !matchId) return;
-
-    try {
-      let query = supabase
-        .from('messages')
-        .select('*, profiles(username, avatar_url)')
-        .order('created_at', { ascending: true });
-
-      if (isMatchChat) {
-        query = query.eq('match_id', matchId);
-      } else {
-        query = query.eq('tournament_id', tournamentId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Erreur chargement chat:", error);
-        toast.error("Erreur lors du chargement des messages");
-        // Garder les messages précédents en cas d'erreur
-        return;
-      }
-
-      if (isMountedRef.current) {
-        setMessages(data || []);
-      }
-    } catch (err) {
-      console.error("Exception lors du chargement des messages:", err);
-      if (isMountedRef.current) {
-        toast.error("Erreur lors du chargement des messages");
-      }
-    }
-  }, [tournamentId, matchId, isMatchChat, supabase]);
-
-  // Effect pour charger les messages et s'abonner aux changements
-  useEffect(() => {
-    if (!tournamentId && !matchId) return;
-
-    isMountedRef.current = true;
-    fetchMessages();
-
-    const channel = supabase.channel(`chat-${channelContext}`)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'messages',
-        filter: isMatchChat ? `match_id=eq.${matchId}` : `tournament_id=eq.${tournamentId}`
-      }, 
-      () => {
-        if (isMountedRef.current) {
-          fetchMessages(); 
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [tournamentId, matchId, channelContext, isMatchChat, supabase, fetchMessages]);
 
   // Effect pour le scroll automatique
   useEffect(() => {
@@ -115,7 +80,7 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!session || sending) return;
+    if (!session || sending || !isMatchChat) return;
 
     // Validation avec Zod
     const result = messageSchema.safeParse({ content: newMessage });
@@ -156,29 +121,14 @@ export default function Chat({ tournamentId, matchId, session, supabase }) {
     messageCountRef.current += 1;
 
     try {
-      // React échappe automatiquement les strings, pas besoin de sanitization HTML
-      const messageData = {
-        content: trimmedMessage.substring(0, MAX_MESSAGE_LENGTH), // Limiter la longueur au cas où
-        user_id: session.user.id,
-      };
-
-      if (isMatchChat) {
-        messageData.match_id = matchId;
-      } else {
-        messageData.tournament_id = tournamentId;
-      }
-
-      const { error } = await supabase.from('messages').insert([messageData]);
-
-      if (error) {
-        toast.error("Erreur envoi : " + error.message);
-        messageCountRef.current -= 1; // Annuler le compteur en cas d'erreur
-      } else {
-        setNewMessage('');
-      }
+      await sendMessageMut({
+        matchId,
+        message: trimmedMessage.substring(0, MAX_MESSAGE_LENGTH)
+      });
+      setNewMessage('');
     } catch (error) {
       console.error('Erreur lors de l\'envoi du message:', error);
-      toast.error('Erreur lors de l\'envoi du message');
+      toast.error('Erreur lors de l\'envoi du message: ' + error.message);
       messageCountRef.current -= 1;
     } finally {
       setSending(false);

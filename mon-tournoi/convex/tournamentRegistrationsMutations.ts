@@ -274,3 +274,75 @@ export const removeParticipant = mutation({
         return { success: true };
     },
 });
+
+/**
+ * Admin: promouvoir une équipe depuis la waitlist vers les participants
+ */
+export const promoteFromWaitlist = mutation({
+    args: {
+        tournamentId: v.id("tournaments"),
+        waitlistEntryId: v.string(), // ID de l'entrée dans la waitlist
+        teamId: v.id("teams"),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const tournament = await ctx.db.get(args.tournamentId);
+        if (!tournament) {
+            throw new Error("Tournoi non trouvé");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email ?? ""))
+            .first();
+
+        if (!user || tournament.organizerId !== user._id) {
+            throw new Error("Seul l'organisateur peut promouvoir depuis la waitlist");
+        }
+
+        // Vérifier que l'équipe n'est pas déjà inscrite
+        const existing = await ctx.db
+            .query("tournamentRegistrations")
+            .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+            .filter((q) => q.eq(q.field("teamId"), args.teamId))
+            .first();
+
+        if (existing) {
+            throw new Error("Cette équipe est déjà inscrite");
+        }
+
+        // Vérifier le nombre max de participants
+        if (tournament.maxTeams) {
+            const registrations = await ctx.db
+                .query("tournamentRegistrations")
+                .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+                .collect();
+
+            if (registrations.length >= tournament.maxTeams) {
+                throw new Error("Le tournoi est complet");
+            }
+        }
+
+        // Créer l'inscription
+        const team = await ctx.db.get(args.teamId);
+        await ctx.db.insert("tournamentRegistrations", {
+            tournamentId: args.tournamentId,
+            teamId: args.teamId,
+            userId: team?.captainId,
+            status: "confirmed",
+            seed: undefined,
+            checkedInAt: undefined,
+            createdAt: Date.now(),
+        });
+
+        // Note: La waitlist est gérée séparément (dans une table ou un champ du tournoi)
+        // Pour l'instant on ne supprime pas de la waitlist car elle n'est pas dans Convex
+        // TODO: Migrer la waitlist vers Convex si nécessaire
+
+        return { success: true };
+    },
+});

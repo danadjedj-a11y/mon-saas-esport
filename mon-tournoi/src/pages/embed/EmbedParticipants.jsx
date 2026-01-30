@@ -1,54 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
- * EmbedParticipants - Widget embedable des participants
+ * EmbedParticipants - Widget embedable des participants (Convex)
  * URL: /embed/tournament/:id/participants
  */
 export default function EmbedParticipants() {
   const { id: tournamentId } = useParams();
   const [searchParams] = useSearchParams();
   
-  const [tournament, setTournament] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   const theme = searchParams.get('theme') || 'dark';
   const showHeader = searchParams.get('header') !== 'false';
   const limit = parseInt(searchParams.get('limit')) || 50;
 
-  useEffect(() => {
-    fetchData();
-  }, [tournamentId]);
+  // Convex queries
+  const tournament = useQuery(api.tournaments.getById,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const registrations = useQuery(api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
 
-  const fetchData = async () => {
-    try {
-      const [tournamentRes, participantsRes] = await Promise.all([
-        supabase
-          .from('tournaments')
-          .select('id, name, game, logo_url')
-          .eq('id', tournamentId)
-          .single(),
-        supabase
-          .from('participants')
-          .select('*, team:team_id(id, name, logo_url)')
-          .eq('tournament_id', tournamentId)
-          .eq('status', 'confirmed')
-          .order('created_at', { ascending: true })
-          .limit(limit),
-      ]);
+  const loading = tournament === undefined;
 
-      if (tournamentRes.error) throw tournamentRes.error;
-      setTournament(tournamentRes.data);
-      setParticipants(participantsRes.data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Filter confirmed participants only
+  const participants = useMemo(() => {
+    if (!registrations) return [];
+    return registrations
+      .filter(r => r.status === 'confirmed')
+      .slice(0, limit);
+  }, [registrations, limit]);
 
   const bgColor = theme === 'light' ? 'bg-white' : 'bg-[#0d1117]';
   const textColor = theme === 'light' ? 'text-gray-900' : 'text-white';
@@ -70,8 +54,8 @@ export default function EmbedParticipants() {
         <div className={clsx('p-4 border-b', borderColor)}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {tournament?.logo_url && (
-                <img src={tournament.logo_url} alt="" className="w-10 h-10 rounded-lg" />
+              {tournament?.logoUrl && (
+                <img src={tournament.logoUrl} alt="" className="w-10 h-10 rounded-lg" />
               )}
               <div>
                 <h1 className="font-bold">{tournament?.name}</h1>

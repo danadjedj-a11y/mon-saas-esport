@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { GradientButton, GlassCard } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 
@@ -63,74 +63,13 @@ export default function TournamentOverview() {
   const context = useOutletContext();
   const tournament = context?.tournament;
 
-  const [stats, setStats] = useState({
-    participants: 0,
-    checkedIn: 0,
-    phases: 0,
-    matches: 0,
-    completedMatches: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState([]);
+  // Convex query for stats - use skip if no valid tournamentId
+  const stats = useQuery(
+    api.tournaments.getStats,
+    tournamentId ? { tournamentId } : 'skip'
+  );
 
-  useEffect(() => {
-    fetchStats();
-  }, [tournamentId]);
-
-  const fetchStats = async () => {
-    if (!tournamentId) return;
-
-    try {
-      // Participants
-      const { count: participantsCount } = await supabase
-        .from('participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentId);
-
-      // Participants checked in
-      const { count: checkedInCount } = await supabase
-        .from('participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentId)
-        .eq('checked_in', true);
-
-      // Phases (si table existe)
-      let phasesCount = 0;
-      try {
-        const { count } = await supabase
-          .from('tournament_phases')
-          .select('*', { count: 'exact', head: true })
-          .eq('tournament_id', tournamentId);
-        phasesCount = count || 0;
-      } catch {
-        // Table might not exist
-      }
-
-      // Matches
-      const { count: matchesCount } = await supabase
-        .from('matches')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentId);
-
-      const { count: completedMatchesCount } = await supabase
-        .from('matches')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentId)
-        .eq('status', 'completed');
-
-      setStats({
-        participants: participantsCount || 0,
-        checkedIn: checkedInCount || 0,
-        phases: phasesCount,
-        matches: matchesCount || 0,
-        completedMatches: completedMatchesCount || 0,
-      });
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = stats === undefined;
 
   const getStatusBadge = (status) => {
     switch (status) {

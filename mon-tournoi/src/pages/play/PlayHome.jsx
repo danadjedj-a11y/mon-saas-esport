@@ -11,7 +11,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Button, Input, Card } from '../../shared/components/ui';
 import { TournamentCardSkeleton } from '../../components/Skeleton';
@@ -49,14 +50,12 @@ export default function PlayHome({ session }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   
-  const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredIndex, setFeaturedIndex] = useState(0);
 
-  useEffect(() => {
-    fetchTournaments();
-  }, []);
+  // Convex query pour les tournois publics
+  const tournaments = useQuery(api.tournaments.listPublic, { limit: 50 }) ?? [];
+  const loading = tournaments === undefined;
 
   // Auto-rotation du carousel
   useEffect(() => {
@@ -66,37 +65,18 @@ export default function PlayHome({ session }) {
     return () => clearInterval(interval);
   }, [tournaments]);
 
-  const fetchTournaments = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .in('status', ['draft', 'open', 'ongoing'])
-        .eq('is_public', true)
-        .order('start_date', { ascending: true });
-
-      if (error) throw error;
-      setTournaments(data || []);
-    } catch (error) {
-      console.error('Erreur chargement tournois:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Tournois en vedette (les plus récents avec cashprize ou les plus gros)
   const featuredTournaments = useMemo(() => {
     return tournaments
-      .filter(t => t.cashprize_total > 0 || t.max_participants >= 16)
+      .filter(t => (t.cashprizeTotal ?? 0) > 0 || (t.maxParticipants ?? 0) >= 16)
       .slice(0, 5);
   }, [tournaments]);
 
   // Tournois à venir (prochains 10)
   const upcomingTournaments = useMemo(() => {
-    const now = new Date();
+    const now = Date.now();
     return tournaments
-      .filter(t => new Date(t.start_date) > now)
+      .filter(t => (t.startDate ?? 0) > now)
       .slice(0, 10);
   }, [tournaments]);
 
@@ -189,7 +169,7 @@ export default function PlayHome({ session }) {
               {currentFeatured && (
                 <div 
                   className="p-8 md:p-12 cursor-pointer transition-all duration-500"
-                  onClick={() => navigate(`/tournament/${currentFeatured.id}/public`)}
+                  onClick={() => navigate(`/tournament/${currentFeatured._id}/public`)}
                 >
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div className="flex-1">
@@ -206,18 +186,18 @@ export default function PlayHome({ session }) {
                       
                       <div className="flex flex-wrap gap-4 text-gray-300 mb-4">
                         <span className="flex items-center gap-2">
-                          📅 {new Date(currentFeatured.start_date).toLocaleDateString('fr-FR', { 
+                          📅 {new Date(currentFeatured.startDate).toLocaleDateString('fr-FR', { 
                             day: 'numeric', 
                             month: 'long', 
                             year: 'numeric' 
                           })}
                         </span>
                         <span className="flex items-center gap-2">
-                          👥 {currentFeatured.max_participants} équipes max
+                          👥 {currentFeatured.maxParticipants} équipes max
                         </span>
-                        {currentFeatured.cashprize_total > 0 && (
+                        {(currentFeatured.cashprizeTotal ?? 0) > 0 && (
                           <span className="flex items-center gap-2 text-yellow-400 font-bold">
-                            💰 {currentFeatured.cashprize_total.toLocaleString()}€
+                            💰 {currentFeatured.cashprizeTotal?.toLocaleString() ?? 0}€
                           </span>
                         )}
                       </div>
@@ -324,9 +304,9 @@ export default function PlayHome({ session }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTournaments.map(tournament => (
                 <TournamentCardEnhanced 
-                  key={tournament.id} 
+                  key={tournament._id} 
                   tournament={tournament}
-                  onClick={() => navigate(`/tournament/${tournament.id}/public`)}
+                  onClick={() => navigate(`/tournament/${tournament._id}/public`)}
                 />
               ))}
             </div>
@@ -423,17 +403,17 @@ function TournamentCardEnhanced({ tournament, onClick }) {
       <div className="p-4">
         <div className="flex flex-wrap gap-3 text-sm text-gray-400">
           <span className="flex items-center gap-1">
-            📅 {new Date(tournament.start_date).toLocaleDateString('fr-FR', { 
+            📅 {new Date(tournament.startDate).toLocaleDateString('fr-FR', { 
               day: 'numeric', 
               month: 'short' 
             })}
           </span>
           <span className="flex items-center gap-1">
-            👥 {tournament.max_participants}
+            👥 {tournament.maxParticipants}
           </span>
-          {tournament.cashprize_total > 0 && (
+          {(tournament.cashprizeTotal ?? 0) > 0 && (
             <span className="flex items-center gap-1 text-yellow-400 font-medium">
-              💰 {tournament.cashprize_total}€
+              💰 {tournament.cashprizeTotal}€
             </span>
           )}
         </div>

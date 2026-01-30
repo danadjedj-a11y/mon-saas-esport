@@ -180,6 +180,83 @@ export const listUpcoming = query({
 });
 
 /**
+ * Récupère le match actif d'un utilisateur (pending ou in_progress)
+ * Retourne le match le plus récent avec les détails de l'équipe utilisateur
+ */
+export const getActiveMatch = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        // Récupère les équipes de l'utilisateur
+        const memberships = await ctx.db
+            .query("teamMembers")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .collect();
+
+        const teamIds = memberships.map((m) => m.teamId);
+        if (teamIds.length === 0) return null;
+
+        // Récupère tous les matchs actifs pour ces équipes
+        type MatchWithUserInfo = {
+            userTeamId: string;
+            isTeam1: boolean;
+            [key: string]: unknown;
+        };
+        const allMatches: MatchWithUserInfo[] = [];
+        
+        for (const teamId of teamIds) {
+            const matchesAsTeam1 = await ctx.db
+                .query("matches")
+                .withIndex("by_team1", (q) => q.eq("team1Id", teamId))
+                .filter((q) =>
+                    q.or(
+                        q.eq(q.field("status"), "pending"),
+                        q.eq(q.field("status"), "ready"),
+                        q.eq(q.field("status"), "in_progress")
+                    )
+                )
+                .collect();
+
+            const matchesAsTeam2 = await ctx.db
+                .query("matches")
+                .withIndex("by_team2", (q) => q.eq("team2Id", teamId))
+                .filter((q) =>
+                    q.or(
+                        q.eq(q.field("status"), "pending"),
+                        q.eq(q.field("status"), "ready"),
+                        q.eq(q.field("status"), "in_progress")
+                    )
+                )
+                .collect();
+
+            // Tag matches with the user's team ID
+            matchesAsTeam1.forEach(m => allMatches.push({ ...m, userTeamId: teamId, isTeam1: true }));
+            matchesAsTeam2.forEach(m => allMatches.push({ ...m, userTeamId: teamId, isTeam1: false }));
+        }
+
+        if (allMatches.length === 0) return null;
+
+        // Prend le match le plus récent
+        allMatches.sort((a, b) => (b.createdAt as number) - (a.createdAt as number));
+        const match = allMatches[0];
+
+        // Récupère les équipes et le tournoi
+        const team1 = match.team1Id ? await ctx.db.get(match.team1Id as any) : null;
+        const team2 = match.team2Id ? await ctx.db.get(match.team2Id as any) : null;
+        const tournament = await ctx.db.get(match.tournamentId as any);
+
+        return {
+            ...match,
+            team1: team1 ? { _id: team1._id, name: team1.name, tag: team1.tag, logoUrl: team1.logoUrl } : null,
+            team2: team2 ? { _id: team2._id, name: team2.name, tag: team2.tag, logoUrl: team2.logoUrl } : null,
+            tournament: tournament ? { _id: tournament._id, name: tournament.name, game: tournament.game, status: tournament.status } : null,
+            isUserTeam1: match.isTeam1,
+            userTeamId: match.userTeamId,
+            opponentTeamId: match.isTeam1 ? match.team2Id : match.team1Id,
+        };
+    },
+});
+
+/**
  * Liste les matchs récents (terminés) pour un utilisateur
  */
 export const listRecent = query({

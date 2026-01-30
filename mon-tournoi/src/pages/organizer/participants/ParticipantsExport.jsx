@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -14,7 +15,6 @@ export default function ParticipantsExport() {
   const tournament = context?.tournament;
 
   const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [exportFormat, setExportFormat] = useState('csv');
   const [includeFields, setIncludeFields] = useState({
     position: true,
@@ -26,41 +26,19 @@ export default function ParticipantsExport() {
     members: false,
   });
 
+  // Charger via Convex
+  const registrationsData = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = registrationsData === undefined;
+
   useEffect(() => {
-    fetchParticipants();
-  }, [tournamentId]);
-
-  const fetchParticipants = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          team:team_id (
-            id,
-            name,
-            logo_url,
-            captain_id,
-            team_members (
-              id,
-              user_id,
-              role,
-              profiles:user_id (username, email)
-            )
-          )
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setParticipants(data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
+    if (registrationsData) {
+      setParticipants(registrationsData);
     }
-  };
+  }, [registrationsData]);
 
   const toggleField = (field) => {
     setIncludeFields(prev => ({
@@ -76,17 +54,17 @@ export default function ParticipantsExport() {
       if (includeFields.position) row.position = index + 1;
       if (includeFields.name) row.name = p.team?.name || p.name || '';
       if (includeFields.status) row.status = p.status || '';
-      if (includeFields.checked_in) row.checked_in = p.checked_in ? 'Oui' : 'Non';
-      if (includeFields.created_at) row.inscription = new Date(p.created_at).toLocaleDateString('fr-FR');
+      if (includeFields.checked_in) row.checked_in = p.checkedIn ? 'Oui' : 'Non';
+      if (includeFields.created_at) row.inscription = p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '';
       
-      if (includeFields.email && p.team?.team_members) {
-        const captain = p.team.team_members.find(m => m.user_id === p.team.captain_id);
-        row.email = captain?.profiles?.email || '';
+      if (includeFields.email && p.team?.teamMembers) {
+        const captain = p.team.teamMembers.find(m => m.userId === p.team.captainId);
+        row.email = captain?.profile?.email || '';
       }
       
-      if (includeFields.members && p.team?.team_members) {
-        row.members = p.team.team_members
-          .map(m => m.profiles?.username || 'Inconnu')
+      if (includeFields.members && p.team?.teamMembers) {
+        row.members = p.team.teamMembers
+          .map(m => m.profile?.username || 'Inconnu')
           .join(', ');
       }
       

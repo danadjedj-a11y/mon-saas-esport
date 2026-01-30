@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -17,18 +18,18 @@ export default function SettingsOperations() {
   const [isLoading, setIsLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
+  const publishTournament = useMutation(api.tournamentsMutations.publish);
+  const unpublishTournament = useMutation(api.tournamentsMutations.unpublish);
+  const archiveTournament = useMutation(api.tournamentsMutations.archive);
+  const duplicateTournament = useMutation(api.tournamentsMutations.duplicate);
+  const deleteTournament = useMutation(api.tournamentsMutations.remove);
+
   const handlePublish = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString()
-        })
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await publishTournament({
+        tournamentId: tournament?._id,
+      });
 
       toast.success('Tournoi publié avec succès');
       setShowPublishModal(false);
@@ -47,12 +48,9 @@ export default function SettingsOperations() {
   const handleUnpublish = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('tournaments')
-        .update({ status: 'draft' })
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await unpublishTournament({
+        tournamentId: tournament?._id,
+      });
 
       toast.success('Tournoi dépublié');
       setShowPublishModal(false);
@@ -71,36 +69,15 @@ export default function SettingsOperations() {
   const handleDuplicate = async () => {
     setIsLoading(true);
     try {
-      // Récupérer les données complètes du tournoi
-      const { data: originalTournament, error: fetchError } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', tournamentId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Créer une copie sans certains champs
-      const { id, created_at, updated_at, ...tournamentData } = originalTournament;
-
-      const { data: newTournament, error: createError } = await supabase
-        .from('tournaments')
-        .insert({
-          ...tournamentData,
-          name: `${tournamentData.name} (copie)`,
-          status: 'draft',
-          published_at: null,
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
+      const newTournamentId = await duplicateTournament({
+        tournamentId: tournament?._id,
+      });
 
       toast.success('Tournoi dupliqué avec succès');
       setShowDuplicateModal(false);
 
       // Rediriger vers le nouveau tournoi
-      navigate(`/organizer/tournament/${newTournament.id}`);
+      navigate(`/organizer/tournament/${newTournamentId}`);
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la duplication');
@@ -112,15 +89,9 @@ export default function SettingsOperations() {
   const handleArchive = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          status: 'archived',
-          archived_at: new Date().toISOString()
-        })
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await archiveTournament({
+        tournamentId: tournament?._id,
+      });
 
       toast.success('Tournoi archivé');
       setShowArchiveModal(false);
@@ -141,17 +112,9 @@ export default function SettingsOperations() {
 
     setIsLoading(true);
     try {
-      // Supprimer les données associées
-      await supabase.from('participants').delete().eq('tournament_id', tournamentId);
-      await supabase.from('matches').delete().eq('tournament_id', tournamentId);
-
-      // Supprimer le tournoi
-      const { error } = await supabase
-        .from('tournaments')
-        .delete()
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await deleteTournament({
+        tournamentId: tournament?._id,
+      });
 
       toast.success('Tournoi supprimé définitivement');
       navigate('/organizer');

@@ -129,7 +129,11 @@ export const create = mutation({
             v.literal("tournament_update"),
             v.literal("check_in_reminder"),
             v.literal("match_result"),
-            v.literal("tournament_start")
+            v.literal("tournament_start"),
+            v.literal("match_upcoming"),
+            v.literal("score_dispute"),
+            v.literal("score_declared"),
+            v.literal("admin_message")
         ),
         title: v.string(),
         message: v.string(),
@@ -153,5 +157,127 @@ export const create = mutation({
         });
 
         return notificationId;
+    },
+});
+
+/**
+ * Crée des notifications pour tous les membres d'une équipe
+ */
+export const createForTeam = mutation({
+    args: {
+        teamId: v.id("teams"),
+        type: v.union(
+            v.literal("match_ready"),
+            v.literal("team_invitation"),
+            v.literal("tournament_update"),
+            v.literal("check_in_reminder"),
+            v.literal("match_result"),
+            v.literal("tournament_start"),
+            v.literal("match_upcoming"),
+            v.literal("score_dispute"),
+            v.literal("score_declared"),
+            v.literal("admin_message")
+        ),
+        title: v.string(),
+        message: v.string(),
+        link: v.optional(v.string()),
+        relatedTournamentId: v.optional(v.id("tournaments")),
+        relatedMatchId: v.optional(v.id("matches")),
+    },
+    handler: async (ctx, args) => {
+        // Get team
+        const team = await ctx.db.get(args.teamId);
+        if (!team) throw new Error("Équipe non trouvée");
+
+        // Get team members
+        const members = await ctx.db
+            .query("teamMembers")
+            .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+            .collect();
+
+        // Create a set of user IDs (captain + members)
+        const userIds = new Set<string>();
+        userIds.add(team.captainId as string);
+        members.forEach((m) => userIds.add(m.userId as string));
+
+        // Create notifications for all users
+        const created: string[] = [];
+        for (const userId of userIds) {
+            const notificationId = await ctx.db.insert("notifications", {
+                userId: userId as any, // Cast to Id<"users">
+                type: args.type,
+                title: args.title,
+                message: args.message,
+                link: args.link,
+                relatedTournamentId: args.relatedTournamentId,
+                relatedMatchId: args.relatedMatchId,
+                relatedTeamId: args.teamId,
+                read: false,
+                createdAt: Date.now(),
+            });
+            created.push(notificationId);
+        }
+
+        return { count: created.length };
+    },
+});
+
+/**
+ * Crée des notifications pour les deux équipes d'un match
+ */
+export const createForMatch = mutation({
+    args: {
+        matchId: v.id("matches"),
+        type: v.union(
+            v.literal("match_ready"),
+            v.literal("match_result"),
+            v.literal("match_upcoming"),
+            v.literal("score_dispute"),
+            v.literal("score_declared")
+        ),
+        title: v.string(),
+        message: v.string(),
+        link: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const match = await ctx.db.get(args.matchId);
+        if (!match) throw new Error("Match non trouvé");
+
+        const teamIds = [match.player1Id, match.player2Id].filter(Boolean);
+        let totalNotifications = 0;
+
+        for (const teamId of teamIds) {
+            if (!teamId) continue;
+            
+            const team = await ctx.db.get(teamId);
+            if (!team) continue;
+
+            // Get team members
+            const members = await ctx.db
+                .query("teamMembers")
+                .withIndex("by_team", (q) => q.eq("teamId", teamId))
+                .collect();
+
+            const userIds = new Set<string>();
+            userIds.add(team.captainId as string);
+            members.forEach((m) => userIds.add(m.userId as string));
+
+            for (const userId of userIds) {
+                await ctx.db.insert("notifications", {
+                    userId: userId as any,
+                    type: args.type,
+                    title: args.title,
+                    message: args.message,
+                    link: args.link ?? `/match/${args.matchId}`,
+                    relatedMatchId: args.matchId,
+                    relatedTournamentId: match.tournamentId,
+                    read: false,
+                    createdAt: Date.now(),
+                });
+                totalNotifications++;
+            }
+        }
+
+        return { count: totalNotifications };
     },
 });

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
@@ -17,18 +18,54 @@ export default function SharingTV() {
   const [standings, setStandings] = useState([]);
   const [phases, setPhases] = useState([]);
   const [selectedPhase, setSelectedPhase] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [autoRotate, setAutoRotate] = useState(false);
   const [rotateInterval, setRotateInterval] = useState(10); // seconds
 
+  // Charger via Convex
+  const matchesData = useQuery(
+    api.matches.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const phasesData = useQuery(
+    api.tournamentPhases.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const registrationsData = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = matchesData === undefined || phasesData === undefined;
+
+  // Initialiser les données quand elles arrivent
   useEffect(() => {
-    fetchData();
-    
-    // Auto-refresh toutes les 30 secondes
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [tournamentId]);
+    if (matchesData) {
+      setMatches(matchesData);
+    }
+  }, [matchesData]);
+
+  useEffect(() => {
+    if (phasesData) {
+      setPhases(phasesData);
+      if (phasesData.length > 0 && !selectedPhase) {
+        setSelectedPhase(phasesData[0]._id);
+      }
+    }
+  }, [phasesData]);
+
+  useEffect(() => {
+    if (registrationsData) {
+      const standingsData = registrationsData.map((p, i) => ({
+        rank: i + 1,
+        name: p.team?.name || p.name || 'TBD',
+        logo: p.team?.logoUrl,
+        wins: 0,
+        losses: 0,
+      }));
+      setStandings(standingsData);
+    }
+  }, [registrationsData]);
 
   useEffect(() => {
     if (!autoRotate) return;

@@ -1,50 +1,45 @@
-// Utilitaires pour le système de notifications avec protection anti-spam
-
-import { supabase } from '../supabaseClient';
+// Utilitaires pour le système de notifications
+// Migré vers Convex - utilise api.notifications.create
 
 /**
- * Crée une notification avec protection anti-spam
- * @param {string} userId - ID de l'utilisateur qui recevra la notification
- * @param {string} type - Type de notification ('comment_like', 'comment_reply', etc.)
+ * Crée une notification via Convex
+ * @param {Function} createNotificationMutation - The Convex mutation (from useMutation(api.notifications.create))
+ * @param {string} userId - ID de l'utilisateur qui recevra la notification (Convex ID)
+ * @param {string} type - Type de notification (doit correspondre aux types Convex)
  * @param {string} title - Titre de la notification
  * @param {string} message - Message de la notification
  * @param {string} link - URL vers la ressource (optionnel)
- * @param {string} relatedUserId - ID de l'utilisateur qui a déclenché la notification (optionnel)
- * @param {string} relatedCommentId - ID du commentaire concerné (optionnel)
  * @param {string} relatedTournamentId - ID du tournoi concerné (optionnel)
- * @param {number} cooldownMinutes - Cooldown en minutes (défaut: 5)
- * @returns {Promise<string|null>} - ID de la notification créée ou null si bloquée par anti-spam
+ * @param {string} relatedMatchId - ID du match concerné (optionnel)
+ * @param {string} relatedTeamId - ID de l'équipe concernée (optionnel)
+ * @returns {Promise<string|null>} - ID de la notification créée ou null en cas d'erreur
  */
 export async function createNotification(
+  createNotificationMutation,
   userId,
   type,
   title,
   message,
   link = null,
-  relatedUserId = null,
-  relatedCommentId = null,
   relatedTournamentId = null,
-  cooldownMinutes = 5
+  relatedMatchId = null,
+  relatedTeamId = null
 ) {
+  if (!createNotificationMutation || !userId) return null;
+  
   try {
-    const { data, error } = await supabase.rpc('create_notification_with_deduplication', {
-      p_user_id: userId,
-      p_type: type,
-      p_title: title,
-      p_message: message,
-      p_link: link,
-      p_related_user_id: relatedUserId,
-      p_related_comment_id: relatedCommentId,
-      p_related_tournament_id: relatedTournamentId,
-      p_cooldown_minutes: cooldownMinutes
+    const notificationId = await createNotificationMutation({
+      userId,
+      type,
+      title,
+      message,
+      link: link || undefined,
+      relatedTournamentId: relatedTournamentId || undefined,
+      relatedMatchId: relatedMatchId || undefined,
+      relatedTeamId: relatedTeamId || undefined,
     });
 
-    if (error) {
-      console.error('Erreur création notification:', error);
-      return null;
-    }
-
-    return data;
+    return notificationId;
   } catch (err) {
     console.error('Erreur création notification:', err);
     return null;
@@ -53,9 +48,14 @@ export async function createNotification(
 
 /**
  * Envoie une notification pour un like sur un commentaire
- * Protection anti-spam : ne notifie pas si l'utilisateur vient de retirer puis remettre son like
+ * Note: Le type 'comment_like' n'existe pas dans Convex, utilisez 'admin_message' ou ajoutez le type au schema
+ * @param {Function} createNotificationMutation - The Convex mutation
+ * @param {string} commentAuthorId - ID de l'auteur du commentaire
+ * @param {string} likerId - ID de l'utilisateur qui a liké
+ * @param {string} tournamentId - ID du tournoi
+ * @param {string} likerUsername - Nom de l'utilisateur qui a liké
  */
-export async function notifyCommentLike(commentAuthorId, likerId, commentId, tournamentId, likerUsername) {
+export async function notifyCommentLike(createNotificationMutation, commentAuthorId, likerId, tournamentId, likerUsername) {
   // Ne pas notifier si l'utilisateur like son propre commentaire
   if (commentAuthorId === likerId) {
     return null;
@@ -64,22 +64,26 @@ export async function notifyCommentLike(commentAuthorId, likerId, commentId, tou
   const link = `/tournament/${tournamentId}/public?tab=comments`;
   
   return await createNotification(
+    createNotificationMutation,
     commentAuthorId,
-    'comment_like',
+    'admin_message', // Type générique - à adapter si 'comment_like' est ajouté au schema
     'Nouveau like sur votre commentaire',
     `${likerUsername || 'Quelqu\'un'} a aimé votre commentaire`,
     link,
-    likerId,
-    commentId,
-    tournamentId,
-    5 // Cooldown de 5 minutes
+    tournamentId
   );
 }
 
 /**
  * Envoie une notification pour une réponse à un commentaire
+ * Note: Le type 'comment_reply' n'existe pas dans Convex, utilisez 'admin_message' ou ajoutez le type au schema
+ * @param {Function} createNotificationMutation - The Convex mutation
+ * @param {string} commentAuthorId - ID de l'auteur du commentaire
+ * @param {string} replierId - ID de l'utilisateur qui a répondu
+ * @param {string} tournamentId - ID du tournoi
+ * @param {string} replierUsername - Nom de l'utilisateur qui a répondu
  */
-export async function notifyCommentReply(commentAuthorId, replierId, commentId, tournamentId, replierUsername) {
+export async function notifyCommentReply(createNotificationMutation, commentAuthorId, replierId, tournamentId, replierUsername) {
   // Ne pas notifier si l'utilisateur répond à son propre commentaire
   if (commentAuthorId === replierId) {
     return null;
@@ -88,51 +92,36 @@ export async function notifyCommentReply(commentAuthorId, replierId, commentId, 
   const link = `/tournament/${tournamentId}/public?tab=comments`;
   
   return await createNotification(
+    createNotificationMutation,
     commentAuthorId,
-    'comment_reply',
+    'admin_message', // Type générique - à adapter si 'comment_reply' est ajouté au schema
     'Nouvelle réponse à votre commentaire',
     `${replierUsername || 'Quelqu\'un'} a répondu à votre commentaire`,
     link,
-    replierId,
-    commentId,
-    tournamentId,
-    5 // Cooldown de 5 minutes
+    tournamentId
   );
 }
 
 /**
  * Récupère le nombre de notifications non lues pour un utilisateur
+ * Note: Utilisez useQuery(api.notifications.countUnread, { userId }) à la place
+ * @deprecated Utilisez directement le hook Convex useQuery(api.notifications.countUnread)
  */
-export async function getUnreadNotificationsCount(userId) {
-  try {
-    const { data, error } = await supabase.rpc('get_unread_notifications_count', {
-      p_user_id: userId
-    });
-
-    if (error) {
-      console.error('Erreur récupération nombre notifications:', error);
-      return 0;
-    }
-
-    return data || 0;
-  } catch (err) {
-    console.error('Erreur récupération nombre notifications:', err);
-    return 0;
-  }
+export function getUnreadNotificationsCount() {
+  console.warn('getUnreadNotificationsCount est déprécié. Utilisez useQuery(api.notifications.countUnread, { userId })');
+  return 0;
 }
 
 /**
  * Marque une notification comme lue
+ * @param {Function} markAsReadMutation - The Convex mutation (from useMutation(api.notifications.markAsRead))
+ * @param {string} notificationId - ID de la notification
  */
-export async function markNotificationAsRead(notificationId, userId) {
+export async function markNotificationAsRead(markAsReadMutation, notificationId) {
+  if (!markAsReadMutation || !notificationId) return false;
+  
   try {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
+    await markAsReadMutation({ notificationId });
     return true;
   } catch (err) {
     console.error('Erreur marquage notification comme lue:', err);
@@ -142,16 +131,13 @@ export async function markNotificationAsRead(notificationId, userId) {
 
 /**
  * Marque toutes les notifications comme lues pour un utilisateur
+ * @param {Function} markAllAsReadMutation - The Convex mutation (from useMutation(api.notifications.markAllAsRead))
  */
-export async function markAllNotificationsAsRead(userId) {
+export async function markAllNotificationsAsRead(markAllAsReadMutation) {
+  if (!markAllAsReadMutation) return false;
+  
   try {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false);
-
-    if (error) throw error;
+    await markAllAsReadMutation();
     return true;
   } catch (err) {
     console.error('Erreur marquage toutes notifications comme lues:', err);

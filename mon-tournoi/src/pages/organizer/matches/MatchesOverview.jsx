@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { toast } from '../../../utils/toast';
 import MatchQuickView from '../../../components/match/MatchQuickView';
 
@@ -10,73 +11,31 @@ export default function MatchesOverview() {
   const context = useOutletContext();
   const tournament = context?.tournament;
 
-  const [matches, setMatches] = useState([]);
-  const [phases, setPhases] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMatches, setSelectedMatches] = useState([]);
   const [quickViewMatch, setQuickViewMatch] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [tournamentId]);
+  // Charger les matchs via Convex
+  const matchesData = useQuery(api.matches.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
 
-  const fetchData = async () => {
-    try {
-      // Fetch matches
-      const { data: matchesData, error: mError } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('round_number', { ascending: true })
-        .order('match_number', { ascending: true });
+  // Charger les phases depuis le contexte ou créer une phase par défaut
+  const phases = context?.phases || [{
+    id: 'default',
+    name: 'Playoffs',
+    type: tournament?.bracketType || 'double_elimination',
+  }];
 
-      if (mError && mError.code !== 'PGRST116') throw mError;
-      
-      // Fetch teams pour enrichir les données
-      const teamIds = [...new Set(
-        (matchesData || []).flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean)
-      )];
-      
-      let teamsMap = {};
-      if (teamIds.length > 0) {
-        const { data: teamsData } = await supabase
-          .from('teams')
-          .select('id, name, logo_url')
-          .in('id', teamIds);
-        teamsMap = Object.fromEntries((teamsData || []).map(t => [t.id, t]));
-      }
-      
-      // Enrichir les matchs avec les infos des équipes
-      const enrichedMatches = (matchesData || []).map(match => ({
-        ...match,
-        participant1: teamsMap[match.player1_id] || null,
-        participant2: teamsMap[match.player2_id] || null,
-      }));
-      
-      setMatches(enrichedMatches);
+  const loading = matchesData === undefined;
 
-      // Fetch phases
-      const { data: phasesData } = await supabase
-        .from('tournament_phases')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('order_index', { ascending: true });
-
-      if (phasesData && phasesData.length > 0) {
-        setPhases(phasesData);
-      } else {
-        setPhases([{
-          id: 'default',
-          name: 'Playoffs',
-          type: tournament?.bracket_type || 'double_elimination',
-        }]);
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Sort matches by round and match number
+  const matches = useMemo(() => {
+    if (!matchesData) return [];
+    return [...matchesData].sort((a, b) => 
+      (a.roundNumber || 1) - (b.roundNumber || 1) || 
+      (a.matchNumber || 0) - (b.matchNumber || 0)
+    );
+  }, [matchesData]);
 
   const completedMatches = matches.filter(m => m.status === 'completed').length;
 
@@ -90,15 +49,19 @@ export default function MatchesOverview() {
   };
 
   const getMatchContext = (match) => {
-    const phase = phases.find(p => p.id === match.phase_id) || phases[0];
-    const bracket = match.bracket_type === 'losers' ? 'Losers Bracket' : 'Winners Bracket';
-    return `${phase?.name || 'Playoffs'} - ${bracket} - Round ${match.round_number || 1}`;
+    const phase = phases.find(p => p.id === match.phaseId) || phases[0];
+    const bracket = match.bracketType === 'losers' ? 'Losers Bracket' : 'Winners Bracket';
+    return `${phase?.name || 'Playoffs'} - ${bracket} - Round ${match.roundNumber || 1}`;
   };
 
   const handleSelectMatch = (id) => {
     setSelectedMatches(prev => 
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
     );
+  };
+
+  const refreshData = () => {
+    // Data will auto-refresh through Convex reactivity
   };
 
   if (loading) {
@@ -115,10 +78,10 @@ export default function MatchesOverview() {
       {quickViewMatch && (
         <MatchQuickView
           match={quickViewMatch}
-          phase={phases.find(p => p.id === quickViewMatch.phase_id) || phases[0]}
+          phase={phases.find(p => p.id === quickViewMatch.phaseId) || phases[0]}
           tournamentId={tournamentId}
           onClose={() => setQuickViewMatch(null)}
-          onRefresh={fetchData}
+          onRefresh={refreshData}
         />
       )}
 
@@ -149,7 +112,7 @@ export default function MatchesOverview() {
               className="accent-cyan"
               onChange={(e) => {
                 if (e.target.checked) {
-                  setSelectedMatches(matches.map(m => m.id));
+                  setSelectedMatches(matches.map(m => m._id));
                 } else {
                   setSelectedMatches([]);
                 }
@@ -186,19 +149,19 @@ export default function MatchesOverview() {
         {matches.length > 0 ? (
           matches.map((match) => {
             const status = getMatchStatus(match);
-            const matchId = `#${match.phase_id ? '1' : '1'}.${match.bracket_type === 'losers' ? '2' : '1'}.${match.round_number || 1}.${match.match_number || 1}`;
+            const matchId = `#${match.phaseId ? '1' : '1'}.${match.bracketType === 'losers' ? '2' : '1'}.${match.roundNumber || 1}.${match.matchNumber || 1}`;
             
             return (
               <div
-                key={match.id}
+                key={match._id}
                 onClick={() => setQuickViewMatch(match)}
                 className="grid grid-cols-[40px_1fr_200px_120px_40px] gap-4 px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer items-center"
               >
                 <div onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
-                    checked={selectedMatches.includes(match.id)}
-                    onChange={() => handleSelectMatch(match.id)}
+                    checked={selectedMatches.includes(match._id)}
+                    onChange={() => handleSelectMatch(match._id)}
                     className="accent-cyan"
                   />
                 </div>
@@ -214,10 +177,10 @@ export default function MatchesOverview() {
                 
                 <div className="text-sm">
                   <p className="text-gray-400">
-                    {match.participant1?.name || 'À déterminer'}
+                    {match.team1?.name || 'À déterminer'}
                   </p>
                   <p className="text-gray-400">
-                    {match.participant2?.name || 'À déterminer'}
+                    {match.team2?.name || 'À déterminer'}
                   </p>
                 </div>
                 
@@ -227,7 +190,7 @@ export default function MatchesOverview() {
                 
                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                   <button 
-                    onClick={() => navigate(`/organizer/tournament/${tournamentId}/matches/${match.id}`)}
+                    onClick={() => navigate(`/organizer/tournament/${tournamentId}/matches/${match._id}`)}
                     className="p-1 text-cyan hover:text-cyan/80"
                     title="Éditer le résultat"
                   >

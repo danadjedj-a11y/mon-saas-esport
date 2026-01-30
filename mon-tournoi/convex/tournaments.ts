@@ -237,3 +237,42 @@ export const listByParticipant = query({
         return tournaments.filter(Boolean);
     },
 });
+
+/**
+ * Récupère les statistiques d'un tournoi (pour la page organizer)
+ */
+export const getStats = query({
+    args: { tournamentId: v.id("tournaments") },
+    handler: async (ctx, args) => {
+        // Participants count
+        const registrations = await ctx.db
+            .query("tournamentRegistrations")
+            .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+            .collect();
+
+        const participants = registrations.length;
+        const checkedIn = registrations.filter(r => r.status === "checked_in").length;
+
+        // Phases count
+        const phases = await ctx.db
+            .query("tournamentPhases")
+            .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+            .collect();
+
+        // Matches count
+        const matches = await ctx.db
+            .query("matches")
+            .withIndex("by_tournament", (q) => q.eq("tournamentId", args.tournamentId))
+            .collect();
+
+        const completedMatches = matches.filter(m => m.status === "completed").length;
+
+        return {
+            participants,
+            checkedIn,
+            phases: phases.length,
+            matches: matches.length,
+            completedMatches,
+        };
+    },
+});

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { toast } from '../../../utils/toast';
 import clsx from 'clsx';
 
@@ -12,7 +13,6 @@ export default function MatchEdit() {
 
   const [match, setMatch] = useState(null);
   const [phase, setPhase] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('result'); // 'result' | 'infos'
 
@@ -31,89 +31,67 @@ export default function MatchEdit() {
   const [publicNotes, setPublicNotes] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
 
+  // Charger via Convex
+  const matchData = useQuery(
+    api.matches.getById,
+    matchId ? { matchId } : "skip"
+  );
+  const phaseData = useQuery(
+    api.tournamentPhases.getById,
+    matchData?.phaseId ? { phaseId: matchData.phaseId } : "skip"
+  );
+
+  // Mutations
+  const updateScore = useMutation(api.matchesMutations.updateScore);
+  const updateScheduledTime = useMutation(api.matchesMutations.updateScheduledTime);
+
+  const loading = matchData === undefined;
+
+  // Initialiser les données quand elles arrivent
   useEffect(() => {
-    fetchMatch();
-  }, [matchId]);
-
-  const fetchMatch = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('id', matchId)
-        .single();
-
-      if (error) throw error;
-      
-      // Fetch les équipes si nécessaire
-      const teamIds = [data.player1_id, data.player2_id].filter(Boolean);
-      let teamsMap = {};
-      if (teamIds.length > 0) {
-        const { data: teamsData } = await supabase
-          .from('teams')
-          .select('id, name, logo_url')
-          .in('id', teamIds);
-        teamsMap = Object.fromEntries((teamsData || []).map(t => [t.id, t]));
-      }
-      
-      // Enrichir le match
-      const enrichedMatch = {
-        ...data,
-        participant1: teamsMap[data.player1_id] || null,
-        participant2: teamsMap[data.player2_id] || null,
-      };
-
-      setMatch(enrichedMatch);
-      setScore1(data.score_p1 || 0);
-      setScore2(data.score_p2 || 0);
-      setForfeit1(data.forfeit1 || false);
-      setForfeit2(data.forfeit2 || false);
-      setParticipantNotes(data.participant_notes || '');
-      setPublicNotes(data.public_notes || '');
-      setAdminNotes(data.admin_notes || '');
+    if (matchData) {
+      setMatch(matchData);
+      setScore1(matchData.team1Score || 0);
+      setScore2(matchData.team2Score || 0);
+      setForfeit1(matchData.forfeit1 || false);
+      setForfeit2(matchData.forfeit2 || false);
+      setParticipantNotes(matchData.participantNotes || '');
+      setPublicNotes(matchData.publicNotes || '');
+      setAdminNotes(matchData.adminNotes || '');
 
       // Parse scheduled date
-      if (data.scheduled_at) {
-        const date = new Date(data.scheduled_at);
+      if (matchData.scheduledAt) {
+        const date = new Date(matchData.scheduledAt);
         setScheduledDate(date.toISOString().split('T')[0]);
         setScheduledTime(date.toTimeString().slice(0, 5));
       }
 
       // Determine results from scores
-      if (data.status === 'completed') {
-        if (data.winner_id === data.player1_id) {
+      if (matchData.status === 'completed') {
+        if (matchData.winnerId === matchData.team1Id) {
           setResult1('win');
           setResult2('loss');
-        } else if (data.winner_id === data.player2_id) {
+        } else if (matchData.winnerId === matchData.team2Id) {
           setResult1('loss');
           setResult2('win');
-        } else if (data.score_p1 === data.score_p2) {
+        } else if (matchData.team1Score === matchData.team2Score) {
           setResult1('draw');
           setResult2('draw');
         }
       }
-
-      // Fetch phase info
-      if (data.phase_id) {
-        const { data: phaseData } = await supabase
-          .from('tournament_phases')
-          .select('*')
-          .eq('id', data.phase_id)
-          .single();
-        setPhase(phaseData);
-      } else {
-        setPhase({
-          name: 'Playoffs',
-          type: tournament?.bracket_type || 'double_elimination'
-        });
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement du match');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [matchData]);
+
+  useEffect(() => {
+    if (phaseData) {
+      setPhase(phaseData);
+    } else if (matchData && !matchData.phaseId) {
+      setPhase({
+        name: 'Playoffs',
+        type: tournament?.bracketType || 'double_elimination'
+      });
+    }
+  }, [phaseData, matchData, tournament]);
 
   const handleResultChange = (player, result) => {
     if (player === 1) {
@@ -133,49 +111,29 @@ export default function MatchEdit() {
   const handleSave = async (returnAfter = false) => {
     setSaving(true);
     try {
-      // Determine winner
-      let winnerId = null;
-      let status = match.status;
+      // Update score
+      await updateScore({
+        matchId,
+        team1Score: score1,
+        team2Score: score2,
+      });
 
-      if (result1 === 'win') {
-        winnerId = match.player1_id;
-        status = 'completed';
-      } else if (result2 === 'win') {
-        winnerId = match.player2_id;
-        status = 'completed';
-      } else if (result1 === 'draw' && result2 === 'draw') {
-        status = 'completed';
-      }
-
-      // Build scheduled_at
-      let scheduledAt = null;
+      // Update scheduled time if provided
       if (scheduledDate) {
-        scheduledAt = scheduledTime 
-          ? `${scheduledDate}T${scheduledTime}:00` 
-          : `${scheduledDate}T00:00:00`;
+        const scheduledAt = scheduledTime 
+          ? new Date(`${scheduledDate}T${scheduledTime}:00`).getTime()
+          : new Date(`${scheduledDate}T00:00:00`).getTime();
+        
+        await updateScheduledTime({
+          matchId,
+          scheduledAt,
+        });
       }
-
-      const { error } = await supabase
-        .from('matches')
-        .update({
-          score_p1: score1,
-          score_p2: score2,
-          winner_id: winnerId,
-          status,
-          scheduled_at: scheduledAt,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', matchId);
-
-      if (error) throw error;
 
       toast.success('Match mis à jour !');
 
       if (returnAfter) {
         navigate(`/organizer/tournament/${tournamentId}/matches`);
-      } else {
-        // Refresh data
-        fetchMatch();
       }
     } catch (error) {
       console.error('Erreur:', error);
@@ -187,15 +145,15 @@ export default function MatchEdit() {
 
   const getMatchId = () => {
     if (!match) return '';
-    const bracketType = match.bracket_type === 'losers' ? '2' : match.bracket_type === 'grand_final' ? '3' : '1';
-    return `#1.${bracketType}.${match.round_number || 1}.${match.match_number || 1}`;
+    const bracketType = match.bracketType === 'losers' ? '2' : match.bracketType === 'grand_final' ? '3' : '1';
+    return `#1.${bracketType}.${match.roundNumber || 1}.${match.matchNumber || 1}`;
   };
 
   const getMatchContext = () => {
     if (!match) return '';
-    const bracketName = match.bracket_type === 'losers' 
+    const bracketName = match.bracketType === 'losers' 
       ? 'Losers Bracket' 
-      : match.bracket_type === 'grand_final' 
+      : match.bracketType === 'grand_final' 
         ? 'Grand Final' 
         : 'Winners Bracket';
     const roundName = match.bracket_type === 'grand_final' 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
@@ -10,93 +11,63 @@ import clsx from 'clsx';
 export default function EmbedStandings() {
   const { id: tournamentId } = useParams();
   const [searchParams] = useSearchParams();
-  
-  const [tournament, setTournament] = useState(null);
-  const [standings, setStandings] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const theme = searchParams.get('theme') || 'dark';
   const showHeader = searchParams.get('header') !== 'false';
   const limit = parseInt(searchParams.get('limit')) || 16;
 
-  useEffect(() => {
-    fetchData();
-  }, [tournamentId]);
+  // Convex queries
+  const tournament = useQuery(api.tournaments.getById, { tournamentId });
+  const participants = useQuery(api.tournamentRegistrations.listByTournament, { tournamentId }) ?? [];
+  const rawMatches = useQuery(api.matches.listByTournament, { tournamentId }) ?? [];
 
-  const fetchData = async () => {
-    try {
-      const [tournamentRes, participantsRes, matchesRes] = await Promise.all([
-        supabase
-          .from('tournaments')
-          .select('id, name, game, logo_url')
-          .eq('id', tournamentId)
-          .single(),
-        supabase
-          .from('participants')
-          .select('*, team:team_id(id, name, logo_url)')
-          .eq('tournament_id', tournamentId)
-          .eq('status', 'confirmed')
-          .order('created_at', { ascending: true }),
-        supabase
-          .from('matches')
-          .select('*')
-          .eq('tournament_id', tournamentId)
-          .eq('status', 'completed'),
-      ]);
+  const loading = tournament === undefined || participants === undefined || rawMatches === undefined;
 
-      if (tournamentRes.error) throw tournamentRes.error;
-      setTournament(tournamentRes.data);
+  // Calculate standings from matches
+  const standings = useMemo(() => {
+    // Calculer les statistiques
+    const stats = {};
+    participants.filter(p => p.status === 'confirmed').forEach(p => {
+      const teamId = p.teamId || p._id;
+      stats[teamId] = {
+        id: p._id,
+        name: p.team?.name || p.name || 'TBD',
+        logo: p.team?.logoUrl,
+        wins: 0,
+        losses: 0,
+        points: 0,
+        matchesPlayed: 0,
+      };
+    });
 
-      // Calculer les statistiques
-      const stats = {};
-      (participantsRes.data || []).forEach(p => {
-        const teamId = p.team_id || p.id;
-        stats[teamId] = {
-          id: p.id,
-          name: p.team?.name || p.name || 'TBD',
-          logo: p.team?.logo_url,
-          wins: 0,
-          losses: 0,
-          points: 0,
-          matchesPlayed: 0,
-        };
-      });
-
-      // Compter les victoires/défaites
-      (matchesRes.data || []).forEach(match => {
-        if (match.player1_id && stats[match.player1_id]) {
-          stats[match.player1_id].matchesPlayed++;
-          if (match.score_p1 > match.score_p2) {
-            stats[match.player1_id].wins++;
-            stats[match.player1_id].points += 3;
-          } else {
-            stats[match.player1_id].losses++;
-          }
+    // Compter les victoires/défaites
+    rawMatches.filter(m => m.status === 'completed').forEach(match => {
+      if (match.player1Id && stats[match.player1Id]) {
+        stats[match.player1Id].matchesPlayed++;
+        if (match.scoreP1 > match.scoreP2) {
+          stats[match.player1Id].wins++;
+          stats[match.player1Id].points += 3;
+        } else {
+          stats[match.player1Id].losses++;
         }
-        if (match.player2_id && stats[match.player2_id]) {
-          stats[match.player2_id].matchesPlayed++;
-          if (match.score_p2 > match.score_p1) {
-            stats[match.player2_id].wins++;
-            stats[match.player2_id].points += 3;
-          } else {
-            stats[match.player2_id].losses++;
-          }
+      }
+      if (match.player2Id && stats[match.player2Id]) {
+        stats[match.player2Id].matchesPlayed++;
+        if (match.scoreP2 > match.scoreP1) {
+          stats[match.player2Id].wins++;
+          stats[match.player2Id].points += 3;
+        } else {
+          stats[match.player2Id].losses++;
         }
-      });
+      }
+    });
 
-      // Trier par points puis par victoires
-      const sorted = Object.values(stats)
-        .sort((a, b) => b.points - a.points || b.wins - a.wins)
-        .slice(0, limit)
-        .map((s, i) => ({ ...s, rank: i + 1 }));
-
-      setStandings(sorted);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Trier par points puis par victoires
+    return Object.values(stats)
+      .sort((a, b) => b.points - a.points || b.wins - a.wins)
+      .slice(0, limit)
+      .map((s, i) => ({ ...s, rank: i + 1 }));
+  }, [participants, rawMatches, limit]);
 
   const bgColor = theme === 'light' ? 'bg-white' : 'bg-[#0d1117]';
   const textColor = theme === 'light' ? 'text-gray-900' : 'text-white';
@@ -123,8 +94,8 @@ export default function EmbedStandings() {
       {showHeader && (
         <div className={clsx('p-4 border-b', borderColor)}>
           <div className="flex items-center gap-3">
-            {tournament?.logo_url && (
-              <img src={tournament.logo_url} alt="" className="w-10 h-10 rounded-lg" />
+            {tournament?.logoUrl && (
+              <img src={tournament.logoUrl} alt="" className="w-10 h-10 rounded-lg" />
             )}
             <div>
               <h1 className="font-bold">{tournament?.name}</h1>

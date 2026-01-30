@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
@@ -11,65 +12,31 @@ export default function OrganizerLayout({ session, tournament: tournamentProp })
   const location = useLocation();
   const navigate = useNavigate();
   const { id: tournamentId } = useParams();
-  
-  const [tournament, setTournament] = useState(tournamentProp || null);
-  const [phases, setPhases] = useState([]);
-  const [participantCount, setParticipantCount] = useState(0);
-  const [matchCount, setMatchCount] = useState(0);
-  const [loading, setLoading] = useState(!tournamentProp);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  // Charger le tournoi
-  useEffect(() => {
-    if (tournamentProp) {
-      setTournament(tournamentProp);
-      setLoading(false);
-      return;
-    }
-    
-    if (!tournamentId) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchTournament = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('tournaments')
-          .select('*')
-          .eq('id', tournamentId)
-          .single();
-        
-        if (error) throw error;
-        setTournament(data);
-      } catch (error) {
-        console.error('Erreur chargement tournoi:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTournament();
-  }, [tournamentId, tournamentProp]);
-
-  // Charger les données complémentaires
-  useEffect(() => {
-    if (!tournamentId) return;
-
-    const fetchData = async () => {
-      const [phasesRes, participantsRes, matchesRes] = await Promise.all([
-        supabase.from('tournament_phases').select('*').eq('tournament_id', tournamentId).order('phase_order'),
-        supabase.from('participants').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId),
-        supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId),
-      ]);
-      
-      setPhases(phasesRes.data || []);
-      setParticipantCount(participantsRes.count || 0);
-      setMatchCount(matchesRes.count || 0);
-    };
-
-    fetchData();
-  }, [tournamentId]);
+  
+  // Convex queries - automatic realtime updates
+  const tournamentData = useQuery(
+    api.tournaments.getById,
+    tournamentId && !tournamentProp ? { tournamentId } : 'skip'
+  );
+  
+  const phasesData = useQuery(
+    api.tournamentPhases?.listByTournament,
+    tournamentId ? { tournamentId } : 'skip'
+  );
+  
+  const stats = useQuery(
+    api.tournaments.getStats,
+    tournamentId ? { tournamentId } : 'skip'
+  );
+  
+  // Use prop tournament or fetched data
+  const tournament = tournamentProp || tournamentData;
+  const phases = phasesData || [];
+  const loading = !tournamentProp && tournamentData === undefined;
+  
+  const participantCount = stats?.participants || 0;
+  const matchCount = stats?.matches || 0;
 
   const basePath = `/organizer/tournament/${tournamentId}`;
 

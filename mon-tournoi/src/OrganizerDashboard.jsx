@@ -154,49 +154,37 @@ export default function OrganizerDashboard() {
 
   return (
     <DashboardLayout>
-      {/* Background effects */}
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-purple-500/10 blur-[128px]" />
-          <div className="absolute -right-32 top-1/3 h-96 w-96 rounded-full bg-cyan-500/10 blur-[128px]" />
-          <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-pink-500/10 blur-[128px]" />
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-[#F8FAFC]">Mes Tournois</h1>
+          <p className="text-[#94A3B8]">{stats.total} tournois • {stats.active} en cours</p>
         </div>
-
-        <FloatingParticles />
-
-        {/* Main Content */}
-        <div className="relative z-10">
-          {/* Header */}
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-[#F8FAFC]">Mes Tournois</h1>
-              <p className="text-[#94A3B8]">{stats.total} tournois • {stats.active} en cours</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowGamingRequests(!showGamingRequests)}
-                className={clsx(
-                  'relative px-4 py-2.5 rounded-lg font-medium transition-all border',
-                  showGamingRequests
-                    ? 'bg-[#8B5CF6]/20 text-[#A78BFA] border-[#8B5CF6]/50'
-                    : 'bg-[#0D0D14] text-[#94A3B8] border-[rgba(148,163,184,0.1)] hover:text-[#F8FAFC] hover:border-[#8B5CF6]/30'
-                )}
-              >
-                🎮 Demandes Gaming
-                {(pendingRequestsCount || 0) > 0 && (
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#FF3E9D] text-white text-xs rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(255,62,157,0.5)]">
-                    {pendingRequestsCount}
-                  </span>
-                )}
-              </button>
-              <GradientButton onClick={() => navigate('/create-tournament')}>
-                <span className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Nouveau tournoi
-                </span>
-              </GradientButton>
-            </div>
-          </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowGamingRequests(!showGamingRequests)}
+            className={clsx(
+              'relative px-4 py-2.5 rounded-lg font-medium transition-all border',
+              showGamingRequests
+                ? 'bg-[#8B5CF6]/20 text-[#A78BFA] border-[#8B5CF6]/50'
+                : 'bg-[#0D0D14] text-[#94A3B8] border-[rgba(148,163,184,0.1)] hover:text-[#F8FAFC] hover:border-[#8B5CF6]/30'
+            )}
+          >
+            🎮 Demandes Gaming
+            {(pendingRequestsCount || 0) > 0 && (
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#FF3E9D] text-white text-xs rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(255,62,157,0.5)]">
+                {pendingRequestsCount}
+              </span>
+            )}
+          </button>
+          <GradientButton onClick={() => navigate('/create-tournament')}>
+            <span className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Nouveau tournoi
+            </span>
+          </GradientButton>
+        </div>
+      </div>
 
           {/* Gaming Account Requests Section */}
           {showGamingRequests && (
@@ -274,8 +262,6 @@ export default function OrganizerDashboard() {
               )}
             </GlassCard>
           )}
-        </div>
-      </div>
 
       {/* CSS for floating animation */}
       <style>{`

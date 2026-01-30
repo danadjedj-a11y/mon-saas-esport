@@ -180,71 +180,59 @@ export default function HomePage() {
 
   return (
     <DashboardLayout session={session}>
-      {/* ======== BACKGROUND EFFECTS (inside layout) ======== */}
-      <div className="relative">
-        {/* Glowing orbs */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-purple-500/10 blur-[128px]" />
-          <div className="absolute -right-32 top-1/3 h-96 w-96 rounded-full bg-cyan-500/10 blur-[128px]" />
-          <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-pink-500/10 blur-[128px]" />
+      {/* ======== HERO SECTION ======== */}
+      <div className="relative z-10 py-16 text-center mb-12">
+        {/* Badge */}
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#6366F1]/30 bg-[#6366F1]/10 px-4 py-2 text-sm text-[#A5B4FC]">
+          <Gamepad2 className="h-4 w-4" />
+          Plateforme de Tournois eSport
         </div>
 
-        {/* Floating particles */}
-        <FloatingParticles />
+        {/* Headline */}
+        <h1 className="mb-4 text-4xl font-bold leading-tight text-[#F8FAFC] md:text-5xl lg:text-6xl">
+          Bienvenue sur{" "}
+          <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 bg-clip-text text-transparent">
+            Fluky Boys
+          </span>
+        </h1>
 
-        {/* ======== HERO SECTION ======== */}
-        <div className="relative z-10 py-16 text-center mb-12">
-          {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#6366F1]/30 bg-[#6366F1]/10 px-4 py-2 text-sm text-[#A5B4FC]">
-            <Gamepad2 className="h-4 w-4" />
-            Plateforme de Tournois eSport
-          </div>
+        {/* Subheadline */}
+        <p className="mb-10 max-w-2xl mx-auto text-lg text-[#94A3B8]">
+          {t('homepage.subtitle', 'La plateforme de tournois e-sport ultime')}
+        </p>
 
-          {/* Headline */}
-          <h1 className="mb-4 text-4xl font-bold leading-tight text-[#F8FAFC] md:text-5xl lg:text-6xl">
-            Bienvenue sur{" "}
-            <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-cyan-400 bg-clip-text text-transparent">
-              Fluky Boys
-            </span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="mb-10 max-w-2xl mx-auto text-lg text-[#94A3B8]">
-            {t('homepage.subtitle', 'La plateforme de tournois e-sport ultime. Rejoignez des milliers de joueurs et participez à des compétitions épiques.')}
-          </p>
-
-          {/* CTA Buttons - SAME NAVIGATION AS BEFORE */}
-          <div className="flex flex-col gap-4 sm:flex-row justify-center">
-            {!session ? (
-              <>
-                <GradientButton variant="primary" size="lg" className="min-w-[180px]" onClick={() => navigate('/auth')}>
-                  <span className="flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    🔐 Se Connecter
-                  </span>
-                </GradientButton>
-                <GradientButton variant="secondary" size="lg" className="min-w-[180px]" onClick={() => navigate('/auth')}>
-                  ✨ Créer un Compte
-                </GradientButton>
-              </>
-            ) : (
-              <>
-                <GradientButton variant="primary" size="lg" className="min-w-[180px]" onClick={() => navigate('/player/dashboard')}>
-                  <span className="flex items-center gap-2">
-                    <Target className="h-5 w-5" />
-                    📊 Mon Tableau de Bord
-                  </span>
-                </GradientButton>
-                <GradientButton variant="secondary" size="lg" className="min-w-[180px]" onClick={() => navigate('/create-team')}>
-                  <span className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    👥 Créer une Équipe
-                  </span>
-                </GradientButton>
-              </>
-            )}
-          </div>
+        {/* CTA Buttons - SAME NAVIGATION AS BEFORE */}
+        <div className="flex flex-col gap-4 sm:flex-row justify-center">
+          {!session ? (
+            <>
+              <GradientButton variant="primary" size="lg" className="min-w-[180px]" onClick={() => navigate('/auth')}>
+                <span className="flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  🔐 Se Connecter
+                </span>
+              </GradientButton>
+              <GradientButton variant="secondary" size="lg" className="min-w-[180px]" onClick={() => navigate('/auth')}>
+                ✨ Créer un Compte
+              </GradientButton>
+            </>
+          ) : (
+            <>
+              <GradientButton variant="primary" size="lg" className="min-w-[180px]" onClick={() => navigate('/player/dashboard')}>
+                <span className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  📊 Mon Tableau de Bord
+                </span>
+              </GradientButton>
+              <GradientButton variant="secondary" size="lg" className="min-w-[180px]" onClick={() => navigate('/create-team')}>
+                <span className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  👥 Créer une Équipe
+                </span>
+              </GradientButton>
+            </>
+          )}
         </div>
+      </div>
 
         {/* ======== STATS SECTION ======== */}
         <div className="relative z-10 grid w-full max-w-3xl mx-auto grid-cols-1 gap-6 sm:grid-cols-3 mb-12">
@@ -513,7 +501,6 @@ export default function HomePage() {
             <EmptyTournaments />
           )}
         </section>
-      </div>
 
       {/* CSS for animations */}
       <style>{`

@@ -1,42 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 /**
- * EmbedTournament - Widget embed pour la vue générale du tournoi
+ * EmbedTournament - Widget embed pour la vue générale du tournoi (Convex)
  */
 export default function EmbedTournament() {
   const { id: tournamentId } = useParams();
-  const [tournament, setTournament] = useState(null);
-  const [stats, setStats] = useState({ participants: 0, matches: 0, completed: 0 });
-  const [loading, setLoading] = useState(true);
+  
+  // Convex queries
+  const tournament = useQuery(api.tournaments.getById, 
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const registrations = useQuery(api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const matches = useQuery(api.matches.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [tournamentRes, participantsRes, matchesRes] = await Promise.all([
-          supabase.from('tournaments').select('*').eq('id', tournamentId).single(),
-          supabase.from('participants').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId),
-          supabase.from('matches').select('id, status').eq('tournament_id', tournamentId),
-        ]);
+  const loading = tournament === undefined;
 
-        if (tournamentRes.data) setTournament(tournamentRes.data);
-        
-        const matches = matchesRes.data || [];
-        setStats({
-          participants: participantsRes.count || 0,
-          matches: matches.length,
-          completed: matches.filter(m => m.status === 'completed').length,
-        });
-      } catch (error) {
-        console.error('Erreur:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [tournamentId]);
+  const stats = useMemo(() => ({
+    participants: registrations?.length || 0,
+    matches: matches?.length || 0,
+    completed: matches?.filter(m => m.status === 'completed').length || 0,
+  }), [registrations, matches]);
 
   if (loading) {
     return (

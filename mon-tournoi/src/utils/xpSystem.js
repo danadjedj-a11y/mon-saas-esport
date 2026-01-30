@@ -1,34 +1,20 @@
 // Système d'attribution d'XP et de vérification de badges
+// Migré vers Convex - utilise api.gamification.addXp
 
-import { supabase } from '../supabaseClient';
 import { XP_REWARDS } from './badges';
 
 /**
- * Attribue de l'XP à un utilisateur et vérifie les badges
+ * Attribue de l'XP à un utilisateur
+ * @param {Function} addXpMutation - The Convex mutation (from useMutation(api.gamification.addXp))
+ * @param {string} userId - User ID (Convex ID)
+ * @param {number} xpAmount - Amount of XP to add
+ * @param {string} _actionType - Type d'action (pour logging, optionnel)
  */
-export async function awardXP(userId, xpAmount, _actionType = 'general') {
-  if (!userId) return;
+export async function awardXP(addXpMutation, userId, xpAmount, _actionType = 'general') {
+  if (!userId || !addXpMutation) return;
 
   try {
-    // Ajouter l'XP via la fonction SQL
-    const { error: xpError } = await supabase.rpc('add_xp', {
-      p_user_id: userId,
-      p_xp_amount: xpAmount
-    });
-
-    if (xpError) {
-      console.error('Erreur attribution XP:', xpError);
-      return;
-    }
-
-    // Vérifier et attribuer les badges automatiquement
-    const { error: badgeError } = await supabase.rpc('check_and_award_badges', {
-      p_user_id: userId
-    });
-
-    if (badgeError) {
-      console.error('Erreur vérification badges:', badgeError);
-    }
+    await addXpMutation({ userId, amount: xpAmount });
   } catch (err) {
     console.error('Erreur système XP:', err);
   }
@@ -36,77 +22,79 @@ export async function awardXP(userId, xpAmount, _actionType = 'general') {
 
 /**
  * Attribue de l'XP pour une participation à un tournoi
+ * @param {Function} addXpMutation - The Convex mutation
+ * @param {string} userId - User ID
  */
-export async function awardTournamentParticipationXP(userId) {
-  await awardXP(userId, XP_REWARDS.TOURNAMENT_PARTICIPATION, 'tournament_participation');
+export async function awardTournamentParticipationXP(addXpMutation, userId) {
+  await awardXP(addXpMutation, userId, XP_REWARDS.TOURNAMENT_PARTICIPATION, 'tournament_participation');
 }
 
 /**
  * Attribue de l'XP pour une victoire de tournoi
+ * @param {Function} addXpMutation - The Convex mutation
+ * @param {string} userId - User ID
  */
-export async function awardTournamentWinXP(userId) {
-  await awardXP(userId, XP_REWARDS.TOURNAMENT_WIN, 'tournament_win');
+export async function awardTournamentWinXP(addXpMutation, userId) {
+  await awardXP(addXpMutation, userId, XP_REWARDS.TOURNAMENT_WIN, 'tournament_win');
 }
 
 /**
  * Attribue de l'XP pour une victoire de match
+ * @param {Function} addXpMutation - The Convex mutation
+ * @param {string} userId - User ID
  */
-export async function awardMatchWinXP(userId) {
-  await awardXP(userId, XP_REWARDS.MATCH_WIN, 'match_win');
+export async function awardMatchWinXP(addXpMutation, userId) {
+  await awardXP(addXpMutation, userId, XP_REWARDS.MATCH_WIN, 'match_win');
 }
 
 /**
  * Attribue de l'XP pour avoir joué un match
+ * @param {Function} addXpMutation - The Convex mutation
+ * @param {string} userId - User ID
  */
-export async function awardMatchPlayXP(userId) {
-  await awardXP(userId, XP_REWARDS.MATCH_PLAY, 'match_play');
+export async function awardMatchPlayXP(addXpMutation, userId) {
+  await awardXP(addXpMutation, userId, XP_REWARDS.MATCH_PLAY, 'match_play');
 }
 
 /**
  * Attribue de l'XP pour la création d'une équipe
+ * @param {Function} addXpMutation - The Convex mutation
+ * @param {string} userId - User ID
  */
-export async function awardTeamCreationXP(userId) {
-  await awardXP(userId, XP_REWARDS.TEAM_CREATION, 'team_creation');
+export async function awardTeamCreationXP(addXpMutation, userId) {
+  await awardXP(addXpMutation, userId, XP_REWARDS.TEAM_CREATION, 'team_creation');
 }
 
 /**
  * Attribue de l'XP pour la création d'un tournoi
+ * @param {Function} addXpMutation - The Convex mutation
+ * @param {string} userId - User ID
  */
-export async function awardTournamentCreationXP(userId) {
-  await awardXP(userId, XP_REWARDS.TOURNAMENT_CREATION, 'tournament_creation');
+export async function awardTournamentCreationXP(addXpMutation, userId) {
+  await awardXP(addXpMutation, userId, XP_REWARDS.TOURNAMENT_CREATION, 'tournament_creation');
 }
 
 /**
  * Récupère tous les utilisateurs d'une équipe (capitaine + membres)
+ * Note: Cette fonction nécessite d'être appelée depuis un composant avec useQuery
+ * ou d'utiliser directement les données de l'équipe passées en paramètre
+ * @param {Object} team - L'objet équipe avec captainId
+ * @param {Array} teamMembers - Les membres de l'équipe avec userId
+ * @returns {Array<string>} - Liste des IDs utilisateurs
  */
-export async function getTeamUsers(teamId) {
-  try {
-    const [teamResult, membersResult] = await Promise.all([
-      supabase
-        .from('teams')
-        .select('captain_id')
-        .eq('id', teamId)
-        .single(),
-      supabase
-        .from('team_members')
-        .select('user_id')
-        .eq('team_id', teamId)
-    ]);
-
-    const userIds = new Set();
-    
-    if (teamResult.data?.captain_id) {
-      userIds.add(teamResult.data.captain_id);
-    }
-    
-    if (membersResult.data) {
-      membersResult.data.forEach(m => userIds.add(m.user_id));
-    }
-
-    return Array.from(userIds);
-  } catch (err) {
-    console.error('Erreur récupération utilisateurs équipe:', err);
-    return [];
+export function getTeamUsers(team, teamMembers = []) {
+  const userIds = new Set();
+  
+  if (team?.captainId) {
+    userIds.add(team.captainId);
   }
+  
+  if (teamMembers && Array.isArray(teamMembers)) {
+    teamMembers.forEach(m => {
+      if (m.userId) userIds.add(m.userId);
+    });
+  }
+
+  return Array.from(userIds);
 }
 

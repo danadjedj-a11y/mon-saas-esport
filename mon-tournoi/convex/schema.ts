@@ -60,7 +60,9 @@ export default defineSchema({
         status: v.union(
             v.literal("draft"),
             v.literal("ongoing"),
-            v.literal("completed")
+            v.literal("completed"),
+            v.literal("published"),
+            v.literal("archived")
         ),
 
         // Relations
@@ -86,6 +88,22 @@ export default defineSchema({
         // Apparence
         logoUrl: v.optional(v.string()),
         bannerUrl: v.optional(v.string()),
+
+        // Match settings
+        bestOf: v.optional(v.number()),
+        matchDurationMinutes: v.optional(v.number()),
+        matchBreakMinutes: v.optional(v.number()),
+
+        // Registration
+        registrationDeadline: v.optional(v.number()),
+        maxParticipants: v.optional(v.number()),
+
+        // Discipline settings
+        mapsPool: v.optional(v.array(v.string())),
+
+        // Timestamps
+        publishedAt: v.optional(v.number()),
+        archivedAt: v.optional(v.number()),
 
         // Métadonnées
         createdAt: v.number(),
@@ -312,13 +330,13 @@ export default defineSchema({
     matchVeto: defineTable({
         matchId: v.id("matches"),
         teamId: v.id("teams"),
-        action: v.union(v.literal("ban"), v.literal("pick")),
         mapName: v.string(),
-        order: v.number(), // Ordre du veto (1, 2, 3, ...)
+        actionType: v.union(v.literal("ban"), v.literal("pick")),
+        step: v.number(),
         createdAt: v.number(),
     })
         .index("by_match", ["matchId"])
-        .index("by_match_and_order", ["matchId", "order"]),
+        .index("by_match_and_step", ["matchId", "step"]),
 
     // ============================================
     // MATCH CHAT
@@ -427,4 +445,187 @@ export default defineSchema({
         .index("by_tournament", ["tournamentId"])
         .index("by_match", ["matchId"])
         .index("by_parent", ["parentId"]),
+
+    // ============================================
+    // SWISS SCORES (pour tournois format Swiss)
+    // ============================================
+
+    swissScores: defineTable({
+        tournamentId: v.id("tournaments"),
+        teamId: v.id("teams"),
+
+        // Statistiques
+        wins: v.number(),
+        losses: v.number(),
+        draws: v.number(),
+        buchholzScore: v.number(), // Somme des wins des adversaires
+
+        // Historique des adversaires (pour éviter les rematches)
+        opponents: v.array(v.string()),
+
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_tournament", ["tournamentId"])
+        .index("by_team", ["teamId"])
+        .index("by_tournament_and_team", ["tournamentId", "teamId"]),
+
+    // ============================================
+    // TOURNAMENT FOLLOWS (suivre un tournoi)
+    // ============================================
+
+    tournamentFollows: defineTable({
+        userId: v.id("users"),
+        tournamentId: v.id("tournaments"),
+        createdAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_tournament", ["tournamentId"])
+        .index("by_user_and_tournament", ["userId", "tournamentId"]),
+
+    // ============================================
+    // TEAM FOLLOWS (suivre une équipe)
+    // ============================================
+
+    teamFollows: defineTable({
+        userId: v.id("users"),
+        teamId: v.id("teams"),
+        createdAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_team", ["teamId"])
+        .index("by_user_and_team", ["userId", "teamId"]),
+
+    // ============================================
+    // USER BADGES
+    // ============================================
+
+    userBadges: defineTable({
+        userId: v.id("users"),
+        badgeId: v.string(), // Identifiant unique du badge
+        name: v.string(),
+        icon: v.string(),
+        description: v.string(),
+        rarity: v.optional(v.union(
+            v.literal("common"),
+            v.literal("rare"),
+            v.literal("epic"),
+            v.literal("legendary")
+        )),
+        category: v.optional(v.string()),
+        earnedAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_badge", ["badgeId"]),
+
+    // ============================================
+    // USER LEVELS
+    // ============================================
+
+    userLevels: defineTable({
+        userId: v.id("users"),
+        level: v.number(),
+        xp: v.number(),
+        totalXp: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_user", ["userId"]),
+
+    // ============================================
+    // TOURNAMENT RATINGS
+    // ============================================
+
+    tournamentRatings: defineTable({
+        tournamentId: v.id("tournaments"),
+        userId: v.id("users"),
+        rating: v.number(), // 1-5
+        comment: v.optional(v.string()),
+        createdAt: v.number(),
+    })
+        .index("by_tournament", ["tournamentId"])
+        .index("by_user", ["userId"])
+        .index("by_tournament_and_user", ["tournamentId", "userId"]),
+
+    // ============================================
+    // GAMES (catalogue de jeux supportés)
+    // ============================================
+
+    games: defineTable({
+        name: v.string(),
+        slug: v.string(), // URL-friendly name
+        logoUrl: v.optional(v.string()),
+        bannerUrl: v.optional(v.string()),
+        description: v.optional(v.string()),
+        
+        // Configuration par jeu
+        defaultTeamSize: v.number(),
+        maps: v.optional(v.array(v.string())),
+        
+        // Stats
+        tournamentsCount: v.number(),
+        isActive: v.boolean(),
+        
+        createdAt: v.number(),
+    })
+        .index("by_slug", ["slug"])
+        .index("by_active", ["isActive"]),
+
+    // ============================================
+    // PLAYER GAME ACCOUNTS (comptes de jeu des joueurs)
+    // ============================================
+
+    playerGameAccounts: defineTable({
+        userId: v.id("users"),
+        platform: v.string(), // "riot_games", "steam", "epic_games", "battle_net", etc.
+        gameUsername: v.string(),
+        gameTag: v.optional(v.string()), // #TAG pour Riot/Battle.net
+        verified: v.boolean(),
+        verifiedAt: v.optional(v.number()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_platform", ["platform"])
+        .index("by_user_and_platform", ["userId", "platform"]),
+
+    // ============================================
+    // BRACKET SLOTS (placement pré-tournoi)
+    // ============================================
+
+    bracketSlots: defineTable({
+        phaseId: v.id("tournamentPhases"),
+        slotNumber: v.number(),
+        teamId: v.optional(v.id("teams")),
+        participantId: v.optional(v.id("tournamentRegistrations")),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_phase", ["phaseId"])
+        .index("by_phase_and_slot", ["phaseId", "slotNumber"])
+        .index("by_team", ["teamId"]),
+
+    // ============================================
+    // GAMING ACCOUNT CHANGE REQUESTS
+    // ============================================
+
+    gamingAccountChangeRequests: defineTable({
+        userId: v.id("users"),
+        platform: v.string(),
+        oldUsername: v.string(),
+        oldTag: v.optional(v.string()),
+        newUsername: v.string(),
+        newTag: v.optional(v.string()),
+        status: v.union(
+            v.literal("pending"),
+            v.literal("approved"),
+            v.literal("rejected")
+        ),
+        adminId: v.optional(v.id("users")),
+        adminNotes: v.optional(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index("by_user", ["userId"])
+        .index("by_status", ["status"])
+        .index("by_user_and_platform", ["userId", "platform"]),
 });

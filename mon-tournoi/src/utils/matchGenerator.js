@@ -1,10 +1,28 @@
-import { supabase } from '../supabaseClient';
+// Générateur de matchs pour les brackets
+// Migré vers Convex - utilise une mutation pour créer les matchs en batch
+
+/**
+ * Convertit un bracket_type en isLosersBracket boolean pour Convex
+ * @param {string} bracketType - Type de bracket (winners, losers, grand_final, etc.)
+ * @returns {boolean} - true si losers bracket
+ */
+function bracketTypeToIsLosersBracket(bracketType) {
+  return bracketType === 'losers';
+}
 
 /**
  * Génère les matchs pour une phase de type bracket
- * Les matchs sont créés avec player1_id et player2_id à NULL (à déterminer)
+ * Les matchs sont créés avec team1Id et team2Id à NULL (à déterminer)
+ * @param {Function} batchCreateMatchesMutation - The Convex mutation for batch creating matches
+ * @param {Object} phase - Phase object with format, config, id
+ * @param {string} tournamentId - Tournament ID (Convex ID)
  */
-export async function generateBracketMatches(phase, tournamentId) {
+export async function generateBracketMatches(batchCreateMatchesMutation, phase, tournamentId) {
+  if (!batchCreateMatchesMutation) {
+    console.error('batchCreateMatchesMutation is required');
+    return [];
+  }
+
   const { format, config, id: phaseId } = phase;
   const size = config?.size || 8;
   
@@ -21,15 +39,14 @@ export async function generateBracketMatches(phase, tournamentId) {
       
       for (let m = 0; m < matchesInRound; m++) {
         matches.push({
-          tournament_id: tournamentId,
-          phase_id: phaseId,
-          round_number: round,
-          match_number: matchNumber++,
-          bracket_type: 'winners',
-          player1_id: null,
-          player2_id: null,
+          tournamentId,
+          phaseId,
+          round,
+          matchNumber: matchNumber++,
+          isLosersBracket: false,
+          team1Id: undefined,
+          team2Id: undefined,
           status: 'pending',
-          created_at: new Date().toISOString(),
         });
       }
     }
@@ -56,65 +73,62 @@ export async function generateBracketMatches(phase, tournamentId) {
         
         for (let m = 0; m < matchesInRound; m++) {
           matches.push({
-            tournament_id: tournamentId,
-            phase_id: phaseId,
-            round_number: round,
-            match_number: matchNumber++,
-            bracket_type: 'losers',
-            player1_id: null,
-            player2_id: null,
+            tournamentId,
+            phaseId,
+            round,
+            matchNumber: matchNumber++,
+            isLosersBracket: true,
+            team1Id: undefined,
+            team2Id: undefined,
             status: 'pending',
-            created_at: new Date().toISOString(),
           });
         }
       }
 
       // Grand Final
       matches.push({
-        tournament_id: tournamentId,
-        phase_id: phaseId,
-        round_number: 1,
-        match_number: 1,
-        bracket_type: 'grand_final',
-        player1_id: null,
-        player2_id: null,
+        tournamentId,
+        phaseId,
+        round: 1,
+        matchNumber: 1,
+        isLosersBracket: false, // Grand final n'est pas un losers bracket
+        isGrandFinal: true,
+        team1Id: undefined,
+        team2Id: undefined,
         status: 'pending',
-        created_at: new Date().toISOString(),
       });
 
       // Grand Final Reset (si double)
       if (config?.grand_final === 'double') {
         matches.push({
-          tournament_id: tournamentId,
-          phase_id: phaseId,
-          round_number: 2,
-          match_number: 1,
-          bracket_type: 'grand_final',
-          player1_id: null,
-          player2_id: null,
+          tournamentId,
+          phaseId,
+          round: 2,
+          matchNumber: 1,
+          isLosersBracket: false,
+          isGrandFinal: true,
+          team1Id: undefined,
+          team2Id: undefined,
           status: 'pending',
-          created_at: new Date().toISOString(),
         });
       }
     }
   } else if (format === 'round_robin') {
     // Round Robin: chaque participant affronte tous les autres
     const numParticipants = size;
-    const matchesCount = (numParticipants * (numParticipants - 1)) / 2;
     
     let matchNumber = 1;
     for (let i = 0; i < numParticipants - 1; i++) {
       for (let j = i + 1; j < numParticipants; j++) {
         matches.push({
-          tournament_id: tournamentId,
-          phase_id: phaseId,
-          round_number: Math.floor(matchNumber / Math.ceil(numParticipants / 2)) + 1,
-          match_number: matchNumber++,
-          bracket_type: 'round_robin',
-          player1_id: null,
-          player2_id: null,
+          tournamentId,
+          phaseId,
+          round: Math.floor(matchNumber / Math.ceil(numParticipants / 2)) + 1,
+          matchNumber: matchNumber++,
+          isLosersBracket: false,
+          team1Id: undefined,
+          team2Id: undefined,
           status: 'pending',
-          created_at: new Date().toISOString(),
         });
       }
     }
@@ -127,15 +141,14 @@ export async function generateBracketMatches(phase, tournamentId) {
     for (let round = 1; round <= numRounds; round++) {
       for (let m = 0; m < matchesPerRound; m++) {
         matches.push({
-          tournament_id: tournamentId,
-          phase_id: phaseId,
-          round_number: round,
-          match_number: matchNumber++,
-          bracket_type: 'swiss',
-          player1_id: null,
-          player2_id: null,
+          tournamentId,
+          phaseId,
+          round,
+          matchNumber: matchNumber++,
+          isLosersBracket: false,
+          team1Id: undefined,
+          team2Id: undefined,
           status: 'pending',
-          created_at: new Date().toISOString(),
         });
       }
     }
@@ -145,32 +158,27 @@ export async function generateBracketMatches(phase, tournamentId) {
     
     for (let m = 1; m <= numMatches; m++) {
       matches.push({
-        tournament_id: tournamentId,
-        phase_id: phaseId,
-        round_number: m,
-        match_number: 1,
-        bracket_type: 'gauntlet',
-        player1_id: null,
-        player2_id: null,
+        tournamentId,
+        phaseId,
+        round: m,
+        matchNumber: 1,
+        isLosersBracket: false,
+        team1Id: undefined,
+        team2Id: undefined,
         status: 'pending',
-        created_at: new Date().toISOString(),
       });
     }
   }
 
-  // Insérer tous les matchs
+  // Insérer tous les matchs via la mutation batch
   if (matches.length > 0) {
-    const { data, error } = await supabase
-      .from('matches')
-      .insert(matches)
-      .select();
-
-    if (error) {
+    try {
+      const result = await batchCreateMatchesMutation({ matches });
+      return result;
+    } catch (error) {
       console.error('Erreur génération matchs:', error);
       throw error;
     }
-
-    return data;
   }
 
   return [];
@@ -178,14 +186,18 @@ export async function generateBracketMatches(phase, tournamentId) {
 
 /**
  * Supprime tous les matchs d'une phase
+ * @param {Function} deletePhaseMatchesMutation - The Convex mutation for deleting phase matches
+ * @param {string} phaseId - Phase ID (Convex ID)
  */
-export async function deletePhaseMatches(phaseId) {
-  const { error } = await supabase
-    .from('matches')
-    .delete()
-    .eq('phase_id', phaseId);
+export async function deletePhaseMatches(deletePhaseMatchesMutation, phaseId) {
+  if (!deletePhaseMatchesMutation) {
+    console.error('deletePhaseMatchesMutation is required');
+    return;
+  }
 
-  if (error) {
+  try {
+    await deletePhaseMatchesMutation({ phaseId });
+  } catch (error) {
     console.error('Erreur suppression matchs:', error);
     throw error;
   }
@@ -193,17 +205,22 @@ export async function deletePhaseMatches(phaseId) {
 
 /**
  * Regénère les matchs d'une phase (après modification de la config)
+ * @param {Function} deletePhaseMatchesMutation - The Convex mutation for deleting phase matches
+ * @param {Function} batchCreateMatchesMutation - The Convex mutation for batch creating matches
+ * @param {Object} phase - Phase object
+ * @param {string} tournamentId - Tournament ID
  */
-export async function regeneratePhaseMatches(phase, tournamentId) {
+export async function regeneratePhaseMatches(deletePhaseMatchesMutation, batchCreateMatchesMutation, phase, tournamentId) {
   // D'abord supprimer les matchs existants
-  await deletePhaseMatches(phase.id);
+  await deletePhaseMatches(deletePhaseMatchesMutation, phase.id);
   
   // Puis regénérer
-  return generateBracketMatches(phase, tournamentId);
+  return generateBracketMatches(batchCreateMatchesMutation, phase, tournamentId);
 }
 
 /**
  * Calcule le nombre de matchs pour un format et une taille donnés
+ * Note: Cette fonction est pure et ne nécessite pas de mutation
  */
 export function calculateMatchCount(format, size, config = {}) {
   if (format === 'elimination') {

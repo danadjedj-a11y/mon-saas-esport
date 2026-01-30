@@ -99,13 +99,34 @@ export const create = mutation({
 export const update = mutation({
     args: {
         tournamentId: v.id("tournaments"),
+        // Informations de base
         name: v.optional(v.string()),
+        game: v.optional(v.string()),
         description: v.optional(v.string()),
         rules: v.optional(v.string()),
         prizePool: v.optional(v.string()),
+        // Configuration
+        maxTeams: v.optional(v.number()),
+        teamSize: v.optional(v.number()),
         startDate: v.optional(v.number()),
         endDate: v.optional(v.number()),
         isPublic: v.optional(v.boolean()),
+        // Apparence
+        logoUrl: v.optional(v.string()),
+        bannerUrl: v.optional(v.string()),
+        // Check-in
+        checkInRequired: v.optional(v.boolean()),
+        checkInStart: v.optional(v.number()),
+        checkInEnd: v.optional(v.number()),
+        // Match settings
+        bestOf: v.optional(v.number()),
+        matchDurationMinutes: v.optional(v.number()),
+        matchBreakMinutes: v.optional(v.number()),
+        // Registration
+        registrationDeadline: v.optional(v.number()),
+        maxParticipants: v.optional(v.number()),
+        // Discipline settings
+        mapsPool: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -132,16 +153,17 @@ export const update = mutation({
             throw new Error("Impossible de modifier un tournoi terminé");
         }
 
-        await ctx.db.patch(args.tournamentId, {
-            ...(args.name && { name: args.name }),
-            ...(args.description !== undefined && { description: args.description }),
-            ...(args.rules !== undefined && { rules: args.rules }),
-            ...(args.prizePool !== undefined && { prizePool: args.prizePool }),
-            ...(args.startDate !== undefined && { startDate: args.startDate }),
-            ...(args.endDate !== undefined && { endDate: args.endDate }),
-            ...(args.isPublic !== undefined && { isPublic: args.isPublic }),
-            updatedAt: Date.now(),
+        const { tournamentId, ...updates } = args;
+        
+        // Filter out undefined values and build patch object
+        const patch: Record<string, unknown> = { updatedAt: Date.now() };
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value !== undefined) {
+                patch[key] = value;
+            }
         });
+
+        await ctx.db.patch(args.tournamentId, patch);
 
         return args.tournamentId;
     },
@@ -185,6 +207,151 @@ export const updateStatus = mutation({
         });
 
         return args.tournamentId;
+    },
+});
+
+/**
+ * Publie un tournoi
+ */
+export const publish = mutation({
+    args: { tournamentId: v.id("tournaments") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const tournament = await ctx.db.get(args.tournamentId);
+        if (!tournament) {
+            throw new Error("Tournoi non trouvé");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email!))
+            .first();
+
+        if (!user || tournament.organizerId !== user._id) {
+            throw new Error("Seul l'organisateur peut publier ce tournoi");
+        }
+
+        await ctx.db.patch(args.tournamentId, {
+            status: "published",
+            publishedAt: Date.now(),
+            updatedAt: Date.now(),
+        });
+
+        return args.tournamentId;
+    },
+});
+
+/**
+ * Dépublie un tournoi (repasse en draft)
+ */
+export const unpublish = mutation({
+    args: { tournamentId: v.id("tournaments") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const tournament = await ctx.db.get(args.tournamentId);
+        if (!tournament) {
+            throw new Error("Tournoi non trouvé");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email!))
+            .first();
+
+        if (!user || tournament.organizerId !== user._id) {
+            throw new Error("Seul l'organisateur peut dépublier ce tournoi");
+        }
+
+        await ctx.db.patch(args.tournamentId, {
+            status: "draft",
+            updatedAt: Date.now(),
+        });
+
+        return args.tournamentId;
+    },
+});
+
+/**
+ * Archive un tournoi
+ */
+export const archive = mutation({
+    args: { tournamentId: v.id("tournaments") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const tournament = await ctx.db.get(args.tournamentId);
+        if (!tournament) {
+            throw new Error("Tournoi non trouvé");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email!))
+            .first();
+
+        if (!user || tournament.organizerId !== user._id) {
+            throw new Error("Seul l'organisateur peut archiver ce tournoi");
+        }
+
+        await ctx.db.patch(args.tournamentId, {
+            status: "archived",
+            archivedAt: Date.now(),
+            updatedAt: Date.now(),
+        });
+
+        return args.tournamentId;
+    },
+});
+
+/**
+ * Duplique un tournoi
+ */
+export const duplicate = mutation({
+    args: { tournamentId: v.id("tournaments") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Non authentifié");
+        }
+
+        const tournament = await ctx.db.get(args.tournamentId);
+        if (!tournament) {
+            throw new Error("Tournoi non trouvé");
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", identity.email!))
+            .first();
+
+        if (!user || tournament.organizerId !== user._id) {
+            throw new Error("Seul l'organisateur peut dupliquer ce tournoi");
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _id, _creationTime, createdAt, updatedAt, publishedAt, archivedAt, status, ...tournamentData } = tournament;
+
+        const now = Date.now();
+        const newTournamentId = await ctx.db.insert("tournaments", {
+            ...tournamentData,
+            name: `${tournamentData.name} (copie)`,
+            status: "draft",
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        return newTournamentId;
     },
 });
 

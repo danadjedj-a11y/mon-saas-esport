@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button, Input } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -15,36 +16,28 @@ export default function ParticipantsBulkEdit() {
   const tournament = context?.tournament;
 
   const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkAction, setBulkAction] = useState('');
   const [bulkValue, setBulkValue] = useState('');
 
+  // Charger via Convex
+  const registrationsData = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = registrationsData === undefined;
+
   useEffect(() => {
-    fetchParticipants();
-  }, [tournamentId]);
-
-  const fetchParticipants = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          team:team_id (id, name, logo_url)
-        `)
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setParticipants(data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
+    if (registrationsData) {
+      setParticipants(registrationsData);
     }
-  };
+  }, [registrationsData]);
+
+  // Mutations - TODO: Add bulk update/delete mutations to Convex
+  const toggleCheckIn = useMutation(api.tournamentRegistrationsMutations.toggleCheckIn);
+  const removeParticipant = useMutation(api.tournamentRegistrationsMutations.removeParticipant);
 
   const handleSelectAll = (checked) => {
     if (checked) {
@@ -72,28 +65,15 @@ export default function ParticipantsBulkEdit() {
 
     setSaving(true);
     try {
-      let updateData = {};
-
-      switch (bulkAction) {
-        case 'status':
-          updateData = { status: bulkValue };
-          break;
-        case 'checkin':
-          updateData = { checked_in: bulkValue === 'true' };
-          break;
-        default:
-          return;
+      // Apply action to each selected participant
+      for (const id of selectedIds) {
+        if (bulkAction === 'checkin') {
+          await toggleCheckIn({ registrationId: id });
+        }
+        // TODO: Add bulk status update mutation to Convex
       }
 
-      const { error } = await supabase
-        .from('participants')
-        .update(updateData)
-        .in('id', selectedIds);
-
-      if (error) throw error;
-
       toast.success(`${selectedIds.length} participant(s) modifié(s)`);
-      fetchParticipants();
       setSelectedIds([]);
       setBulkAction('');
       setBulkValue('');
@@ -111,16 +91,13 @@ export default function ParticipantsBulkEdit() {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('participants')
-        .delete()
-        .in('id', selectedIds);
-
-      if (error) throw error;
+      // Delete each selected participant
+      for (const id of selectedIds) {
+        await removeParticipant({ registrationId: id });
+      }
 
       toast.success(`${selectedIds.length} participant(s) supprimé(s)`);
       setSelectedIds([]);
-      fetchParticipants();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la suppression');

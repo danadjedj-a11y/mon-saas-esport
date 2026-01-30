@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
@@ -12,9 +13,6 @@ export default function TournamentBracket() {
   const { id: tournamentId } = useParams();
   
   const [selectedPhase, setSelectedPhase] = useState(null);
-  const [matches, setMatches] = useState([]);
-  const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Utiliser toutes les phases disponibles
   const allPhases = phases || [];
@@ -25,49 +23,28 @@ export default function TournamentBracket() {
     }
   }, [allPhases]);
 
-  // Charger les matchs et participants
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Si une phase est sélectionnée, charger ses matchs, sinon tous les matchs du tournoi
-        const matchQuery = selectedPhase
-          ? supabase
-              .from('matches')
-              .select('*')
-              .eq('phase_id', selectedPhase.id)
-              .order('round_number', { ascending: true })
-              .order('match_order', { ascending: true })
-          : supabase
-              .from('matches')
-              .select('*')
-              .eq('tournament_id', tournamentId)
-              .order('round_number', { ascending: true })
-              .order('match_order', { ascending: true });
+  // Charger les matchs et participants via Convex
+  const allMatches = useQuery(api.matches.listByTournament, 
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const participantsData = useQuery(api.tournamentRegistrations.listByTournament, 
+    tournamentId ? { tournamentId } : "skip"
+  );
 
-        const [matchesRes, participantsRes] = await Promise.all([
-          matchQuery,
-          supabase
-            .from('participants')
-            .select('*')
-            .eq('tournament_id', tournamentId)
-        ]);
-
-        setMatches(matchesRes.data || []);
-        setParticipants(participantsRes.data || []);
-      } catch (error) {
-        console.error('Erreur chargement bracket:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [selectedPhase, tournamentId]);
+  // Filtrer les matchs par phase si une phase est sélectionnée
+  const matches = allMatches 
+    ? (selectedPhase 
+        ? allMatches.filter(m => m.phaseId === selectedPhase.id)
+        : allMatches
+      ).sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1) || (a.matchOrder || 0) - (b.matchOrder || 0))
+    : [];
+  
+  const participants = participantsData || [];
+  const loading = allMatches === undefined || participantsData === undefined;
 
   // Grouper les matchs par round
   const matchesByRound = matches.reduce((acc, match) => {
-    const round = match.round_number || 1;
+    const round = match.roundNumber || 1;
     if (!acc[round]) acc[round] = [];
     acc[round].push(match);
     return acc;
@@ -77,8 +54,8 @@ export default function TournamentBracket() {
 
   const getParticipantName = (id) => {
     if (!id) return 'TBD';
-    const p = participants.find(p => p.id === id);
-    return p?.team_name || p?.name || 'TBD';
+    const p = participants.find(p => p._id === id || p.teamId === id);
+    return p?.team?.name || p?.name || 'TBD';
   };
 
   const getRoundName = (roundNum, totalRounds) => {
@@ -232,11 +209,11 @@ function MatchCard({ match, getParticipantName, onClick }) {
   const isCompleted = match.status === 'completed';
   const isLive = match.status === 'ongoing' || match.status === 'in_progress';
   
-  const p1Name = getParticipantName(match.player1_id);
-  const p2Name = getParticipantName(match.player2_id);
+  const p1Name = getParticipantName(match.team1Id);
+  const p2Name = getParticipantName(match.team2Id);
   
-  const p1Won = isCompleted && match.winner_id === match.player1_id;
-  const p2Won = isCompleted && match.winner_id === match.player2_id;
+  const p1Won = isCompleted && match.winnerId === match.team1Id;
+  const p2Won = isCompleted && match.winnerId === match.team2Id;
 
   return (
     <div 
@@ -248,7 +225,7 @@ function MatchCard({ match, getParticipantName, onClick }) {
     >
       {/* Match number */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5">
-        <span className="text-xs text-gray-500">Match #{match.match_order || match.id?.slice(0, 4)}</span>
+        <span className="text-xs text-gray-500">Match #{match.matchOrder || match._id?.slice(0, 4)}</span>
         {isLive && (
           <span className="flex items-center gap-1 text-xs text-green-400">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
@@ -275,7 +252,7 @@ function MatchCard({ match, getParticipantName, onClick }) {
           'text-sm font-mono',
           p1Won ? 'text-green-400' : 'text-gray-500'
         )}>
-          {match.score_p1 ?? '-'}
+          {match.scoreTeam1 ?? '-'}
         </span>
       </div>
 
@@ -294,7 +271,7 @@ function MatchCard({ match, getParticipantName, onClick }) {
           'text-sm font-mono',
           p2Won ? 'text-green-400' : 'text-gray-500'
         )}>
-          {match.score_p2 ?? '-'}
+          {match.scoreTeam2 ?? '-'}
         </span>
       </div>
     </div>

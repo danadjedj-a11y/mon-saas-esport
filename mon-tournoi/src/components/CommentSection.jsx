@@ -1,124 +1,27 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { toast } from '../utils/toast';
-import { handleRateLimitError } from '../utils/rateLimitHandler';
 import { notifyCommentLike, notifyCommentReply } from '../utils/notifications';
 import { CommentSkeleton } from './Skeleton';
 import { EmptyComments } from './EmptyState';
 import { CommentForm, CommentItem } from './comments';
 
 export default function CommentSection({ tournamentId, session }) {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Convex queries - comments are auto-refreshed via reactivity
+  const commentsData = useQuery(
+    api.comments.listByTournament,
+    tournamentId ? { tournamentId, userId: session?.user?.id } : "skip"
+  );
+  
+  // Convex mutations
+  const createComment = useMutation(api.comments.create);
+  const updateComment = useMutation(api.comments.update);
+  const deleteComment = useMutation(api.comments.delete);
+  const voteComment = useMutation(api.comments.vote);
+  const createReply = useMutation(api.comments.createReply);
 
-  useEffect(() => {
-    fetchComments();
-    const channel = supabase
-      .channel(`tournament_comments:${tournamentId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'tournament_comments',
-        filter: `tournament_id=eq.${tournamentId}`
-      }, () => {
-        fetchComments();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tournamentId]);
-
-  const fetchComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournament_comments')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Récupérer les profils pour tous les utilisateurs uniques
-      const userIds = [...new Set((data || []).map(c => c.user_id))];
-      const profilesMap = {};
-      
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', userIds);
-        
-        if (profiles) {
-          profiles.forEach(p => {
-            profilesMap[p.id] = p;
-          });
-        }
-      }
-
-      // Charger les réponses pour chaque commentaire
-      const commentsWithReplies = await Promise.all((data || []).map(async (comment) => {
-        const { data: replies } = await supabase
-          .from('comment_replies')
-          .select('*')
-          .eq('comment_id', comment.id)
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: true });
-
-        // Récupérer les profils pour les réponses
-        const replyUserIds = [...new Set((replies || []).map(r => r.user_id))];
-        const replyProfilesMap = {};
-        
-        if (replyUserIds.length > 0) {
-          const { data: replyProfiles } = await supabase
-            .from('profiles')
-            .select('id, username, avatar_url')
-            .in('id', replyUserIds);
-          
-          if (replyProfiles) {
-            replyProfiles.forEach(p => {
-              replyProfilesMap[p.id] = p;
-            });
-          }
-        }
-
-        // Enrichir les réponses avec les profils
-        const enrichedReplies = (replies || []).map(reply => ({
-          ...reply,
-          profiles: replyProfilesMap[reply.user_id] || null
-        }));
-
-        // Charger les votes pour chaque commentaire
-        const { data: votes } = await supabase
-          .from('comment_votes')
-          .select('*')
-          .eq('comment_id', comment.id);
-
-        const likes = votes?.filter(v => v.vote_type === 'like').length || 0;
-        const dislikes = votes?.filter(v => v.vote_type === 'dislike').length || 0;
-        const userVote = votes?.find(v => v.user_id === session?.user?.id);
-
-        return {
-          ...comment,
-          profiles: profilesMap[comment.user_id] || null,
-          replies: enrichedReplies,
-          likes,
-          dislikes,
-          userVote: userVote?.vote_type || null
-        };
-      }));
-
-      setComments(commentsWithReplies);
-    } catch (err) {
-      console.error('Erreur chargement commentaires:', err);
-      toast.error('Erreur lors du chargement des commentaires');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = commentsData === undefined;
+  const comments = commentsData || [];
 
   const handleSubmitComment = async (content, rating) => {
     if (!session?.user) {
@@ -132,23 +35,17 @@ export default function CommentSection({ tournamentId, session }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('tournament_comments')
-        .insert([{
-          tournament_id: tournamentId,
-          user_id: session.user.id,
-          content: content.trim(),
-          rating: rating > 0 ? rating : null
-        }]);
-
-      if (error) throw error;
+      await createComment({
+        tournamentId,
+        userId: session.user.id,
+        content: content.trim(),
+        rating: rating > 0 ? rating : undefined
+      });
 
       toast.success('Commentaire ajouté !');
-      fetchComments();
     } catch (err) {
       console.error('Erreur ajout commentaire:', err);
-      const errorMessage = handleRateLimitError(err, 'commentaires');
-      toast.error(errorMessage);
+      toast.error(err.message || 'Erreur lors de l\'ajout du commentaire');
     }
   };
 
@@ -159,20 +56,15 @@ export default function CommentSection({ tournamentId, session }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('tournament_comments')
-        .update({ content: newContent.trim() })
-        .eq('id', commentId)
-        .eq('user_id', session.user.id);
-
-      if (error) throw error;
+      await updateComment({
+        commentId,
+        content: newContent.trim()
+      });
 
       toast.success('Commentaire modifié !');
-      fetchComments();
     } catch (err) {
       console.error('Erreur modification commentaire:', err);
-      const errorMessage = handleRateLimitError(err, 'commentaires');
-      toast.error(errorMessage);
+      toast.error(err.message || 'Erreur lors de la modification du commentaire');
     }
   };
 
@@ -182,20 +74,11 @@ export default function CommentSection({ tournamentId, session }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('tournament_comments')
-        .update({ is_deleted: true })
-        .eq('id', commentId)
-        .eq('user_id', session.user.id);
-
-      if (error) throw error;
-
+      await deleteComment({ commentId });
       toast.success('Commentaire supprimé');
-      fetchComments();
     } catch (err) {
       console.error('Erreur suppression commentaire:', err);
-      const errorMessage = handleRateLimitError(err, 'commentaires');
-      toast.error(errorMessage);
+      toast.error(err.message || 'Erreur lors de la suppression du commentaire');
     }
   };
 
@@ -206,59 +89,28 @@ export default function CommentSection({ tournamentId, session }) {
     }
 
     try {
-      const comment = comments.find(c => c.id === commentId);
-      const currentVote = comment?.userVote;
-      const _wasLiked = currentVote === 'like';
-      const isLiking = voteType === 'like' && currentVote !== 'like';
+      const comment = comments.find(c => c._id === commentId);
+      const isLiking = voteType === 'like' && comment?.userVote !== 'like';
 
-      if (currentVote === voteType) {
-        // Retirer le vote - pas de notification
-        const { error } = await supabase
-          .from('comment_votes')
-          .delete()
-          .eq('comment_id', commentId)
-          .eq('user_id', session.user.id);
+      await voteComment({
+        commentId,
+        userId: session.user.id,
+        voteType
+      });
 
-        if (error) throw error;
-      } else {
-        // Ajouter ou modifier le vote
-        const { error } = await supabase
-          .from('comment_votes')
-          .upsert([{
-            comment_id: commentId,
-            user_id: session.user.id,
-            vote_type: voteType
-          }], {
-            onConflict: 'comment_id,user_id'
-          });
-
-        if (error) throw error;
-
-        // Envoyer une notification seulement pour un nouveau like (pas pour dislike)
-        // Et seulement si l'utilisateur n'avait pas déjà liké (pour éviter le spam)
-        if (isLiking && comment?.user_id && comment.user_id !== session.user.id) {
-          // Récupérer le nom d'utilisateur
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', session.user.id)
-            .single();
-          
-          await notifyCommentLike(
-            comment.user_id,
-            session.user.id,
-            commentId,
-            tournamentId,
-            profile?.username || 'Un utilisateur'
-          );
-        }
+      // Envoyer une notification seulement pour un nouveau like
+      if (isLiking && comment?.userId && comment.userId !== session.user.id) {
+        await notifyCommentLike(
+          comment.userId,
+          session.user.id,
+          commentId,
+          tournamentId,
+          session.user.username || 'Un utilisateur'
+        );
       }
-
-      fetchComments();
     } catch (err) {
       console.error('Erreur vote:', err);
-      const errorMessage = handleRateLimitError(err, 'commentaires');
-      toast.error(errorMessage);
+      toast.error(err.message || 'Erreur lors du vote');
     }
   };
 
@@ -269,42 +121,29 @@ export default function CommentSection({ tournamentId, session }) {
     }
 
     try {
-      const comment = comments.find(c => c.id === commentId);
+      const comment = comments.find(c => c._id === commentId);
       
-      const { error } = await supabase
-        .from('comment_replies')
-        .insert([{
-          comment_id: commentId,
-          user_id: session.user.id,
-          content: content.trim()
-        }]);
-
-      if (error) throw error;
+      await createReply({
+        commentId,
+        userId: session.user.id,
+        content: content.trim()
+      });
 
       // Envoyer une notification au propriétaire du commentaire
-      if (comment?.user_id && comment.user_id !== session.user.id) {
-        // Récupérer le nom d'utilisateur
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', session.user.id)
-          .single();
-        
+      if (comment?.userId && comment.userId !== session.user.id) {
         await notifyCommentReply(
-          comment.user_id,
+          comment.userId,
           session.user.id,
           commentId,
           tournamentId,
-          profile?.username || 'Un utilisateur'
+          session.user.username || 'Un utilisateur'
         );
       }
 
       toast.success('Réponse ajoutée !');
-      fetchComments();
     } catch (err) {
       console.error('Erreur ajout réponse:', err);
-      const errorMessage = handleRateLimitError(err, 'commentaires');
-      toast.error(errorMessage);
+      toast.error(err.message || 'Erreur lors de l\'ajout de la réponse');
     }
   };
 
@@ -347,9 +186,9 @@ export default function CommentSection({ tournamentId, session }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {comments.map((comment) => (
             <CommentItem
-              key={comment.id}
+              key={comment._id}
               comment={comment}
-              isOwner={session?.user?.id === comment.user_id}
+              isOwner={session?.user?.id === comment.userId}
               isLoggedIn={!!session?.user}
               onEdit={handleEditComment}
               onDelete={handleDeleteComment}

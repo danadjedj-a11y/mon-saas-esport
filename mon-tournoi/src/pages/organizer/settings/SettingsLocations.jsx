@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, Select, Modal, Textarea, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -31,27 +32,12 @@ export default function SettingsLocations() {
   });
 
   useEffect(() => {
-    fetchLocations();
+    // TODO: Implement Convex query for match_locations when table is added
+    // For now, just set loading to false
+    setLoading(false);
   }, [tournamentId]);
 
-  const fetchLocations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('match_locations')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: false });
-
-      if (error && error.code !== '42P01') throw error;
-
-      setLocations(data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-      setLocations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Note: match_locations table needs to be added to Convex schema
 
   const handleOpenModal = (location = null) => {
     if (location) {
@@ -91,28 +77,10 @@ export default function SettingsLocations() {
     }
 
     try {
-      if (editingLocation) {
-        const { error } = await supabase
-          .from('match_locations')
-          .update(formData)
-          .eq('id', editingLocation.id);
-
-        if (error) throw error;
-        toast.success('Emplacement mis à jour');
-      } else {
-        const { error } = await supabase
-          .from('match_locations')
-          .insert({
-            ...formData,
-            tournament_id: tournamentId,
-          });
-
-        if (error) throw error;
-        toast.success('Emplacement ajouté');
-      }
-
+      // TODO: Implement Convex mutation for match_locations
+      // This requires adding match_locations table to Convex schema
+      toast.info('Fonctionnalité en cours de migration vers Convex');
       setShowModal(false);
-      fetchLocations();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la sauvegarde');
@@ -123,14 +91,8 @@ export default function SettingsLocations() {
     if (!confirm('Supprimer cet emplacement ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('match_locations')
-        .delete()
-        .eq('id', locationId);
-
-      if (error) throw error;
-      toast.success('Emplacement supprimé');
-      fetchLocations();
+      // TODO: Implement Convex mutation for deleting match_locations
+      toast.info('Fonctionnalité en cours de migration vers Convex');
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la suppression');

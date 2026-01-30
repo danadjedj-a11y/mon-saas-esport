@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { Button, Input } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
-import { generateBracketMatches } from '../../utils/matchGenerator';
 import clsx from 'clsx';
 
 /**
@@ -218,6 +218,9 @@ export default function PhaseCreator({ tournamentId, phaseOrder, onPhaseCreated,
   const [activeConfigTab, setActiveConfigTab] = useState('general');
   const [creating, setCreating] = useState(false);
 
+  // Convex mutation
+  const createPhase = useMutation(api.tournamentPhases.create);
+
   // Breadcrumb navigation
   const breadcrumbs = [
     { step: 1, label: 'Structure' },
@@ -256,39 +259,21 @@ export default function PhaseCreator({ tournamentId, phaseOrder, onPhaseCreated,
 
     setCreating(true);
     try {
-      const phaseData = {
-        tournament_id: tournamentId,
+      const phaseId = await createPhase({
+        tournamentId,
         name: config.name.trim(),
-        phase_order: phaseOrder,
+        phaseNumber: phaseOrder,
         format: phaseType.id,
-        match_type: matchType.id,
-        status: 'draft',
-        config: {
-          size: config.size,
-          grand_final: config.grandFinal,
-          skip_first_round: config.skipFirstRound,
+        settings: {
+          maxTeams: config.size,
+          grandFinal: config.grandFinal,
+          skipFirstRound: config.skipFirstRound,
+          matchType: matchType.id,
         },
-      };
+      });
 
-      const { data, error } = await supabase
-        .from('tournament_phases')
-        .insert([phaseData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Générer automatiquement les matchs pour cette phase
-      try {
-        const matchesGenerated = await generateBracketMatches(data, tournamentId);
-        console.log(`${matchesGenerated.length} matchs générés pour la phase`);
-      } catch (matchError) {
-        console.error('Erreur génération matchs:', matchError);
-        // On continue même si la génération échoue (la phase est créée)
-        toast.warning('Phase créée mais erreur lors de la génération des matchs');
-      }
-
-      onPhaseCreated(data);
+      // Fetch the created phase data (mutation returns the ID)
+      onPhaseCreated({ _id: phaseId, name: config.name.trim(), format: phaseType.id });
     } catch (error) {
       console.error('Erreur création phase:', error);
       toast.error('Erreur lors de la création: ' + error.message);

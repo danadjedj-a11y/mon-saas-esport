@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { notifyMatchUpcoming } from './notificationUtils';
 import { toast } from './utils/toast';
 
-export default function SchedulingModal({ isOpen, onClose, match, supabase, onSave }) {
+export default function SchedulingModal({ isOpen, onClose, match, onSave }) {
   const [scheduledDateTime, setScheduledDateTime] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Mutation Convex
+  const updateScheduledTime = useMutation(api.matchesMutations.updateScheduledTime);
 
   useEffect(() => {
     if (isOpen && match) {
       // Charger la date/heure planifiée existante si elle existe
-      if (match.scheduled_at) {
-        const date = new Date(match.scheduled_at);
+      const scheduledAt = match.scheduled_at || match.scheduledTime;
+      if (scheduledAt) {
+        const date = new Date(scheduledAt);
         // Formater pour datetime-local (YYYY-MM-DDTHH:mm)
-        // On doit ajuster pour l'heure locale
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -20,7 +25,6 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
         const minutes = String(date.getMinutes()).padStart(2, '0');
         setScheduledDateTime(`${year}-${month}-${day}T${hours}:${minutes}`);
       } else {
-        // Pas de date planifiée
         setScheduledDateTime('');
       }
     }
@@ -31,33 +35,28 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
 
     setLoading(true);
     try {
-      let scheduledAtISO = null;
+      let scheduledTimeMs = null;
       
       if (scheduledDateTime) {
         // Construire la date/heure complète depuis datetime-local
-        const [datePart, timePart] = scheduledDateTime.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
-        const [hours, minutes] = timePart.split(':').map(Number);
-        
-        // Créer la date en heure locale
-        const localDate = new Date(year, month - 1, day, hours, minutes, 0);
-        scheduledAtISO = localDate.toISOString();
+        const localDate = new Date(scheduledDateTime);
+        scheduledTimeMs = localDate.getTime();
       }
 
-      // Mettre à jour le match
-      const { error } = await supabase
-        .from('matches')
-        .update({ scheduled_at: scheduledAtISO })
-        .eq('id', match.id);
-
-      if (error) throw error;
+      // Mettre à jour le match via Convex
+      const matchId = match._id || match.id;
+      await updateScheduledTime({
+        matchId,
+        scheduledTime: scheduledTimeMs,
+      });
 
       // Créer des notifications pour les équipes si le match a des équipes assignées
-      if (scheduledAtISO && match.player1_id && match.player2_id) {
-        await notifyMatchUpcoming(match.id, match.player1_id, match.player2_id, scheduledAtISO);
+      if (scheduledTimeMs && match.player1_id && match.player2_id) {
+        await notifyMatchUpcoming(matchId, match.player1_id, match.player2_id, new Date(scheduledTimeMs).toISOString());
       }
 
       if (onSave) onSave();
+      toast.success('Match planifié avec succès !');
       onClose();
     } catch (error) {
       toast.error('Erreur lors de la planification : ' + error.message);
@@ -73,14 +72,14 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ scheduled_at: null })
-        .eq('id', match.id);
-
-      if (error) throw error;
+      const matchId = match._id || match.id;
+      await updateScheduledTime({
+        matchId,
+        scheduledTime: null,
+      });
 
       if (onSave) onSave();
+      toast.success('Planification supprimée.');
       onClose();
     } catch (error) {
       toast.error('Erreur : ' + error.message);
@@ -151,7 +150,7 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
           />
         </div>
 
-        {match.scheduled_at && (
+        {(match.scheduled_at || match.scheduledTime) && (
           <div style={{
             marginBottom: '20px',
             padding: '10px',
@@ -161,7 +160,7 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
             fontSize: '0.9rem',
             color: '#4ade80'
           }}>
-            📅 Déjà planifié le {new Date(match.scheduled_at).toLocaleString('fr-FR', {
+            📅 Déjà planifié le {new Date(match.scheduled_at || match.scheduledTime).toLocaleString('fr-FR', {
               dateStyle: 'full',
               timeStyle: 'short'
             })}
@@ -169,7 +168,7 @@ export default function SchedulingModal({ isOpen, onClose, match, supabase, onSa
         )}
 
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          {match.scheduled_at && (
+          {(match.scheduled_at || match.scheduledTime) && (
             <button
               onClick={handleClear}
               disabled={loading}

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 /**
  * Hook pour gérer les notifications en temps réel avec toasts
+ * Utilise Convex pour la réactivité native
  */
 export function useRealtimeNotifications(session, options = {}) {
   const { 
@@ -13,9 +15,18 @@ export function useRealtimeNotifications(session, options = {}) {
   } = options;
 
   const [toasts, setToasts] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const audioRef = useRef(null);
   const lastNotificationId = useRef(null);
+  const previousNotifications = useRef([]);
+
+  // Récupérer les notifications via Convex (temps réel automatique)
+  const notifications = useQuery(
+    api.notifications.listByUser,
+    enabled && session?.user?.id ? { userId: session.user.id, limit: 20 } : "skip"
+  ) || [];
+
+  // Calculer le nombre de notifications non lues
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   // Créer l'élément audio pour le son de notification
   useEffect(() => {
@@ -30,7 +41,7 @@ export function useRealtimeNotifications(session, options = {}) {
   const addToast = useCallback((notification) => {
     if (!showToasts) return;
 
-    const toastId = `toast-${notification.id || Date.now()}`;
+    const toastId = `toast-${notification._id || Date.now()}`;
     
     setToasts((prev) => {
       // Limiter le nombre de toasts
@@ -41,7 +52,7 @@ export function useRealtimeNotifications(session, options = {}) {
           title: notification.title,
           message: notification.message,
           link: notification.link,
-          notificationId: notification.id
+          notificationId: notification._id
         },
         ...prev
       ].slice(0, maxToasts);
@@ -62,93 +73,34 @@ export function useRealtimeNotifications(session, options = {}) {
     setToasts((prev) => prev.filter((t) => t.id !== toastId));
   }, []);
 
-  // Écouter les nouvelles notifications
+  // Détecter les nouvelles notifications et afficher les toasts
   useEffect(() => {
-    if (!enabled || !session?.user) return;
+    if (!enabled || !session?.user?.id || notifications.length === 0) return;
 
-    // Récupérer le nombre de notifications non lues
-    const fetchUnreadCount = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .eq('is_read', false);
-      
-      setUnreadCount(count || 0);
-    };
+    // Trouver les nouvelles notifications non lues
+    const previousIds = new Set(previousNotifications.current.map(n => n._id));
+    const newNotifications = notifications.filter(
+      n => !n.read && !previousIds.has(n._id) && n._id !== lastNotificationId.current
+    );
 
-    fetchUnreadCount();
+    // Afficher les toasts pour les nouvelles notifications
+    newNotifications.forEach((notification) => {
+      lastNotificationId.current = notification._id;
+      addToast(notification);
 
-    // S'abonner aux nouvelles notifications en temps réel
-    const channel = supabase
-      .channel(`realtime-notifications-${session.user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${session.user.id}`,
-        },
-        (payload) => {
-          const notification = payload.new;
-          
-          // Éviter les doublons
-          if (lastNotificationId.current === notification.id) return;
-          lastNotificationId.current = notification.id;
+      // Notification du navigateur si autorisé
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(notification.title, {
+          body: notification.message,
+          icon: '/Logo.png',
+          tag: notification._id,
+        });
+      }
+    });
 
-          // Afficher le toast
-          addToast(notification);
-          
-          // Mettre à jour le compteur
-          setUnreadCount((prev) => prev + 1);
-
-          // Notification du navigateur si autorisé
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(notification.title, {
-              body: notification.message,
-              icon: '/Logo.png',
-              tag: notification.id,
-            });
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${session.user.id}`,
-        },
-        (payload) => {
-          // Si marqué comme lu, décrémenter le compteur
-          if (payload.new.is_read && !payload.old.is_read) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${session.user.id}`,
-        },
-        (payload) => {
-          // Si la notification supprimée n'était pas lue
-          if (!payload.old.is_read) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [enabled, session, addToast]);
+    // Mettre à jour la référence des notifications précédentes
+    previousNotifications.current = notifications;
+  }, [notifications, enabled, session, addToast]);
 
   // Demander la permission pour les notifications navigateur
   const requestBrowserPermission = useCallback(async () => {
@@ -164,7 +116,7 @@ export function useRealtimeNotifications(session, options = {}) {
     removeToast,
     addToast,
     unreadCount,
-    setUnreadCount,
+    notifications,
     requestBrowserPermission,
   };
 }

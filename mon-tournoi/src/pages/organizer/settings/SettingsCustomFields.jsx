@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, Select, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -33,31 +34,12 @@ export default function SettingsCustomFields() {
   });
 
   useEffect(() => {
-    fetchCustomFields();
+    // TODO: Implement Convex query for tournament_custom_fields when table is added
+    // For now, just set loading to false
+    setLoading(false);
   }, [tournamentId]);
 
-  const fetchCustomFields = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournament_custom_fields')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('display_order');
-
-      if (error && error.code !== '42P01') throw error;
-
-      const teamFields = (data || []).filter(f => f.target === 'team' || !f.target);
-      const playerFields = (data || []).filter(f => f.target === 'player');
-
-      setFields({ team: teamFields, player: playerFields });
-    } catch (error) {
-      console.error('Erreur:', error);
-      // Table n'existe peut-être pas encore
-      setFields({ team: [], player: [] });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Note: tournament_custom_fields table needs to be added to Convex schema
 
   const handleSelectType = (fieldType) => {
     setNewField({
@@ -78,38 +60,12 @@ export default function SettingsCustomFields() {
     }
 
     try {
-      if (editingField) {
-        const { error } = await supabase
-          .from('tournament_custom_fields')
-          .update({
-            field_name: newField.field_name,
-            field_type: newField.field_type,
-            required: newField.required,
-          })
-          .eq('id', editingField.id);
-
-        if (error) throw error;
-        toast.success('Champ modifié');
-      } else {
-        const { error } = await supabase
-          .from('tournament_custom_fields')
-          .insert({
-            tournament_id: tournamentId,
-            field_name: newField.field_name,
-            field_type: newField.field_type,
-            required: newField.required,
-            target: activeTab,
-            display_order: fields[activeTab].length,
-          });
-
-        if (error) throw error;
-        toast.success('Champ ajouté');
-      }
-
+      // TODO: Implement Convex mutation for tournament_custom_fields
+      // This requires adding tournament_custom_fields table to Convex schema
+      toast.info('Fonctionnalité en cours de migration vers Convex');
       setShowFieldModal(false);
       setEditingField(null);
       setNewField({ field_name: '', field_type: '', required: false, target: 'team' });
-      fetchCustomFields();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la sauvegarde');
@@ -120,14 +76,8 @@ export default function SettingsCustomFields() {
     if (!confirm('Supprimer ce champ personnalisé ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('tournament_custom_fields')
-        .delete()
-        .eq('id', fieldId);
-
-      if (error) throw error;
-      toast.success('Champ supprimé');
-      fetchCustomFields();
+      // TODO: Implement Convex mutation for deleting tournament_custom_fields
+      toast.info('Fonctionnalité en cours de migration vers Convex');
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la suppression');

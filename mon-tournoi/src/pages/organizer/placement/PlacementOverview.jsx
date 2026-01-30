@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { toast } from '../../../utils/toast';
 
 // Icons for phase types
@@ -27,48 +28,31 @@ export default function PlacementOverview() {
   const tournament = context?.tournament;
 
   const [phases, setPhases] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  // Charger via Convex
+  const phasesData = useQuery(
+    api.tournamentPhases.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = phasesData === undefined;
 
   useEffect(() => {
-    fetchPhases();
-  }, [tournamentId]);
-
-  const fetchPhases = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournament_phases')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('order_index', { ascending: true });
-
-      if (error && error.code !== '42P01') throw error;
-      
-      // If no phases exist, create a default one based on tournament format
-      if (!data || data.length === 0) {
+    if (phasesData) {
+      if (phasesData.length === 0) {
         // Use tournament's format or default
         const defaultPhases = [{
-          id: 'default',
-          name: tournament?.bracket_type === 'double_elimination' ? 'Playoffs' : 'Phase principale',
-          type: tournament?.bracket_type || 'single_elimination',
-          order_index: 0,
+          _id: 'default',
+          name: tournament?.bracketType === 'double_elimination' ? 'Playoffs' : 'Phase principale',
+          type: tournament?.bracketType || 'single_elimination',
+          phaseNumber: 0,
         }];
         setPhases(defaultPhases);
       } else {
-        setPhases(data);
+        setPhases(phasesData);
       }
-    } catch (error) {
-      console.error('Erreur:', error);
-      // Fallback to mock data
-      setPhases([{
-        id: 'default',
-        name: 'Playoffs',
-        type: 'double_elimination',
-        order_index: 0,
-      }]);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [phasesData, tournament]);
 
   if (loading) {
     return (
@@ -89,8 +73,8 @@ export default function PlacementOverview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {phases.map((phase, index) => (
           <div
-            key={phase.id}
-            onClick={() => navigate(`/organizer/tournament/${tournamentId}/placement/${phase.id}`)}
+            key={phase._id}
+            onClick={() => navigate(`/organizer/tournament/${tournamentId}/placement/${phase._id}`)}
             className="bg-[#2a2d3e] rounded-xl border-2 border-dashed border-cyan/50 p-6 cursor-pointer hover:border-cyan hover:bg-[#2a2d3e]/80 transition-all group"
           >
             {/* Phase Icon */}

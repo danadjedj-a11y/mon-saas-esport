@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, Textarea, Select, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -91,51 +92,36 @@ export default function SettingsGeneral() {
     if (context?.tournament) {
       populateForm(context.tournament);
       setLoading(false);
-    } else {
-      fetchTournament();
     }
-  }, [context?.tournament, tournamentId]);
+  }, [context?.tournament]);
 
   const populateForm = (tournament) => {
+    const formatDate = (timestamp) => {
+      if (!timestamp) return '';
+      return new Date(timestamp).toISOString().split('T')[0];
+    };
+
     setFormData({
       name: tournament.name || '',
-      full_name: tournament.full_name || '',
+      full_name: tournament.fullName || '',
       game: tournament.game || '',
       platforms: tournament.platforms || ['pc'],
-      organizer_name: tournament.organizer_name || '',
+      organizer_name: tournament.organizerName || '',
       website: tournament.website || '',
-      size: tournament.max_participants || 8,
-      is_online: tournament.is_online !== false,
+      size: tournament.maxTeams || 8,
+      is_online: tournament.isOnline !== false,
       location: tournament.location || '',
       country: tournament.country || '',
-      start_date: tournament.start_date ? tournament.start_date.split('T')[0] : '',
-      end_date: tournament.end_date || tournament.start_date ? (tournament.end_date || tournament.start_date).split('T')[0] : '',
+      start_date: formatDate(tournament.startDate),
+      end_date: formatDate(tournament.endDate) || formatDate(tournament.startDate),
       timezone: tournament.timezone || 'Europe/Paris',
       description: tournament.description || '',
       rules: tournament.rules || '',
-      prizes: tournament.prizes || (tournament.cashprize_total ? `${tournament.cashprize_total}€` : ''),
-      contact_email: tournament.contact_email || '',
-      contact_discord: tournament.contact_discord || '',
-      contact_twitter: tournament.contact_twitter || '',
+      prizes: tournament.prizePool || '',
+      contact_email: tournament.contactEmail || '',
+      contact_discord: tournament.contactDiscord || '',
+      contact_twitter: tournament.contactTwitter || '',
     });
-  };
-
-  const fetchTournament = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', tournamentId)
-        .single();
-
-      if (error) throw error;
-      populateForm(data);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleChange = (field, value) => {
@@ -151,6 +137,8 @@ export default function SettingsGeneral() {
     });
   };
 
+  const updateTournament = useMutation(api.tournamentsMutations.update);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -161,22 +149,17 @@ export default function SettingsGeneral() {
 
     setSaving(true);
     try {
-      const updateData = {
+      await updateTournament({
+        tournamentId: context?.tournament?._id,
         name: formData.name.trim(),
-        game: formData.game,
-        max_participants: formData.size ? parseInt(formData.size) : 8,
-        is_public: formData.is_online,
-        start_date: formData.start_date || null,
-        description: formData.description || null,
-        rules: formData.rules || null,
-      };
-
-      const { error } = await supabase
-        .from('tournaments')
-        .update(updateData)
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+        game: formData.game || undefined,
+        maxTeams: formData.size ? parseInt(formData.size) : 8,
+        isPublic: formData.is_online,
+        startDate: formData.start_date ? new Date(formData.start_date).getTime() : undefined,
+        description: formData.description || undefined,
+        rules: formData.rules || undefined,
+        prizePool: formData.prizes || undefined,
+      });
 
       if (context?.refreshTournament) {
         context.refreshTournament();

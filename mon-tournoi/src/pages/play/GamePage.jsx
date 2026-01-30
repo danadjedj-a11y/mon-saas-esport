@@ -8,10 +8,11 @@
  * - Stats du jeu sur la plateforme
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Button, Tabs } from '../../shared/components/ui';
 import { TournamentCardSkeleton } from '../../components/Skeleton';
@@ -108,8 +109,11 @@ export default function GamePage({ session }) {
   const { gameSlug } = useParams();
   const navigate = useNavigate();
   
-  const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Convex query - automatically reactive
+  const gameName = GAMES_DATABASE[gameSlug]?.name || gameSlug?.replace(/-/g, ' ');
+  const tournaments = useQuery(api.games.getTournamentsByGame, { gameName: gameName || '' }) ?? [];
+  const loading = tournaments === undefined;
+  
   const [activeTab, setActiveTab] = useState('overview');
   
   // Filtres
@@ -120,44 +124,13 @@ export default function GamePage({ session }) {
   // Récupérer les infos du jeu
   const gameInfo = GAMES_DATABASE[gameSlug];
 
-  useEffect(() => {
-    if (gameSlug) {
-      fetchTournaments();
-    }
-  }, [gameSlug]);
-
-  const fetchTournaments = async () => {
-    setLoading(true);
-    try {
-      // Construire la requête avec variations du nom
-      let query = supabase
-        .from('tournaments')
-        .select('*')
-        .eq('is_public', true)
-        .order('start_date', { ascending: false });
-
-      // Filtrer par nom de jeu (avec variations)
-      const gameName = gameInfo?.name || gameSlug;
-      query = query.ilike('game', `%${gameName.replace(/-/g, ' ')}%`);
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setTournaments(data || []);
-    } catch (error) {
-      console.error('Erreur chargement tournois:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Stats du jeu
   const stats = useMemo(() => {
     const now = new Date();
     const openCount = tournaments.filter(t => t.status === 'open').length;
     const ongoingCount = tournaments.filter(t => t.status === 'ongoing').length;
-    const totalPrizePool = tournaments.reduce((sum, t) => sum + (t.cashprize_total || 0), 0);
-    const upcomingCount = tournaments.filter(t => new Date(t.start_date) > now).length;
+    const totalPrizePool = tournaments.reduce((sum, t) => sum + (t.cashprizeTotal || 0), 0);
+    const upcomingCount = tournaments.filter(t => new Date(t.startDate) > now).length;
     
     return { openCount, ongoingCount, totalPrizePool, upcomingCount, total: tournaments.length };
   }, [tournaments]);
@@ -179,13 +152,13 @@ export default function GamePage({ session }) {
     // Tri
     switch (sortBy) {
       case 'date':
-        result.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+        result.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
         break;
       case 'prize':
-        result.sort((a, b) => (b.cashprize_total || 0) - (a.cashprize_total || 0));
+        result.sort((a, b) => (b.cashprizeTotal || 0) - (a.cashprizeTotal || 0));
         break;
       case 'participants':
-        result.sort((a, b) => b.max_participants - a.max_participants);
+        result.sort((a, b) => b.maxParticipants - a.maxParticipants);
         break;
       case 'name':
         result.sort((a, b) => a.name.localeCompare(b.name));
@@ -553,10 +526,10 @@ function TournamentListItem({ tournament, onClick, detailed = false }) {
         {/* Date */}
         <div className="text-center w-16 flex-shrink-0">
           <div className="text-2xl font-bold text-white">
-            {new Date(tournament.start_date).getDate()}
+            {new Date(tournament.startDate).getDate()}
           </div>
           <div className="text-xs text-gray-500 uppercase">
-            {new Date(tournament.start_date).toLocaleDateString('fr-FR', { month: 'short' })}
+            {new Date(tournament.startDate).toLocaleDateString('fr-FR', { month: 'short' })}
           </div>
         </div>
         
@@ -566,10 +539,10 @@ function TournamentListItem({ tournament, onClick, detailed = false }) {
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-white truncate">{tournament.name}</h3>
           <div className="flex flex-wrap gap-3 text-sm text-gray-400 mt-1">
-            <span>👥 {tournament.max_participants}</span>
+            <span>👥 {tournament.maxParticipants}</span>
             <span>🏆 {tournament.format}</span>
-            {tournament.cashprize_total > 0 && (
-              <span className="text-yellow-400">💰 {tournament.cashprize_total}€</span>
+            {tournament.cashprizeTotal > 0 && (
+              <span className="text-yellow-400">💰 {tournament.cashprizeTotal}€</span>
             )}
           </div>
         </div>

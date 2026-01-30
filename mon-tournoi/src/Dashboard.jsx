@@ -1,31 +1,38 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import { getUserRole } from './utils/userRole';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
+import { useUser } from '@clerk/clerk-react';
 
-export default function Dashboard({ session }) {
+export default function Dashboard() {
   const navigate = useNavigate();
   const hasRedirected = useRef(false);
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  
+  // Query Convex pour obtenir le profil utilisateur avec son rôle
+  const currentUser = useQuery(api.users.current);
 
   useEffect(() => {
     // Réinitialiser le flag à chaque montage du composant
     hasRedirected.current = false;
 
-    const redirectUser = async () => {
-      // Si pas de session, ne rien faire (App.jsx gère déjà la redirection vers Auth)
-      if (!session?.user) {
-        return;
-      }
+    const redirectUser = () => {
+      // Attendre que Clerk soit chargé
+      if (!isUserLoaded) return;
+      
+      // Si pas d'utilisateur Clerk, ne rien faire
+      if (!clerkUser) return;
+
+      // Attendre que la query Convex soit résolue
+      if (currentUser === undefined) return;
 
       // Éviter les redirections multiples
-      if (hasRedirected.current) {
-        return;
-      }
+      if (hasRedirected.current) return;
 
       hasRedirected.current = true;
 
       try {
-        const role = await getUserRole(supabase, session.user.id);
+        const role = currentUser?.role || 'player';
         // Toujours rediriger vers player si ce n'est pas organizer
         if (role === 'organizer') {
           navigate('/organizer/dashboard', { replace: true });
@@ -41,7 +48,7 @@ export default function Dashboard({ session }) {
     };
 
     redirectUser();
-  }, [session, navigate]);
+  }, [clerkUser, isUserLoaded, currentUser, navigate]);
 
   // Cette page ne devrait jamais être visible car elle redirige immédiatement
   return (

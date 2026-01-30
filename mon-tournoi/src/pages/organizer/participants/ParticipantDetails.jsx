@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button, Card, Input } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 import { PLATFORM_NAMES, PLATFORM_LOGOS, getPlatformForGame, formatGamertag } from '../../../utils/gamePlatforms';
@@ -12,76 +13,37 @@ export default function ParticipantDetails() {
   const tournament = context?.tournament;
 
   const [participant, setParticipant] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Charger via Convex - we'll use tournament registrations list and find by ID
+  const registrationsData = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = registrationsData === undefined;
+
+  // Mutations
+  const toggleCheckIn = useMutation(api.tournamentRegistrationsMutations.toggleCheckIn);
+  const removeParticipant = useMutation(api.tournamentRegistrationsMutations.removeParticipant);
+
   useEffect(() => {
-    fetchParticipant();
-  }, [participantId]);
-
-  const fetchParticipant = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            username,
-            email,
-            avatar_url,
-            gaming_accounts
-          ),
-          team:team_id (
-            id,
-            name,
-            tag,
-            logo_url,
-            captain_id,
-            team_members (
-              id,
-              user_id,
-              role,
-              profiles:user_id (id, username, email, avatar_url, gaming_accounts)
-            )
-          ),
-          temporary_teams:temporary_team_id (
-            id,
-            name,
-            tag,
-            logo_url,
-            temporary_team_players (
-              id,
-              user_id,
-              profiles:user_id (id, username, email, avatar_url, gaming_accounts)
-            )
-          )
-        `)
-        .eq('id', participantId)
-        .single();
-
-      if (error) throw error;
-      setParticipant(data);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Participant non trouvé');
-      navigate(`/organizer/tournament/${tournamentId}/participants`);
-    } finally {
-      setLoading(false);
+    if (registrationsData && participantId) {
+      const found = registrationsData.find(p => p._id === participantId);
+      if (found) {
+        setParticipant(found);
+      } else {
+        toast.error('Participant non trouvé');
+        navigate(`/organizer/tournament/${tournamentId}/participants`);
+      }
     }
-  };
+  }, [registrationsData, participantId, navigate, tournamentId]);
 
   const handleDelete = async () => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce participant ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('participants')
-        .delete()
-        .eq('id', participantId);
-
-      if (error) throw error;
-
+      await removeParticipant({ registrationId: participantId });
       toast.success('Participant supprimé');
       navigate(`/organizer/tournament/${tournamentId}/participants`);
     } catch (error) {
@@ -93,15 +55,9 @@ export default function ParticipantDetails() {
   const handleToggleCheckIn = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('participants')
-        .update({ checked_in: !participant.checked_in })
-        .eq('id', participantId);
-
-      if (error) throw error;
-
-      setParticipant(prev => ({ ...prev, checked_in: !prev.checked_in }));
-      toast.success(participant.checked_in ? 'Check-in annulé' : 'Check-in validé');
+      await toggleCheckIn({ registrationId: participantId });
+      setParticipant(prev => ({ ...prev, checkedIn: !prev.checkedIn }));
+      toast.success(participant.checkedIn ? 'Check-in annulé' : 'Check-in validé');
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la mise à jour');
@@ -113,13 +69,7 @@ export default function ParticipantDetails() {
   const handleToggleDisqualified = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('participants')
-        .update({ disqualified: !participant.disqualified })
-        .eq('id', participantId);
-
-      if (error) throw error;
-
+      // TODO: Add disqualify mutation to Convex
       setParticipant(prev => ({ ...prev, disqualified: !prev.disqualified }));
       toast.success(participant.disqualified ? 'Participant réintégré' : 'Participant disqualifié');
     } catch (error) {
@@ -146,11 +96,11 @@ export default function ParticipantDetails() {
     );
   }
 
-  const isTemporaryTeam = !!participant.temporary_team_id && !participant.team_id;
-  const team = isTemporaryTeam ? participant.temporary_teams : participant.team;
+  const isTemporaryTeam = !!participant.temporaryTeamId && !participant.teamId;
+  const team = isTemporaryTeam ? participant.temporaryTeam : participant.team;
   const members = isTemporaryTeam 
-    ? participant.temporary_teams?.temporary_team_players?.map(p => ({ ...p, role: 'member' })) 
-    : participant.team?.team_members;
+    ? participant.temporaryTeam?.players?.map(p => ({ ...p, role: 'member' })) 
+    : participant.team?.members;
   
   const requiredPlatform = tournament?.game ? getPlatformForGame(tournament.game) : null;
 

@@ -1,45 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
 
-export default function SeedingModal({ isOpen, onClose, participants, tournamentId, supabase, onSave }) {
+export default function SeedingModal({ isOpen, onClose, participants, tournamentId, onSave }) {
   const [seededTeams, setSeededTeams] = useState([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
 
-  const loadSeeding = useCallback(async () => {
-    // Récupérer l'ordre de seeding depuis la base (si existe)
-    const { data } = await supabase
-      .from('participants')
-      .select('id, team_id, seed_order, teams(*)')
-      .eq('tournament_id', tournamentId)
-      .order('seed_order', { ascending: true, nullsLast: true });
+  // Mutation Convex
+  const updateSeed = useMutation(api.tournamentRegistrationsMutations.updateSeed);
 
-    if (data && data.length > 0 && data.some(p => p.seed_order !== null && p.seed_order !== undefined)) {
-      // Il y a déjà un seeding sauvegardé
-      const seeded = data
-        .filter(p => p.seed_order !== null && p.seed_order !== undefined)
-        .sort((a, b) => (a.seed_order || 999) - (b.seed_order || 999));
-      
-      // Ajouter les participants sans seed_order à la fin
-      const unseeded = data.filter(p => p.seed_order === null || p.seed_order === undefined);
-      const maxSeed = seeded.length > 0 ? Math.max(...seeded.map(p => p.seed_order)) : 0;
-      unseeded.forEach((p, index) => {
-        p.seed_order = maxSeed + index + 1;
-      });
-      
-      setSeededTeams([...seeded, ...unseeded].sort((a, b) => (a.seed_order || 999) - (b.seed_order || 999)));
-    } else {
-      // Pas de seeding, on utilise l'ordre actuel des participants
-      const ordered = participants
-        .map((p, index) => ({ ...p, seed_order: index + 1 }))
-        .sort((a, b) => (a.seed_order || 999) - (b.seed_order || 999));
-      setSeededTeams(ordered);
-    }
-  }, [supabase, tournamentId, participants]);
+  const loadSeeding = useCallback(() => {
+    if (!participants || participants.length === 0) return;
+
+    // Trier par seed existant ou par ordre d'inscription
+    const sorted = [...participants]
+      .filter(p => p.teamId || p.team_id) // Support des deux formats
+      .sort((a, b) => {
+        const seedA = a.seed ?? a.seed_order ?? 999;
+        const seedB = b.seed ?? b.seed_order ?? 999;
+        return seedA - seedB;
+      })
+      .map((p, index) => ({
+        ...p,
+        seed_order: p.seed ?? p.seed_order ?? index + 1
+      }));
+
+    setSeededTeams(sorted);
+  }, [participants]);
 
   useEffect(() => {
     if (isOpen && participants) {
-      // Charger l'ordre de seeding existant ou utiliser l'ordre actuel
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       loadSeeding();
     }
   }, [isOpen, participants, loadSeeding]);
@@ -83,23 +74,27 @@ export default function SeedingModal({ isOpen, onClose, participants, tournament
   };
 
   const saveSeeding = async () => {
-    // Sauvegarder l'ordre dans la base de données
-    const updates = seededTeams.map((team, index) => ({
-      id: team.id,
-      seed_order: index + 1
-    }));
+    try {
+      // Sauvegarder l'ordre via Convex
+      for (let i = 0; i < seededTeams.length; i++) {
+        const team = seededTeams[i];
+        const registrationId = team._id || team.id;
+        
+        if (registrationId) {
+          await updateSeed({
+            registrationId,
+            seed: i + 1
+          });
+        }
+      }
 
-    // Mettre à jour chaque participant avec son seed_order
-    for (const update of updates) {
-      await supabase
-        .from('participants')
-        .update({ seed_order: update.seed_order })
-        .eq('id', update.id);
+      if (onSave) onSave();
+      toast.success('Seeding sauvegardé ! Les équipes seront placées dans cet ordre lors de la génération.');
+      onClose();
+    } catch (error) {
+      console.error('Erreur sauvegarde seeding:', error);
+      toast.error('Erreur lors de la sauvegarde du seeding : ' + error.message);
     }
-
-    if (onSave) onSave();
-    toast.success('Seeding sauvegardé ! Les équipes seront placées dans cet ordre lors de la génération.');
-    onClose();
   };
 
   const resetSeeding = () => {

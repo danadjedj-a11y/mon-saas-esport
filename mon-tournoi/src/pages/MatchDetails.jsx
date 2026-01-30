@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { toast } from '../utils/toast';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { GlassCard, Badge, GradientButton } from '../shared/components/ui';
 
@@ -88,70 +87,49 @@ const TwitterFeed = ({ hashtag, teamNames }) => {
 export default function MatchDetails({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [match, setMatch] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tournament, setTournament] = useState(null);
-
-  useEffect(() => {
-    if (id) {
-      fetchMatchDetails();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  const fetchMatchDetails = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch match data
-      const { data: matchData, error: matchError } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (matchError) throw matchError;
-
-      // Fetch teams separately to avoid FK relationship issues
-      let team1Data = null;
-      let team2Data = null;
-
-      if (matchData.player1_id || matchData.player2_id) {
-        const teamIds = [matchData.player1_id, matchData.player2_id].filter(Boolean);
-        const { data: teamsData } = await supabase
-          .from('teams')
-          .select('id, name, tag, logo_url, captain_id')
-          .in('id', teamIds);
-
-        if (teamsData) {
-          team1Data = teamsData.find(t => t.id === matchData.player1_id) || null;
-          team2Data = teamsData.find(t => t.id === matchData.player2_id) || null;
-        }
-      }
-
-      setMatch({
-        ...matchData,
-        team1: team1Data,
-        team2: team2Data
-      });
-
-      // Fetch tournament details
-      const { data: tournamentData, error: tournamentError } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', matchData.tournament_id)
-        .single();
-
-      if (tournamentError) throw tournamentError;
-
-      setTournament(tournamentData);
-    } catch (error) {
-      console.error('Error fetching match details:', error);
-      toast.error('Erreur lors du chargement du match');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  // Convex queries - automatically reactive, no subscriptions needed
+  const matchData = useQuery(api.matches.getById, id ? { matchId: id } : "skip");
+  const tournamentData = useQuery(
+    api.tournaments.getById, 
+    matchData?.tournamentId ? { tournamentId: matchData.tournamentId } : "skip"
+  );
+  
+  const loading = matchData === undefined;
+  
+  // Transform match data to expected format
+  const match = matchData ? {
+    ...matchData,
+    id: matchData._id,
+    score_p1: matchData.scoreTeam1,
+    score_p2: matchData.scoreTeam2,
+    match_number: matchData.matchNumber,
+    round_number: matchData.roundNumber,
+    bracket_type: matchData.bracketType,
+    scheduled_at: matchData.scheduledAt,
+    tournament_id: matchData.tournamentId,
+    player1_id: matchData.team1Id,
+    player2_id: matchData.team2Id,
+    // Team data comes from the getById query enriched
+    team1: matchData.team1 ? {
+      id: matchData.team1._id,
+      name: matchData.team1.name,
+      tag: matchData.team1.tag,
+      logo_url: matchData.team1.logoUrl,
+    } : null,
+    team2: matchData.team2 ? {
+      id: matchData.team2._id,
+      name: matchData.team2.name,
+      tag: matchData.team2.tag,
+      logo_url: matchData.team2.logoUrl,
+    } : null,
+  } : null;
+  
+  const tournament = tournamentData ? {
+    ...tournamentData,
+    id: tournamentData._id,
+    stream_urls: tournamentData.streamUrls,
+  } : null;
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -195,8 +173,8 @@ export default function MatchDetails({ session }) {
     );
   }
 
-  const { team1, team2 } = match;
-  const winner = match.status === 'completed'
+  const { team1, team2 } = match || {};
+  const winner = match?.status === 'completed'
     ? (match.score_p1 > match.score_p2 ? team1 : match.score_p2 > match.score_p1 ? team2 : null)
     : null;
 

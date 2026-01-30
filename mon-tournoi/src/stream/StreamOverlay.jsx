@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { getSwissScores } from '../swissUtils';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { calculateMatchWinner } from '../bofUtils';
 
 export default function StreamOverlay() {
@@ -9,118 +9,112 @@ export default function StreamOverlay() {
   const [searchParams] = useSearchParams();
   const type = searchParams.get('type') || 'bracket'; // 'bracket', 'score', 'standings'
   
-  const [tournoi, setTournoi] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [matchGames, setMatchGames] = useState([]);
-  const [swissScores, setSwissScores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentMatch, setCurrentMatch] = useState(null);
+  // Convex queries - automatically reactive, no subscriptions needed
+  const tournoi = useQuery(api.tournaments.getById, id ? { tournamentId: id } : "skip");
+  const matchesData = useQuery(api.matches.listByTournament, id ? { tournamentId: id } : "skip");
+  const participants = useQuery(api.tournamentRegistrations.listByTournament, id ? { tournamentId: id } : "skip");
+  
+  const loading = tournoi === undefined || matchesData === undefined || participants === undefined;
 
-  const fetchData = useCallback(async () => {
-    try {
-      // Tournoi
-      const { data: tData } = await supabase.from('tournaments').select('*').eq('id', id).single();
-      setTournoi(tData);
-
-      // Participants
-      const { data: pData } = await supabase
-        .from('participants')
-        .select('*, teams(*)')
-        .eq('tournament_id', id)
-        .order('seed_order', { ascending: true, nullsLast: true });
-      setParticipants(pData || []);
-
-      // Matchs
-      const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
-
-      if (mData && mData.length > 0 && pData) {
-        // Supporter équipes permanentes ET temporaires
-        const participantsMap = new Map();
-        pData.forEach(p => {
-          if (p.team_id) participantsMap.set(p.team_id, p);
-          if (p.temporary_team_id) participantsMap.set(p.temporary_team_id, p);
-        });
-        
-        const enrichedMatches = mData.map(match => {
-          const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
-          const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
-          
-          const getTeamData = (p) => {
-            if (!p) return null;
-            const isTemp = !!p.temporary_team_id && !p.team_id;
-            return isTemp ? p.temporary_teams : p.teams;
-          };
-          
-          const getTeamName = (p) => {
-            if (!p) return 'En attente';
-            const team = getTeamData(p);
-            return `${team?.name || 'Inconnu'} [${team?.tag || '?'}]`;
-          };
-          
-          const getTeamLogo = (p) => {
-            const team = getTeamData(p);
-            return team?.logo_url || `https://ui-avatars.com/api/?name=${team?.tag || '?'}&background=random&size=64`;
-          };
-
-          return {
-            ...match,
-            p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
-            p1_avatar: getTeamLogo(p1),
-            p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
-            p2_avatar: getTeamLogo(p2),
-          };
-        });
-        setMatches(enrichedMatches);
-
-        // Match en cours (premier match pending ou le dernier completed)
-        const pendingMatch = enrichedMatches.find(m => m.status === 'pending' && m.player1_id && m.player2_id);
-        const lastCompleted = enrichedMatches.filter(m => m.status === 'completed').sort((a, b) => b.match_number - a.match_number)[0];
-        setCurrentMatch(pendingMatch || lastCompleted || null);
-
-        // Match Games pour Best-of-X
-        if (tData?.best_of > 1) {
-          try {
-            const matchIds = enrichedMatches.map(m => m.id);
-            const { data: gamesData } = await supabase
-              .from('match_games')
-              .select('*')
-              .in('match_id', matchIds)
-              .order('match_id', { ascending: true })
-              .order('game_number', { ascending: true });
-            setMatchGames(gamesData || []);
-          } catch (error) {
-            console.warn('Erreur récupération manches:', error);
-            setMatchGames([]);
-          }
-        }
-      }
-
-      // Swiss Scores
-      if (tData?.format === 'swiss') {
-        const scores = await getSwissScores(supabase, id);
-        setSwissScores(scores);
-      }
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur fetchData overlay:', error);
-      setLoading(false);
+  // Process matches with team info
+  const { matches, currentMatch, matchGames } = useMemo(() => {
+    if (!matchesData || !participants) {
+      return { matches: [], currentMatch: null, matchGames: [] };
     }
-  }, [id]);
 
-  useEffect(() => {
-    fetchData();
+    // Build participants map
+    const participantsMap = new Map();
+    (participants || []).forEach(p => {
+      if (p.teamId) participantsMap.set(p.teamId, p);
+      if (p.temporaryTeamId) participantsMap.set(p.temporaryTeamId, p);
+    });
+    
+    const enrichedMatches = (matchesData || []).map(match => {
+      const p1 = match.team1Id ? participantsMap.get(match.team1Id) : null;
+      const p2 = match.team2Id ? participantsMap.get(match.team2Id) : null;
+      
+      const getTeamData = (p) => {
+        if (!p) return null;
+        return p.team || null;
+      };
+      
+      const getTeamName = (p) => {
+        if (!p) return 'En attente';
+        const team = getTeamData(p);
+        return `${team?.name || 'Inconnu'} [${team?.tag || '?'}]`;
+      };
+      
+      const getTeamLogo = (p) => {
+        const team = getTeamData(p);
+        return team?.logoUrl || `https://ui-avatars.com/api/?name=${team?.tag || '?'}&background=random&size=64`;
+      };
 
-    // Temps réel pour les overlays
-    const channel = supabase.channel('stream-overlay-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_games' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .subscribe();
+      return {
+        ...match,
+        // Map Convex fields to expected field names for UI
+        id: match._id,
+        player1_id: match.team1Id,
+        player2_id: match.team2Id,
+        match_number: match.matchNumber,
+        round_number: match.roundNumber,
+        score_p1: match.scoreTeam1,
+        score_p2: match.scoreTeam2,
+        bracket_type: match.bracketType,
+        scheduled_at: match.scheduledAt,
+        p1_name: match.team1Id ? getTeamName(p1) : 'En attente',
+        p1_avatar: getTeamLogo(p1),
+        p2_name: match.team2Id ? getTeamName(p2) : 'En attente',
+        p2_avatar: getTeamLogo(p2),
+      };
+    }).sort((a, b) => a.match_number - b.match_number);
 
-    return () => supabase.removeChannel(channel);
-  }, [id, fetchData]);
+    // Current match (first pending or last completed)
+    const pendingMatch = enrichedMatches.find(m => m.status === 'pending' && m.player1_id && m.player2_id);
+    const lastCompleted = enrichedMatches.filter(m => m.status === 'completed').sort((a, b) => b.match_number - a.match_number)[0];
+    const current = pendingMatch || lastCompleted || null;
+
+    // Match games are already included in matchesData.games from getById
+    const games = matchesData.flatMap(m => m.games || []);
+
+    return { matches: enrichedMatches, currentMatch: current, matchGames: games };
+  }, [matchesData, participants]);
+
+  // Swiss scores (computed from matches if format is swiss)
+  const swissScores = useMemo(() => {
+    if (tournoi?.format !== 'swiss' || !matches || !participants) return [];
+    
+    // Calculate swiss scores from matches
+    const scoreMap = new Map();
+    (participants || []).forEach(p => {
+      if (p.teamId) {
+        scoreMap.set(p.teamId, {
+          id: p.teamId,
+          teamId: p.teamId,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          buchholzScore: 0,
+        });
+      }
+    });
+
+    matches.filter(m => m.status === 'completed').forEach(m => {
+      if (m.player1_id && scoreMap.has(m.player1_id)) {
+        const stats = scoreMap.get(m.player1_id);
+        if ((m.score_p1 || 0) > (m.score_p2 || 0)) stats.wins++;
+        else if ((m.score_p1 || 0) < (m.score_p2 || 0)) stats.losses++;
+        else stats.draws++;
+      }
+      if (m.player2_id && scoreMap.has(m.player2_id)) {
+        const stats = scoreMap.get(m.player2_id);
+        if ((m.score_p2 || 0) > (m.score_p1 || 0)) stats.wins++;
+        else if ((m.score_p2 || 0) < (m.score_p1 || 0)) stats.losses++;
+        else stats.draws++;
+      }
+    });
+
+    return Array.from(scoreMap.values());
+  }, [tournoi?.format, matches, participants]);
 
   // Style global pour overlay (fond transparent, texte visible)
   const overlayStyle = {
@@ -133,6 +127,12 @@ export default function StreamOverlay() {
     border: '2px solid rgba(255, 255, 255, 0.2)'
   };
 
+  // Normalized tournament data for UI
+  const tournoiData = tournoi ? {
+    ...tournoi,
+    best_of: tournoi.bestOf,
+  } : null;
+
   if (loading) {
     return (
       <div style={{ ...overlayStyle, textAlign: 'center', padding: '50px' }}>
@@ -141,7 +141,7 @@ export default function StreamOverlay() {
     );
   }
 
-  if (!tournoi) {
+  if (!tournoiData) {
     return (
       <div style={{ ...overlayStyle, textAlign: 'center', padding: '50px' }}>
         <div style={{ fontSize: '1.5rem', color: '#e74c3c' }}>Tournoi introuvable</div>
@@ -156,8 +156,8 @@ export default function StreamOverlay() {
     return (
       <div style={{ ...overlayStyle, maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ marginBottom: '20px', textAlign: 'center', borderBottom: '2px solid rgba(255,255,255,0.3)', paddingBottom: '15px' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{tournoi.name}</h2>
-          <div style={{ fontSize: '1.2rem', color: '#aaa', marginTop: '5px' }}>{tournoi.game}</div>
+          <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{tournoiData.name}</h2>
+          <div style={{ fontSize: '1.2rem', color: '#aaa', marginTop: '5px' }}>{tournoiData.game}</div>
         </div>
         
         <div style={{ display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -229,12 +229,12 @@ export default function StreamOverlay() {
       );
     }
 
-    const isBestOf = tournoi.best_of > 1;
+    const isBestOf = tournoiData.best_of > 1;
     let bestOfScore = null;
     if (isBestOf) {
-      const matchGamesData = matchGames.filter(g => g.match_id === currentMatch.id);
+      const matchGamesData = matchGames.filter(g => g.matchId === currentMatch._id);
       if (matchGamesData.length > 0) {
-        const result = calculateMatchWinner(matchGamesData, tournoi.best_of, currentMatch.player1_id, currentMatch.player2_id);
+        const result = calculateMatchWinner(matchGamesData, tournoiData.best_of, currentMatch.player1_id, currentMatch.player2_id);
         bestOfScore = {
           team1Wins: result.team1Wins,
           team2Wins: result.team2Wins,
@@ -250,11 +250,11 @@ export default function StreamOverlay() {
     return (
       <div style={{ ...overlayStyle, minWidth: '500px', maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
         <div style={{ marginBottom: '20px', fontSize: '1.2rem', color: '#aaa' }}>
-          {tournoi.name} - {tournoi.game}
+          {tournoiData.name} - {tournoiData.game}
         </div>
         {isBestOf && bestOfScore && (
           <div style={{ marginBottom: '15px', fontSize: '1rem', color: '#00d4ff', fontWeight: 'bold' }}>
-            Best-of-{tournoi.best_of} - Manche {bestOfScore.completedGames}/{tournoi.best_of}
+            Best-of-{tournoiData.best_of} - Manche {bestOfScore.completedGames}/{tournoiData.best_of}
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', gap: '30px' }}>
@@ -298,22 +298,22 @@ export default function StreamOverlay() {
 
   // Overlay Type: STANDINGS (Classement)
   if (type === 'standings') {
-    if (tournoi.format === 'swiss' && swissScores.length > 0) {
+    if (tournoiData.format === 'swiss' && swissScores.length > 0) {
       const sortedScores = [...swissScores].sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
-        if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
+        if (b.buchholzScore !== a.buchholzScore) return b.buchholzScore - a.buchholzScore;
         return 0;
       });
 
       return (
         <div style={{ ...overlayStyle, maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ marginBottom: '20px', textAlign: 'center', borderBottom: '2px solid rgba(255,255,255,0.3)', paddingBottom: '15px' }}>
-            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{tournoi.name}</h2>
+            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{tournoiData.name}</h2>
             <div style={{ fontSize: '1.2rem', color: '#aaa', marginTop: '5px' }}>🇨🇭 Classement Suisse</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {sortedScores.slice(0, 10).map((score, index) => {
-              const team = participants.find(p => p.team_id === score.team_id);
+              const participant = (participants || []).find(p => p.teamId === score.teamId);
               return (
                 <div
                   key={score.id}
@@ -330,17 +330,17 @@ export default function StreamOverlay() {
                   <div style={{ fontSize: '1.5rem', fontWeight: 'bold', minWidth: '50px', textAlign: 'center', color: index === 0 ? '#f1c40f' : '#fff' }}>
                     #{index + 1}
                   </div>
-                  {team?.teams?.logo_url && (
-                    <img loading="lazy" src={team.teams.logo_url} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                  {participant?.team?.logoUrl && (
+                    <img loading="lazy" src={participant.team.logoUrl} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
                   )}
                   <div style={{ flex: 1, fontSize: '1.3rem', fontWeight: 'bold' }}>
-                    {team?.teams?.name || 'Inconnu'}
+                    {participant?.team?.name || 'Inconnu'}
                   </div>
                   <div style={{ display: 'flex', gap: '20px', fontSize: '1.2rem' }}>
                     <div style={{ color: '#2ecc71', fontWeight: 'bold' }}>V: {score.wins}</div>
                     <div style={{ color: '#e74c3c' }}>D: {score.losses}</div>
                     <div style={{ color: '#f39c12' }}>N: {score.draws}</div>
-                    <div style={{ color: '#3498db', fontWeight: 'bold' }}>BH: {parseFloat(score.buchholz_score || 0).toFixed(1)}</div>
+                    <div style={{ color: '#3498db', fontWeight: 'bold' }}>BH: {parseFloat(score.buchholzScore || 0).toFixed(1)}</div>
                   </div>
                 </div>
               );
@@ -352,16 +352,18 @@ export default function StreamOverlay() {
 
     // Pour les autres formats, calculer le classement depuis les matchs
     const teamStats = new Map();
-    participants.forEach(p => {
-      teamStats.set(p.team_id, {
-        teamId: p.team_id,
-        name: p.teams?.name || 'Inconnu',
-        tag: p.teams?.tag || '?',
-        logo: p.teams?.logo_url,
-        wins: 0,
-        losses: 0,
-        draws: 0
-      });
+    (participants || []).forEach(p => {
+      if (p.teamId) {
+        teamStats.set(p.teamId, {
+          teamId: p.teamId,
+          name: p.team?.name || 'Inconnu',
+          tag: p.team?.tag || '?',
+          logo: p.team?.logoUrl,
+          wins: 0,
+          losses: 0,
+          draws: 0
+        });
+      }
     });
 
     matches.filter(m => m.status === 'completed').forEach(m => {
@@ -387,7 +389,7 @@ export default function StreamOverlay() {
     return (
       <div style={{ ...overlayStyle, maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '20px', textAlign: 'center', borderBottom: '2px solid rgba(255,255,255,0.3)', paddingBottom: '15px' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{tournoi.name}</h2>
+          <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>{tournoiData.name}</h2>
           <div style={{ fontSize: '1.2rem', color: '#aaa', marginTop: '5px' }}>🏆 Classement</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

@@ -1,61 +1,40 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
  * PhaseStatsCard - Affiche les statistiques d'une phase
  */
 export default function PhaseStatsCard({ phase, tournamentId }) {
-  const [stats, setStats] = useState({
-    totalTeams: 0,
-    placedTeams: 0,
-    completedMatches: 0,
-    pendingMatches: 0,
-    inProgressMatches: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  // Convex queries for stats
+  const slotsData = useQuery(
+    api.tournamentPhases.getBracketSlots,
+    phase?._id ? { phaseId: phase._id } : "skip"
+  );
+  
+  const matchesData = useQuery(
+    api.matches.listByPhase,
+    phase?._id ? { phaseId: phase._id } : "skip"
+  );
 
-  useEffect(() => {
-    fetchStats();
-  }, [phase?.id]);
+  const loading = slotsData === undefined || matchesData === undefined;
+  
+  // Calculate stats
+  const placedCount = (slotsData || []).filter(s => s.teamId).length;
+  const matches = matchesData || [];
+  const matchStats = matches.reduce((acc, m) => {
+    if (m.status === 'completed') acc.completed++;
+    else if (m.status === 'in_progress') acc.inProgress++;
+    else acc.pending++;
+    return acc;
+  }, { completed: 0, inProgress: 0, pending: 0 });
 
-  const fetchStats = async () => {
-    if (!phase?.id) return;
-    
-    setLoading(true);
-    try {
-      // Compter les équipes placées
-      const { count: placedCount } = await supabase
-        .from('bracket_slots')
-        .select('*', { count: 'exact', head: true })
-        .eq('phase_id', phase.id)
-        .not('team_id', 'is', null);
-
-      // Compter les matchs par statut
-      const { data: matchesData } = await supabase
-        .from('matches')
-        .select('status')
-        .eq('phase_id', phase.id);
-
-      const matchStats = matchesData?.reduce((acc, m) => {
-        if (m.status === 'completed') acc.completed++;
-        else if (m.status === 'in_progress') acc.inProgress++;
-        else acc.pending++;
-        return acc;
-      }, { completed: 0, inProgress: 0, pending: 0 }) || { completed: 0, inProgress: 0, pending: 0 };
-
-      setStats({
-        totalTeams: phase.config?.size || 0,
-        placedTeams: placedCount || 0,
-        completedMatches: matchStats.completed,
-        pendingMatches: matchStats.pending,
-        inProgressMatches: matchStats.inProgress,
-      });
-    } catch (error) {
-      console.error('Erreur stats phase:', error);
-    } finally {
-      setLoading(false);
-    }
+  const stats = {
+    totalTeams: phase?.settings?.maxTeams || 0,
+    placedTeams: placedCount,
+    completedMatches: matchStats.completed,
+    pendingMatches: matchStats.pending,
+    inProgressMatches: matchStats.inProgress,
   };
 
   const progress = stats.totalTeams > 0 

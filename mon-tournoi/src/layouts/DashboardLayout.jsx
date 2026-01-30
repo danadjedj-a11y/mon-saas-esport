@@ -88,19 +88,16 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05050A]">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-[#05050A] to-pink-900/20 animate-pulse" style={{ animationDuration: '8s' }} />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-[#05050A] to-pink-900/10" />
 
-      {/* Grid pattern overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px'
-        }}
-      />
+      {/* Subtle radial glow effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#6366F1]/5 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-[#EC4899]/5 rounded-full blur-[150px]" />
+      </div>
 
       {/* ======== NAVIGATION HEADER ======== */}
-      <nav className="relative z-50 flex items-center justify-between px-6 py-4 lg:px-12 border-b border-[rgba(148,163,184,0.1)] backdrop-blur-sm bg-[rgba(5,5,10,0.8)]">
+      <nav className="relative z-50 flex items-center justify-between px-6 py-4 lg:px-12 border-b border-white/5 backdrop-blur-md bg-[rgba(5,5,10,0.7)]">
         {/* Logo */}
         <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img src="/Logo.png" alt="Fluky Boys" className="h-10 w-auto" />
@@ -302,12 +299,12 @@ export default function DashboardLayout({ children }) {
 
       {/* ======== MAIN CONTENT ======== */}
       <main className="relative z-10">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {children}
         </div>
 
         {/* Footer with legal links */}
-        <footer className="border-t border-[rgba(148,163,184,0.1)] bg-[rgba(5,5,10,0.8)] backdrop-blur-sm py-6 mt-12">
+        <footer className="border-t border-white/5 bg-[rgba(5,5,10,0.6)] backdrop-blur-sm py-6 mt-12">
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-[#94A3B8] text-sm">

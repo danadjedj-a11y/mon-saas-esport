@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { toast } from '../utils/toast';
 import { Button, Input, Card, Badge, Modal, WYSIWYGEditor } from '../shared/components/ui';
 
 export default function NewsManagement({ session }) {
-  const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState(null);
   
@@ -13,38 +12,24 @@ export default function NewsManagement({ session }) {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    image_url: '',
+    imageUrl: '',
     published: false,
   });
 
-  useEffect(() => {
-    fetchArticles();
-  }, []);
-
-  const fetchArticles = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('news_articles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setArticles(data || []);
-    } catch (error) {
-      console.error('Error fetching articles:', error);
-      toast.error('Erreur lors du chargement des articles');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Convex queries and mutations
+  const articles = useQuery(api.news.list) || [];
+  const createArticle = useMutation(api.news.create);
+  const updateArticle = useMutation(api.news.update);
+  const deleteArticle = useMutation(api.news.delete);
+  
+  const loading = articles === undefined;
 
   const openNewArticleModal = () => {
     setEditingArticle(null);
     setFormData({
       title: '',
       content: '',
-      image_url: '',
+      imageUrl: '',
       published: false,
     });
     setIsModalOpen(true);
@@ -55,7 +40,7 @@ export default function NewsManagement({ session }) {
     setFormData({
       title: article.title,
       content: article.content,
-      image_url: article.image_url || '',
+      imageUrl: article.imageUrl || '',
       published: article.published,
     });
     setIsModalOpen(true);
@@ -67,7 +52,7 @@ export default function NewsManagement({ session }) {
     setFormData({
       title: '',
       content: '',
-      image_url: '',
+      imageUrl: '',
       published: false,
     });
   };
@@ -81,38 +66,31 @@ export default function NewsManagement({ session }) {
     }
 
     try {
-      const articleData = {
-        title: formData.title.trim(),
-        content: formData.content,
-        image_url: formData.image_url.trim() || null,
-        published: formData.published,
-        published_at: formData.published && !editingArticle?.published ? new Date().toISOString() : editingArticle?.published_at,
-      };
-
       if (editingArticle) {
         // Update existing article
-        const { error } = await supabase
-          .from('news_articles')
-          .update(articleData)
-          .eq('id', editingArticle.id);
+        await updateArticle({
+          articleId: editingArticle._id,
+          title: formData.title.trim(),
+          content: formData.content,
+          imageUrl: formData.imageUrl.trim() || undefined,
+          published: formData.published,
+        });
 
-        if (error) throw error;
         toast.success('Article mis à jour avec succès !');
       } else {
         // Create new article
-        const { error } = await supabase
-          .from('news_articles')
-          .insert([{
-            ...articleData,
-            author_id: session.user.id,
-          }]);
+        await createArticle({
+          title: formData.title.trim(),
+          content: formData.content,
+          imageUrl: formData.imageUrl.trim() || undefined,
+          published: formData.published,
+          authorId: session.user.id,
+        });
 
-        if (error) throw error;
         toast.success('Article créé avec succès !');
       }
 
       closeModal();
-      fetchArticles();
     } catch (error) {
       console.error('Error saving article:', error);
       toast.error('Erreur lors de la sauvegarde de l\'article');
@@ -123,14 +101,8 @@ export default function NewsManagement({ session }) {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('news_articles')
-        .delete()
-        .eq('id', articleId);
-
-      if (error) throw error;
+      await deleteArticle({ articleId });
       toast.success('Article supprimé');
-      fetchArticles();
     } catch (error) {
       console.error('Error deleting article:', error);
       toast.error('Erreur lors de la suppression');
@@ -140,17 +112,12 @@ export default function NewsManagement({ session }) {
   const togglePublished = async (article) => {
     try {
       const newPublishedState = !article.published;
-      const { error } = await supabase
-        .from('news_articles')
-        .update({
-          published: newPublishedState,
-          published_at: newPublishedState && !article.published_at ? new Date().toISOString() : article.published_at,
-        })
-        .eq('id', article.id);
+      await updateArticle({
+        articleId: article._id,
+        published: newPublishedState,
+      });
 
-      if (error) throw error;
       toast.success(newPublishedState ? 'Article publié' : 'Article dépublié');
-      fetchArticles();
     } catch (error) {
       console.error('Error toggling published status:', error);
       toast.error('Erreur lors de la mise à jour');
@@ -205,14 +172,32 @@ export default function NewsManagement({ session }) {
 
                 {/* Content */}
                 <div className="flex-1">
+                  <div classNam_id} className="bg-[#030913]/60 backdrop-blur-md border border-white/5">
+              <div className="flex gap-4">
+                {/* Image */}
+                {article.imageUrl && (
+                  <div className="w-32 h-32 flex-shrink-0">
+                    <img
+                      src={article.imageUrl}
+                      alt={article.title}
+                      className="w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Content */}
+                <div className="flex-1">
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h3 className="font-display text-xl text-white">
                         {article.title}
                       </h3>
                       <p className="text-xs text-gray-500 mt-1 font-body">
-                        Créé le {new Date(article.created_at).toLocaleDateString('fr-FR')}
-                        {article.published_at && ` • Publié le ${new Date(article.published_at).toLocaleDateString('fr-FR')}`}
+                        Créé le {new Date(article.createdAt).toLocaleDateString('fr-FR')}
+                        {article.publishedAt && ` • Publié le ${new Date(article.publishedAt).toLocaleDateString('fr-FR')}`}
                       </p>
                     </div>
                     <Badge className={
@@ -236,25 +221,7 @@ export default function NewsManagement({ session }) {
                     >
                       {article.published ? '📦 Dépublier' : '🚀 Publier'}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(article.id)}>
-                      🗑️ Supprimer
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        title={editingArticle ? 'Modifier l\'article' : 'Nouvel Article'}
-        size="large"
-      >
-        <form onSubmit={handleSubmit} className="space-y-6">
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(article._
           <Input
             label="Titre de l'article"
             type="text"
@@ -269,8 +236,8 @@ export default function NewsManagement({ session }) {
             label="URL de l'image (optionnel)"
             type="url"
             placeholder="https://exemple.com/image.jpg"
-            value={formData.image_url}
-            onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+            value={formData.imageUrl}
+            onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
           />
 
           <div>

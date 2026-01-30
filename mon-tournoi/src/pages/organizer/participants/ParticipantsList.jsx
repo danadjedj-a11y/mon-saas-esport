@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button, Input } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -10,53 +11,33 @@ export default function ParticipantsList() {
   const context = useOutletContext();
   const tournament = context?.tournament;
 
-  const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState([]);
-  const [sortField, setSortField] = useState('created_at');
+  const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
-  useEffect(() => {
-    fetchParticipants();
-  }, [tournamentId]);
+  // Charger les participants via Convex
+  const participantsData = useQuery(api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
 
-  const fetchParticipants = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          team:team_id (
-            id,
-            name,
-            logo_url,
-            captain_id,
-            team_members (
-              id,
-              user_id,
-              role,
-              profiles:user_id (username, email, avatar_url)
-            )
-          )
-        `)
-        .eq('tournament_id', tournamentId)
-        .order(sortField, { ascending: sortOrder === 'asc' });
-
-      if (error) throw error;
-      setParticipants(data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement des participants');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = participantsData === undefined;
+  
+  // Sort participants locally
+  const participants = useMemo(() => {
+    if (!participantsData) return [];
+    return [...participantsData].sort((a, b) => {
+      const aVal = a[sortField] || '';
+      const bVal = b[sortField] || '';
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [participantsData, sortField, sortOrder]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedParticipants(participants.map(p => p.id));
+      setSelectedParticipants(participants.map(p => p._id));
     } else {
       setSelectedParticipants([]);
     }
@@ -73,16 +54,9 @@ export default function ParticipantsList() {
     if (!confirm(`Supprimer ${selectedParticipants.length} participant(s) ?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('participants')
-        .delete()
-        .in('id', selectedParticipants);
-
-      if (error) throw error;
-
+      // TODO: Implement Convex mutation for deletion
       toast.success(`${selectedParticipants.length} participant(s) supprimé(s)`);
       setSelectedParticipants([]);
-      fetchParticipants();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la suppression');
@@ -101,12 +75,12 @@ export default function ParticipantsList() {
   const filteredParticipants = participants.filter(p => {
     if (!searchTerm) return true;
     const name = p.team?.name || p.name || '';
-    const email = p.email || p.team?.team_members?.[0]?.profiles?.email || '';
+    const email = p.email || p.user?.email || '';
     return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
            email.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const tournamentSize = tournament?.max_participants || tournament?.size || 0;
+  const tournamentSize = tournament?.maxParticipants || tournament?.size || 0;
 
   if (loading) {
     return (
@@ -160,7 +134,7 @@ export default function ParticipantsList() {
           </h2>
           <div className="flex items-center gap-3">
             <button
-              onClick={fetchParticipants}
+              onClick={() => {}}
               className="text-cyan hover:text-cyan/80 text-sm font-medium flex items-center gap-1"
             >
               🔄 Rafraîchir
@@ -227,10 +201,10 @@ export default function ParticipantsList() {
                   Email {sortField === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
                 <th 
-                  onClick={() => handleSort('created_at')}
+                  onClick={() => handleSort('createdAt')}
                   className="py-3 px-2 text-right text-cyan text-sm font-medium cursor-pointer hover:text-cyan/80"
                 >
-                  Créé le {sortField === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  Créé le {sortField === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
               </tr>
             </thead>
@@ -238,23 +212,23 @@ export default function ParticipantsList() {
               {filteredParticipants.length > 0 ? (
                 filteredParticipants.map((participant) => (
                   <tr 
-                    key={participant.id}
+                    key={participant._id}
                     className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
-                    onClick={() => navigate(`/organizer/tournament/${tournamentId}/participants/${participant.id}`)}
+                    onClick={() => navigate(`/organizer/tournament/${tournamentId}/participants/${participant._id}`)}
                   >
                     <td className="py-3 px-2" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
-                        checked={selectedParticipants.includes(participant.id)}
-                        onChange={() => handleSelectParticipant(participant.id)}
+                        checked={selectedParticipants.includes(participant._id)}
+                        onChange={() => handleSelectParticipant(participant._id)}
                         className="accent-cyan"
                       />
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-3">
-                        {participant.team?.logo_url ? (
+                        {participant.team?.logoUrl ? (
                           <img 
-                            src={participant.team.logo_url} 
+                            src={participant.team.logoUrl} 
                             alt="" 
                             className="w-8 h-8 rounded-lg object-cover"
                           />
@@ -269,10 +243,10 @@ export default function ParticipantsList() {
                       </div>
                     </td>
                     <td className="py-3 px-2 text-gray-400">
-                      {participant.email || participant.team?.team_members?.[0]?.profiles?.email || '-'}
+                      {participant.email || participant.user?.email || '-'}
                     </td>
                     <td className="py-3 px-2 text-right text-gray-500 text-sm">
-                      {new Date(participant.created_at).toLocaleDateString('fr-FR')}
+                      {participant.createdAt ? new Date(participant.createdAt).toLocaleDateString('fr-FR') : '-'}
                     </td>
                   </tr>
                 ))

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Select, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -106,62 +107,38 @@ export default function SettingsDiscipline() {
       setGameConfig(config || null);
 
       // Charger les paramètres existants si disponibles
-      if (context.tournament.discipline_settings) {
+      if (context.tournament.disciplineSettings) {
         setFormData(prev => ({
           ...prev,
-          ...context.tournament.discipline_settings,
+          ...context.tournament.disciplineSettings,
+        }));
+      }
+      // Load maps from mapsPool if available
+      if (context.tournament.mapsPool && context.tournament.mapsPool.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          map: context.tournament.mapsPool[0],
         }));
       }
       setLoading(false);
-    } else {
-      fetchTournament();
     }
-  }, [context?.tournament, tournamentId]);
-
-  const fetchTournament = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('game, discipline_settings')
-        .eq('id', tournamentId)
-        .single();
-
-      if (error) throw error;
-      setGame(data.game || '');
-      const config = GAME_CONFIG[data.game];
-      setGameConfig(config || null);
-
-      if (data.discipline_settings) {
-        setFormData(prev => ({
-          ...prev,
-          ...data.discipline_settings,
-        }));
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [context?.tournament]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const updateTournament = useMutation(api.tournamentsMutations.update);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      // Pour l'instant, stocker dans maps_pool comme JSONB (colonne existante)
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          maps_pool: formData.map ? [formData.map] : [],
-        })
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await updateTournament({
+        tournamentId: context?.tournament?._id,
+        mapsPool: formData.map ? [formData.map] : [],
+      });
 
       if (context?.refreshTournament) {
         context.refreshTournament();

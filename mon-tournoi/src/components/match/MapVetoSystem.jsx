@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
@@ -24,8 +25,11 @@ export default function MapVetoSystem({
     currentTurn: null,
     completed: false,
   });
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+
+  // Convex query for veto actions - automatically reactive
+  const vetoActions = useQuery(api.matchVeto.getByMatch, matchId ? { matchId } : 'skip');
+  const addVetoAction = useMutation(api.matchVeto.addAction);
 
   // Définir le format de veto selon le Best-of
   const getVetoFormat = useCallback(() => {
@@ -70,87 +74,47 @@ export default function MapVetoSystem({
 
   const vetoFormat = getVetoFormat();
 
-  // Charger l'état du veto depuis la base
+  // Loading state
+  const loading = vetoActions === undefined;
+
+  // Process veto state from Convex data
   useEffect(() => {
-    if (!matchId) return;
-    fetchVetoState();
+    if (!vetoActions) return;
 
-    // Écouter les changements en temps réel
-    const channel = supabase
-      .channel(`veto-${matchId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'match_veto',
-          filter: `match_id=eq.${matchId}`,
-        },
-        () => {
-          fetchVetoState();
-        }
-      )
-      .subscribe();
+    const actions = vetoActions.sort((a, b) => a.step - b.step);
+    const step = actions.length;
+    const completed = step >= vetoFormat.length;
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [matchId]);
+    // Déterminer les maps sélectionnées
+    const bannedMaps = actions.filter(a => a.actionType === 'ban').map(a => a.mapName);
+    const pickedMaps = actions.filter(a => a.actionType === 'pick').map(a => a.mapName);
+    
+    // Maps restantes après tous les bans
+    const remainingMaps = maps.filter(m => !bannedMaps.includes(m) && !pickedMaps.includes(m));
 
-  const fetchVetoState = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('match_veto')
-        .select('*')
-        .eq('match_id', matchId)
-        .order('step', { ascending: true });
-
-      if (error && error.code !== 'PGRST116') throw error;
-
-      const actions = data || [];
-      const step = actions.length;
-      const completed = step >= vetoFormat.length;
-
-      // Déterminer les maps sélectionnées
-      const bannedMaps = actions.filter(a => a.action_type === 'ban').map(a => a.map_name);
-      const pickedMaps = actions.filter(a => a.action_type === 'pick').map(a => a.map_name);
-      
-      // Maps restantes après tous les bans
-      const remainingMaps = maps.filter(m => !bannedMaps.includes(m) && !pickedMaps.includes(m));
-
-      // Déterminer le tour actuel
-      let currentTurn = null;
-      if (!completed && step < vetoFormat.length) {
-        const currentAction = vetoFormat[step];
-        if (currentAction.team === 'remaining') {
-          // La dernière map restante est auto-sélectionnée
-          if (remainingMaps.length === 1) {
-            // Auto-pick
-          }
-        } else {
-          currentTurn = currentAction.team === 1 ? team1?.id : team2?.id;
-        }
+    // Déterminer le tour actuel
+    let currentTurn = null;
+    if (!completed && step < vetoFormat.length) {
+      const currentAction = vetoFormat[step];
+      if (currentAction.team !== 'remaining') {
+        currentTurn = currentAction.team === 1 ? team1?._id : team2?._id;
       }
-
-      setVetoState({
-        step,
-        actions,
-        selectedMaps: pickedMaps,
-        bannedMaps,
-        remainingMaps,
-        currentTurn,
-        completed,
-      });
-
-      if (completed && onComplete) {
-        onComplete(pickedMaps);
-      }
-    } catch (error) {
-      console.error('Erreur chargement veto:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    setVetoState({
+      step,
+      actions,
+      selectedMaps: pickedMaps,
+      bannedMaps,
+      remainingMaps,
+      currentTurn,
+      completed,
+    });
+
+    if (completed && onComplete) {
+      onComplete(pickedMaps);
+    }
+  }, [vetoActions, vetoFormat, maps, team1, team2, onComplete]);
 
   const handleVetoAction = async (mapName) => {
     if (processing || vetoState.completed) return;
@@ -160,7 +124,7 @@ export default function MapVetoSystem({
 
     // Vérifier que c'est bien le tour de cette équipe
     if (currentAction.team !== 'remaining') {
-      const expectedTeam = currentAction.team === 1 ? team1?.id : team2?.id;
+      const expectedTeam = currentAction.team === 1 ? team1?._id : team2?._id;
       if (currentTeamId !== expectedTeam) {
         return; // Pas notre tour
       }
@@ -168,17 +132,13 @@ export default function MapVetoSystem({
 
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('match_veto')
-        .insert({
-          match_id: matchId,
-          team_id: currentTeamId,
-          map_name: mapName,
-          action_type: currentAction.type,
-          step: vetoState.step,
-        });
-
-      if (error) throw error;
+      await addVetoAction({
+        matchId,
+        teamId: currentTeamId,
+        mapName,
+        actionType: currentAction.type,
+        step: vetoState.step,
+      });
 
       if (onUpdate) {
         onUpdate({
@@ -214,8 +174,8 @@ export default function MapVetoSystem({
     }
 
     const isOurTurn = currentAction.team === 1 
-      ? currentTeamId === team1?.id 
-      : currentTeamId === team2?.id;
+      ? currentTeamId === team1?._id 
+      : currentTeamId === team2?._id;
 
     return {
       text: `${teamName} doit ${actionText} une map`,
@@ -225,11 +185,11 @@ export default function MapVetoSystem({
   };
 
   const getMapStatus = (mapName) => {
-    const action = vetoState.actions.find(a => a.map_name === mapName);
+    const action = vetoState.actions.find(a => a.mapName === mapName);
     if (action) {
       return {
-        type: action.action_type,
-        team: action.team_id === team1?.id ? team1 : team2,
+        type: action.actionType,
+        team: action.teamId === team1?._id ? team1 : team2,
       };
     }
     return null;
@@ -338,22 +298,22 @@ export default function MapVetoSystem({
           <p className="text-xs text-text-secondary mb-2">Historique du veto :</p>
           <div className="flex flex-wrap gap-2">
             {vetoState.actions.map((action, i) => {
-              const team = action.team_id === team1?.id ? team1 : team2;
+              const team = action.teamId === team1?._id ? team1 : team2;
               return (
                 <div
                   key={i}
                   className={clsx(
                     'px-2 py-1 rounded text-xs flex items-center gap-1',
-                    action.action_type === 'ban' 
+                    action.actionType === 'ban' 
                       ? 'bg-red-500/20 text-red-400' 
                       : 'bg-green-500/20 text-green-400'
                   )}
                 >
                   <span className="font-medium">{team?.name?.slice(0, 3) || '?'}</span>
                   <span className="text-text-muted">
-                    {action.action_type === 'ban' ? '✕' : '✓'}
+                    {action.actionType === 'ban' ? '✕' : '✓'}
                   </span>
-                  <span>{action.map_name}</span>
+                  <span>{action.mapName}</span>
                 </div>
               );
             })}

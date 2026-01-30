@@ -1,37 +1,13 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export default function RatingDisplay({ tournamentId }) {
-  const [rating, setRating] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const rating = useQuery(
+    api.gamification.getTournamentRating,
+    tournamentId ? { tournamentId } : 'skip'
+  );
 
-  useEffect(() => {
-    fetchRating();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tournamentId]);
-
-  const fetchRating = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_tournament_rating', {
-        p_tournament_id: tournamentId
-      });
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setRating(data[0]);
-      } else {
-        setRating({ average_rating: 0, total_ratings: 0 });
-      }
-    } catch (err) {
-      console.error('Erreur chargement note:', err);
-      setRating({ average_rating: 0, total_ratings: 0 });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (rating === undefined) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ color: '#F8F6F2', fontFamily: "'Protest Riot', sans-serif", fontSize: '0.9rem' }}>
@@ -41,7 +17,7 @@ export default function RatingDisplay({ tournamentId }) {
     );
   }
 
-  if (!rating || rating.total_ratings === 0) {
+  if (!rating || rating.totalRatings === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ color: '#8B5CF6', fontFamily: "'Protest Riot', sans-serif", fontSize: '0.9rem' }}>
@@ -51,8 +27,8 @@ export default function RatingDisplay({ tournamentId }) {
     );
   }
 
-  const fullStars = Math.floor(rating.average_rating);
-  const hasHalfStar = rating.average_rating % 1 >= 0.5;
+  const fullStars = Math.floor(rating.averageRating);
+  const hasHalfStar = rating.averageRating % 1 >= 0.5;
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -85,7 +61,7 @@ export default function RatingDisplay({ tournamentId }) {
         fontSize: '0.9rem',
         fontWeight: 'bold'
       }}>
-        {rating.average_rating.toFixed(1)}
+        {rating.averageRating.toFixed(1)}
       </span>
       <span style={{
         color: '#8B5CF6',
@@ -93,7 +69,7 @@ export default function RatingDisplay({ tournamentId }) {
         fontSize: '0.85rem',
         opacity: 0.8
       }}>
-        ({rating.total_ratings} {rating.total_ratings > 1 ? 'avis' : 'avis'})
+        ({rating.totalRatings} {rating.totalRatings > 1 ? 'avis' : 'avis'})
       </span>
     </div>
   );

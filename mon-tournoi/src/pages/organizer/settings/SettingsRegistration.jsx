@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -36,14 +37,12 @@ export default function SettingsRegistration() {
     if (context?.tournament) {
       populateForm(context.tournament);
       setLoading(false);
-    } else {
-      fetchTournament();
     }
-  }, [context?.tournament, tournamentId]);
+  }, [context?.tournament]);
 
   const populateForm = (tournament) => {
-    const regDeadline = tournament.registration_deadline
-      ? new Date(tournament.registration_deadline)
+    const regDeadline = tournament.registrationDeadline
+      ? new Date(tournament.registrationDeadline)
       : null;
 
     setFormData(prev => ({
@@ -51,31 +50,16 @@ export default function SettingsRegistration() {
       registration_enabled: tournament.status !== 'closed',
       registration_close_date: regDeadline ? regDeadline.toISOString().split('T')[0] : '',
       registration_close_time: regDeadline ? regDeadline.toTimeString().slice(0, 5) : '',
-      max_registrations: tournament.max_participants || '',
-      limit_registrations: !!tournament.max_participants,
+      max_registrations: tournament.maxParticipants || tournament.maxTeams || '',
+      limit_registrations: !!tournament.maxParticipants || !!tournament.maxTeams,
     }));
-  };
-
-  const fetchTournament = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', tournamentId)
-        .single();
-
-      if (error) throw error;
-      populateForm(data);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const updateTournament = useMutation(api.tournamentsMutations.update);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,24 +67,20 @@ export default function SettingsRegistration() {
 
     try {
       // Construire la date de deadline
-      let registrationDeadline = null;
+      let registrationDeadline = undefined;
       if (formData.registration_close_date) {
         const dateStr = formData.registration_close_date;
         const timeStr = formData.registration_close_time || '23:59';
-        registrationDeadline = new Date(`${dateStr}T${timeStr}`).toISOString();
+        registrationDeadline = new Date(`${dateStr}T${timeStr}`).getTime();
       }
 
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          registration_deadline: registrationDeadline,
-          max_participants: formData.limit_registrations
-            ? parseInt(formData.max_registrations)
-            : null,
-        })
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await updateTournament({
+        tournamentId: context?.tournament?._id,
+        registrationDeadline: registrationDeadline,
+        maxParticipants: formData.limit_registrations
+          ? parseInt(formData.max_registrations)
+          : undefined,
+      });
 
       if (context?.refreshTournament) {
         context.refreshTournament();

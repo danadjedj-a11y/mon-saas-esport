@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -29,29 +30,13 @@ export default function SettingsPermissions() {
   const [newUserPermissions, setNewUserPermissions] = useState([]);
 
   useEffect(() => {
-    fetchPermissions();
+    // TODO: Implement Convex query for tournament_roles when table is added
+    // For now, just set loading to false
+    setLoading(false);
   }, [tournamentId]);
 
-  const fetchPermissions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournament_roles')
-        .select(`
-          *,
-          profiles:user_id (email, username, avatar_url)
-        `)
-        .eq('tournament_id', tournamentId);
-
-      if (error && error.code !== '42P01') throw error;
-      
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Note: tournament_roles table needs to be added to Convex schema
+  // For now, this is a placeholder implementation
 
   const handleTogglePermission = (permissionId) => {
     setNewUserPermissions(prev => 
@@ -68,35 +53,12 @@ export default function SettingsPermissions() {
     }
 
     try {
-      // Chercher l'utilisateur par email
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('email', newUserEmail.trim())
-        .single();
-
-      if (profileError || !profile) {
-        toast.error('Utilisateur non trouvé');
-        return;
-      }
-
-      // Ajouter le rôle
-      const { error } = await supabase
-        .from('tournament_roles')
-        .insert({
-          tournament_id: tournamentId,
-          user_id: profile.id,
-          role: 'moderator',
-          permissions: newUserPermissions,
-        });
-
-      if (error) throw error;
-
-      toast.success('Utilisateur ajouté');
+      // TODO: Implement Convex mutation for adding tournament roles
+      // This requires adding tournament_roles table to Convex schema
+      toast.info('Fonctionnalité en cours de migration vers Convex');
       setShowAddUserModal(false);
       setNewUserEmail('');
       setNewUserPermissions([]);
-      fetchPermissions();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error("Erreur lors de l'ajout");
@@ -107,15 +69,8 @@ export default function SettingsPermissions() {
     if (!confirm('Retirer cet utilisateur des permissions ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('tournament_roles')
-        .delete()
-        .eq('tournament_id', tournamentId)
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      toast.success('Utilisateur retiré');
-      fetchPermissions();
+      // TODO: Implement Convex mutation for removing tournament roles
+      toast.info('Fonctionnalité en cours de migration vers Convex');
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la suppression');
@@ -130,18 +85,11 @@ export default function SettingsPermissions() {
 
   const handleUpdateUser = async () => {
     try {
-      const { error } = await supabase
-        .from('tournament_roles')
-        .update({ permissions: newUserPermissions })
-        .eq('id', editingUser.id);
-
-      if (error) throw error;
-
-      toast.success('Permissions mises à jour');
+      // TODO: Implement Convex mutation for updating tournament roles
+      toast.info('Fonctionnalité en cours de migration vers Convex');
       setShowAddUserModal(false);
       setEditingUser(null);
       setNewUserPermissions([]);
-      fetchPermissions();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la mise à jour');

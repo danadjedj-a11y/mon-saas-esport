@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { GradientButton, Card, Input, PageHeader } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import { openCookieSettings } from '../../components/CookieConsent';
@@ -16,108 +17,31 @@ import { openCookieSettings } from '../../components/CookieConsent';
  */
 export default function PrivacySettings({ session }) {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [userData, setUserData] = useState(null);
-  const [consents, setConsents] = useState(null);
 
-  useEffect(() => {
-    if (session?.user) {
-      loadUserData();
-      loadConsents();
-    }
-  }, [session]);
-
-  const loadUserData = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) throw error;
-      setUserData(data);
-    } catch (error) {
-      console.error('Erreur chargement profil:', error);
-    }
-  };
-
-  const loadConsents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_consents')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
-
-      if (!error) {
-        setConsents(data || []);
-      }
-    } catch (error) {
-      // Table might not exist yet
-      console.log('Consents table not found');
-    }
-  };
+  // Convex queries - automatically reactive
+  const currentUser = useQuery(api.users.getCurrent);
+  const userData = currentUser;
+  const loading = currentUser === undefined;
 
   /**
    * Export des données personnelles (Droit à la portabilité)
+   * Note: In a full Convex migration, this would be a Convex action
    */
   const handleExportData = async () => {
     setExporting(true);
     try {
-      // Collecter toutes les données de l'utilisateur
-      const userId = session.user.id;
-
-      // 1. Profil
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      // 2. Équipes
-      const { data: teams } = await supabase
-        .from('teams')
-        .select('*')
-        .or(`captain_id.eq.${userId},members.cs.{${userId}}`);
-
-      // 3. Participations aux tournois
-      const { data: participations } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          tournaments:tournament_id (name, game, start_date)
-        `)
-        .eq('user_id', userId);
-
-      // 4. Comptes gaming
-      const { data: gamingAccounts } = await supabase
-        .from('gaming_accounts')
-        .select('*')
-        .eq('user_id', userId);
-
-      // 5. Messages (si applicable)
-      const { data: messages } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('user_id', userId);
-
-      // Compiler les données
+      // Compile available data from current user
       const exportData = {
         export_date: new Date().toISOString(),
         user_info: {
-          email: session.user.email,
-          created_at: session.user.created_at,
+          email: session?.user?.emailAddresses?.[0]?.emailAddress || userData?.email,
+          created_at: userData?.createdAt,
         },
-        profile: profile || {},
-        teams: teams || [],
-        tournament_participations: participations || [],
-        gaming_accounts: gamingAccounts || [],
-        messages: messages || [],
+        profile: userData || {},
       };
 
       // Créer et télécharger le fichier JSON
@@ -142,6 +66,8 @@ export default function PrivacySettings({ session }) {
 
   /**
    * Suppression du compte (Droit à l'effacement)
+   * Note: In a full Convex migration, this would be a Convex action/mutation
+   * For now, we redirect to contact since account deletion needs server-side handling
    */
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== 'SUPPRIMER') {
@@ -151,73 +77,14 @@ export default function PrivacySettings({ session }) {
 
     setDeleting(true);
     try {
-      const userId = session.user.id;
-
-      // 1. Supprimer les données liées (dans l'ordre des dépendances)
-
-      // Messages
-      await supabase.from('messages').delete().eq('user_id', userId);
-
-      // Participations
-      await supabase.from('participants').delete().eq('user_id', userId);
-
-      // Membres d'équipe
-      await supabase.from('team_members').delete().eq('user_id', userId);
-
-      // Comptes gaming
-      await supabase.from('gaming_accounts').delete().eq('user_id', userId);
-
-      // Demandes de modification
-      await supabase.from('gaming_account_change_requests').delete().eq('user_id', userId);
-
-      // Consentements
-      await supabase.from('user_consents').delete().eq('user_id', userId);
-
-      // 2. Anonymiser les données des équipes dont l'utilisateur est capitaine
-      const { data: ownedTeams } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('captain_id', userId);
-
-      if (ownedTeams && ownedTeams.length > 0) {
-        // Transférer le capitanat ou supprimer l'équipe
-        for (const team of ownedTeams) {
-          const { data: members } = await supabase
-            .from('team_members')
-            .select('user_id')
-            .eq('team_id', team.id)
-            .neq('user_id', userId)
-            .limit(1);
-
-          if (members && members.length > 0) {
-            // Transférer au premier membre
-            await supabase
-              .from('teams')
-              .update({ captain_id: members[0].user_id })
-              .eq('id', team.id);
-          } else {
-            // Supprimer l'équipe si plus de membres
-            await supabase.from('teams').delete().eq('id', team.id);
-          }
-        }
-      }
-
-      // 3. Supprimer le profil
-      await supabase.from('profiles').delete().eq('id', userId);
-
-      // 4. Supprimer le compte auth (via fonction admin ou API)
-      // Note: La suppression du compte auth.users nécessite généralement une fonction serveur
-      // Pour l'instant, on déconnecte l'utilisateur
-
-      await supabase.auth.signOut();
-
-      toast.success('Votre compte a été supprimé. Au revoir !');
-
-      // Rediriger vers l'accueil
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 2000);
-
+      // Note: Account deletion should be handled via a Convex mutation
+      // that cascades through all related data and then signs out the user.
+      // For now, show a message to contact support
+      toast.info('Pour supprimer votre compte, veuillez contacter contact@flukyboys.fr');
+      
+      // In the future, implement: await deleteAccountMutation();
+      // Then sign out: await signOut();
+      
     } catch (error) {
       console.error('Erreur suppression:', error);
       toast.error('Erreur lors de la suppression du compte');
@@ -252,7 +119,7 @@ export default function PrivacySettings({ session }) {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between py-2 border-b border-white/10">
             <span className="text-gray-400">Email</span>
-            <span className="text-white">{session.user.email}</span>
+            <span className="text-white">{session?.user?.emailAddresses?.[0]?.emailAddress || userData?.email}</span>
           </div>
           <div className="flex justify-between py-2 border-b border-white/10">
             <span className="text-gray-400">Nom d'utilisateur</span>
@@ -261,14 +128,14 @@ export default function PrivacySettings({ session }) {
           <div className="flex justify-between py-2 border-b border-white/10">
             <span className="text-gray-400">Compte créé le</span>
             <span className="text-white">
-              {new Date(session.user.created_at).toLocaleDateString('fr-FR')}
+              {userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString('fr-FR') : '-'}
             </span>
           </div>
           <div className="flex justify-between py-2">
             <span className="text-gray-400">Dernière connexion</span>
             <span className="text-white">
-              {session.user.last_sign_in_at
-                ? new Date(session.user.last_sign_in_at).toLocaleDateString('fr-FR')
+              {userData?.updatedAt
+                ? new Date(userData.updatedAt).toLocaleDateString('fr-FR')
                 : '-'
               }
             </span>

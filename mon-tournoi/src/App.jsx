@@ -77,6 +77,9 @@ const GamesDirectory = lazy(() => import('./pages/play/GamesDirectory'));
 const GamePage = lazy(() => import('./pages/play/GamePage'));
 const SearchResults = lazy(() => import('./pages/play/SearchResults'));
 
+// Pages Admin
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+
 // Pages Organizer (nouvelle interface)
 const OrganizerLayout = lazy(() => import('./layouts/OrganizerLayout'));
 const TournamentOverview = lazy(() => import('./pages/organizer/TournamentOverview'));
@@ -386,6 +389,12 @@ function AppRoutes() {
                     <Route path="/organizer/dashboard" element={
                         <OrganizerRoute>
                             <OrganizerDashboard />
+                        </OrganizerRoute>
+                    } />
+
+                    <Route path="/organizer/admin/users" element={
+                        <OrganizerRoute>
+                            <AdminUsers />
                         </OrganizerRoute>
                     } />
 

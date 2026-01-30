@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Select, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -28,42 +29,20 @@ export default function SettingsMatch() {
   useEffect(() => {
     if (context?.tournament) {
       setFormData({
-        participant_reporting: context.tournament.participant_reporting !== false,
-        match_format: context.tournament.best_of ? `bo${context.tournament.best_of}` : '',
-        match_duration_minutes: context.tournament.match_duration_minutes || 30,
-        match_break_minutes: context.tournament.match_break_minutes || 10,
+        participant_reporting: context.tournament.participantReporting !== false,
+        match_format: context.tournament.bestOf ? `bo${context.tournament.bestOf}` : '',
+        match_duration_minutes: context.tournament.matchDurationMinutes || 30,
+        match_break_minutes: context.tournament.matchBreakMinutes || 10,
       });
       setLoading(false);
-    } else {
-      fetchTournament();
     }
-  }, [context?.tournament, tournamentId]);
-
-  const fetchTournament = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('best_of, match_duration_minutes, match_break_minutes')
-        .eq('id', tournamentId)
-        .single();
-
-      if (error) throw error;
-      setFormData({
-        participant_reporting: true,
-        match_format: data.best_of ? `bo${data.best_of}` : '',
-        match_duration_minutes: data.match_duration_minutes || 30,
-        match_break_minutes: data.match_break_minutes || 10,
-      });
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [context?.tournament]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const updateTournament = useMutation(api.tournamentsMutations.update);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,16 +54,12 @@ export default function SettingsMatch() {
         ? parseInt(formData.match_format.replace('bo', ''))
         : 1;
 
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          best_of: bestOf,
-          match_duration_minutes: formData.match_duration_minutes,
-          match_break_minutes: formData.match_break_minutes,
-        })
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await updateTournament({
+        tournamentId: context?.tournament?._id,
+        bestOf: bestOf,
+        matchDurationMinutes: formData.match_duration_minutes,
+        matchBreakMinutes: formData.match_break_minutes,
+      });
 
       if (context?.refreshTournament) {
         context.refreshTournament();

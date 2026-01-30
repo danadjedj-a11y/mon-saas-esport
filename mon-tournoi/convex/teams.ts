@@ -86,6 +86,22 @@ export const getById = query({
 });
 
 /**
+ * Liste les équipes dont l'utilisateur est capitaine
+ * (utilisé pour l'inscription aux tournois)
+ */
+export const listByCaptain = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const teams = await ctx.db
+            .query("teams")
+            .withIndex("by_captain", (q) => q.eq("captainId", args.userId))
+            .collect();
+
+        return teams;
+    },
+});
+
+/**
  * Liste les invitations d'équipe pour un utilisateur
  */
 export const listInvitations = query({
@@ -233,5 +249,31 @@ export const getPendingInvitations = query({
                 };
             })
         );
+    },
+});
+
+/**
+ * Liste toutes les équipes (pour recherche, admin, etc.)
+ */
+export const list = query({
+    args: {
+        limit: v.optional(v.number()),
+        search: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        let teamsQuery = ctx.db.query("teams").order("desc");
+        
+        const teams = await teamsQuery.take(args.limit ?? 100);
+
+        // Si recherche, filtrer côté serveur
+        if (args.search) {
+            const searchLower = args.search.toLowerCase();
+            return teams.filter(t => 
+                t.name?.toLowerCase().includes(searchLower) ||
+                t.tag?.toLowerCase().includes(searchLower)
+            );
+        }
+
+        return teams;
     },
 });

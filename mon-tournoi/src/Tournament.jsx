@@ -12,7 +12,6 @@ import AdminPanel from './AdminPanel';
 import SeedingModal from './SeedingModal';
 import SchedulingModal from './SchedulingModal';
 import { notifyMatchResult } from './notificationUtils';
-import { initializeSwissScores, swissPairing, getSwissScores, updateSwissScores } from './swissUtils';
 import { exportTournamentToPDF } from './utils/pdfExport';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -71,6 +70,13 @@ export default function Tournament({ session }) {
   const updateMatchTeams = useMutation(api.matchesMutations.updateTeams);
   const removeParticipantMut = useMutation(api.tournamentRegistrationsMutations.removeParticipant);
   const toggleCheckInMut = useMutation(api.tournamentRegistrationsMutations.toggleCheckIn);
+  
+  // Mutations pour progression et Swiss
+  const handleProgressionMut = useMutation(api.matchesMutations.handleProgression);
+  const updateSwissScoresMut = useMutation(api.swissMutations.updateScoresAfterMatch);
+  const generateNextSwissRoundMut = useMutation(api.swissMutations.generateNextRound);
+  const initializeSwissScoresMut = useMutation(api.swissMutations.initializeScores);
+  const promoteFromWaitlistMut = useMutation(api.tournamentRegistrationsMutations.promoteFromWaitlist);
 
   // Note: organizerId est le champ Convex (Supabase utilisait owner_id)
   const isOwner = tournoi && session && tournoi.organizerId === session.user?.convexId;
@@ -388,8 +394,8 @@ export default function Tournament({ session }) {
     else if (tournoi.format === 'swiss') {
       const teamIds = orderedParticipants.map(p => p.team_id);
 
-      // Initialiser les scores suisses
-      await initializeSwissScores(supabase, id, teamIds);
+      // Initialiser les scores suisses via Convex
+      await initializeSwissScoresMut({ tournamentId: id });
 
       // Pour le premier round, on pair aléatoirement (ou selon seeding)
       const pairs = [];
@@ -434,63 +440,23 @@ export default function Tournament({ session }) {
   // Fonction pour promouvoir une équipe spécifique depuis la waitlist
   const promoteTeamFromWaitlist = async (waitlistEntryId, teamId) => {
     // Vérifier s'il y a de la place
-    if (tournoi?.max_participants) {
-      const { count } = await supabase
-        .from('participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', id);
-
-      const currentCount = count || 0;
-      if (currentCount >= tournoi.max_participants) {
-        toast.error('Le tournoi est complet. Impossible de promouvoir cette équipe.');
-        return;
-      }
-    }
-
-    // Promouvoir en participant
-    const { error: insertError } = await supabase
-      .from('participants')
-      .insert([{
-        tournament_id: id,
-        team_id: teamId,
-        checked_in: false,
-        disqualified: false
-      }]);
-
-    if (insertError) {
-      console.error('Erreur lors de la promotion:', insertError);
-      toast.error('Erreur lors de la promotion : ' + insertError.message);
+    if (tournoi?.max_participants && participants.length >= tournoi.max_participants) {
+      toast.error('Le tournoi est complet. Impossible de promouvoir cette équipe.');
       return;
     }
 
-    // Retirer de la waitlist
-    const { error: deleteError } = await supabase
-      .from('waitlist')
-      .delete()
-      .eq('id', waitlistEntryId);
-
-    if (deleteError) {
-      console.error('Erreur lors de la suppression de la waitlist:', deleteError);
+    try {
+      await promoteFromWaitlistMut({ 
+        tournamentId: id, 
+        waitlistEntryId, 
+        teamId 
+      });
+      toast.success('Équipe promue avec succès !');
+      refetch();
+    } catch (error) {
+      console.error('Erreur lors de la promotion:', error);
+      toast.error('Erreur lors de la promotion : ' + error.message);
     }
-
-    // Réorganiser les positions dans la waitlist
-    const { data: remainingWaitlist } = await supabase
-      .from('waitlist')
-      .select('*')
-      .eq('tournament_id', id)
-      .order('position', { ascending: true });
-
-    if (remainingWaitlist && remainingWaitlist.length > 0) {
-      for (let i = 0; i < remainingWaitlist.length; i++) {
-        await supabase
-          .from('waitlist')
-          .update({ position: i + 1 })
-          .eq('id', remainingWaitlist[i].id);
-      }
-    }
-
-    toast.success('Équipe promue avec succès !');
-    refetch();
   };
 
   const removeParticipant = async (pid) => {
@@ -595,68 +561,31 @@ export default function Tournament({ session }) {
     exportTournamentToPDF(tournoi, participants, matches, standings);
   };
 
-  // Générer le round suivant pour le système suisse
+  // Générer le round suivant pour le système suisse (migré vers Convex)
   const generateNextSwissRound = async () => {
     if (tournoi.format !== 'swiss') return;
 
-    // Récupérer tous les matchs et scores suisses
-    const { data: allMatches } = await supabase.from('matches').select('*').eq('tournament_id', id).order('round_number');
-    const swissScores = await getSwissScores(supabase, id);
+    try {
+      const result = await generateNextSwissRoundMut({ 
+        tournamentId: tournoi._id 
+      });
 
-    // Trouver le dernier round
-    const maxRound = Math.max(...(allMatches || []).map(m => m.round_number), 0);
-
-    // Vérifier que tous les matchs du dernier round sont terminés
-    const lastRoundMatches = (allMatches || []).filter(m => m.round_number === maxRound);
-    const allCompleted = lastRoundMatches.every(m => m.status === 'completed');
-
-    if (!allCompleted) {
-      toast.warning('Tous les matchs du round actuel doivent être terminés avant de générer le round suivant.');
-      return;
-    }
-
-    // Calculer le nombre de rounds (généralement log2(nombre d'équipes))
-    const numTeams = participants.length;
-    const totalRounds = Math.ceil(Math.log2(numTeams));
-
-    if (maxRound >= totalRounds) {
-      // Tournoi terminé
-      await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
-      triggerConfetti();
-      toast.success('Tous les rounds sont terminés ! Le tournoi est complété.');
+      if (result.completed) {
+        triggerConfetti();
+        toast.success('Tous les rounds sont terminés ! Le tournoi est complété.');
+      } else {
+        toast.success(`Round ${result.round} généré avec ${result.matchesCreated} matchs !`);
+      }
       refetch();
-      return;
+    } catch (error) {
+      if (error.message.includes('terminés')) {
+        toast.warning('Tous les matchs du round actuel doivent être terminés avant de générer le round suivant.');
+      } else if (error.message.includes('initialisés')) {
+        toast.error('Scores Swiss non initialisés. Vérifiez la configuration du tournoi.');
+      } else {
+        toast.error('Erreur lors de la génération du round : ' + error.message);
+      }
     }
-
-    // Générer les paires pour le round suivant
-    const pairs = swissPairing(swissScores, allMatches || []);
-
-    if (pairs.length === 0) {
-      toast.warning('Impossible de générer des paires. Vérifiez les scores suisses.');
-      return;
-    }
-
-    // Créer les matchs pour le round suivant
-    const nextRound = maxRound + 1;
-    let matchNum = Math.max(...(allMatches || []).map(m => m.match_number), 0) + 1;
-    const matchesToCreate = pairs.map(pair => ({
-      tournament_id: id,
-      match_number: matchNum++,
-      round_number: nextRound,
-      player1_id: pair[0],
-      player2_id: pair[1],
-      status: 'pending',
-      bracket_type: 'swiss'
-    }));
-
-    const { error } = await supabase.from('matches').insert(matchesToCreate);
-    if (error) {
-      toast.error('Erreur lors de la création du round : ' + error.message);
-      return;
-    }
-
-    toast.success(`Round ${nextRound} généré avec ${pairs.length} matchs !`);
-    refetch();
   };
 
   // ==============================================================================
@@ -680,136 +609,64 @@ export default function Tournament({ session }) {
     }
   };
 
+  // Sauvegarder le score d'un match (migré vers Convex)
   const saveScore = async () => {
     if (!currentMatch) return;
     const s1 = parseInt(scoreA);
     const s2 = parseInt(scoreB);
 
-    const { error } = await supabase.from('matches')
-      .update({ score_p1: s1, score_p2: s2, status: 'completed' })
-      .eq('id', currentMatch.id);
+    try {
+      // Déterminer le gagnant si pas d'égalité
+      const winnerId = s1 !== s2 
+        ? (s1 > s2 ? currentMatch.player1_id : currentMatch.player2_id) 
+        : undefined;
+      const loserId = s1 !== s2 
+        ? (s1 > s2 ? currentMatch.player2_id : currentMatch.player1_id) 
+        : undefined;
 
-    if (error) {
-      toast.error('Erreur score : ' + error.message);
-      return;
-    }
+      // Mettre à jour le score via Convex
+      await updateMatchScore({
+        matchId: currentMatch._id,
+        scoreTeam1: s1,
+        scoreTeam2: s2,
+        winnerId: winnerId,
+      });
 
-    // Récupérer le match mis à jour depuis la DB (comme pour les brackets)
-    const { data: updatedMatch } = await supabase.from('matches').select('*').eq('id', currentMatch.id).single();
+      // Mettre à jour les scores suisses si format suisse
+      if (tournoi.format === 'swiss' && currentMatch.player1_id && currentMatch.player2_id) {
+        await updateSwissScoresMut({
+          tournamentId: tournoi._id,
+          team1Id: currentMatch.player1_id,
+          team2Id: currentMatch.player2_id,
+          scoreTeam1: s1,
+          scoreTeam2: s2,
+        });
+      }
 
-    if (!updatedMatch) {
+      // Gérer la progression (Single/Double Elimination) via mutation serveur
+      if (s1 !== s2 && (tournoi.format === 'elimination' || tournoi.format === 'double_elimination')) {
+        const result = await handleProgressionMut({
+          matchId: currentMatch._id,
+          winnerId: winnerId,
+          loserId: loserId,
+        });
+
+        // Notifier les équipes du résultat
+        if (winnerId && loserId) {
+          await notifyMatchResult(currentMatch._id, winnerId, loserId, s1, s2);
+        }
+
+        // Déclencher confetti si tournoi terminé
+        if (result.tournamentCompleted) {
+          triggerConfetti();
+        }
+      }
+
       setIsModalOpen(false);
       refetch();
-      return;
-    }
-
-    // Mettre à jour les scores suisses si format suisse (pour tous les matchs, y compris nuls)
-    if (tournoi.format === 'swiss') {
-      await updateSwissScores(supabase, id, updatedMatch);
-    }
-
-    if (s1 !== s2) {
-      const winnerId = s1 > s2 ? updatedMatch.player1_id : updatedMatch.player2_id;
-      const loserId = s1 > s2 ? updatedMatch.player2_id : updatedMatch.player1_id;
-
-      // Notifier les équipes du résultat
-      if (winnerId && loserId) {
-        await notifyMatchResult(currentMatch.id, winnerId, loserId, s1, s2);
-      }
-
-      if (tournoi.format === 'double_elimination') {
-        await handleDoubleEliminationProgression(updatedMatch, winnerId, loserId);
-      } else if (tournoi.format === 'elimination') {
-        // Single Elimination Progression
-        const { data: allMatches } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
-        const currentRoundMatches = allMatches.filter(m => m.round_number === updatedMatch.round_number).sort((a, b) => a.match_number - b.match_number);
-        const myIndex = currentRoundMatches.findIndex(m => m.id === updatedMatch.id);
-
-        const nextRoundMatches = allMatches.filter(m => m.round_number === updatedMatch.round_number + 1).sort((a, b) => a.match_number - b.match_number);
-        const nextMatch = nextRoundMatches[Math.floor(myIndex / 2)];
-
-        if (nextMatch) {
-          const isP1 = (myIndex % 2) === 0;
-          await supabase.from('matches').update(isP1 ? { player1_id: winnerId } : { player2_id: winnerId }).eq('id', nextMatch.id);
-        } else {
-          triggerConfetti();
-          await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
-        }
-      }
-    }
-
-    setIsModalOpen(false);
-    refetch();
-  };
-
-  const handleDoubleEliminationProgression = async (completedMatch, winnerId, loserId) => {
-    // Récupérer les données fraîches
-    const { data: matches } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
-    if (!matches) return;
-
-    const { bracket_type, round_number } = completedMatch;
-
-    if (bracket_type === 'winners') {
-      // Winners -> Avance en Winners + Perdant en Losers
-      const winRoundMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === round_number).sort((a, b) => a.match_number - b.match_number);
-      const myIndex = winRoundMatches.findIndex(m => m.id === completedMatch.id);
-
-      // Avancer Winner
-      const nextWinMatches = matches.filter(m => m.bracket_type === 'winners' && m.round_number === round_number + 1).sort((a, b) => a.match_number - b.match_number);
-      if (nextWinMatches.length > 0) {
-        const nextM = nextWinMatches[Math.floor(myIndex / 2)];
-        if (nextM) await supabase.from('matches').update((myIndex % 2) === 0 ? { player1_id: winnerId } : { player2_id: winnerId }).eq('id', nextM.id);
-      } else {
-        // Vers Grand Finals
-        const gf = matches.find(m => !m.bracket_type && !m.is_reset);
-        if (gf) await supabase.from('matches').update({ player1_id: winnerId }).eq('id', gf.id);
-      }
-
-      // Envoyer Loser
-      let targetLoserMatches = [];
-      if (round_number === 1) {
-        targetLoserMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === 1).sort((a, b) => a.match_number - b.match_number);
-      } else {
-        targetLoserMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === round_number).sort((a, b) => a.match_number - b.match_number);
-      }
-
-      if (targetLoserMatches.length > 0) {
-        // Remplir le premier slot vide
-        for (const m of targetLoserMatches) {
-          if (!m.player1_id) { await supabase.from('matches').update({ player1_id: loserId }).eq('id', m.id); break; }
-          else if (!m.player2_id) { await supabase.from('matches').update({ player2_id: loserId }).eq('id', m.id); break; }
-        }
-      }
-
-    } else if (bracket_type === 'losers') {
-      // Losers -> Avance en Losers
-      const nextLosMatches = matches.filter(m => m.bracket_type === 'losers' && m.round_number === round_number + 1).sort((a, b) => a.match_number - b.match_number);
-      if (nextLosMatches.length > 0) {
-        const avail = nextLosMatches.find(m => !m.player1_id || !m.player2_id);
-        if (avail) await supabase.from('matches').update(!avail.player1_id ? { player1_id: winnerId } : { player2_id: winnerId }).eq('id', avail.id);
-      } else {
-        // Vers Grand Finals
-        const gf = matches.find(m => !m.bracket_type && !m.is_reset);
-        if (gf) await supabase.from('matches').update({ player2_id: winnerId }).eq('id', gf.id);
-      }
-
-    } else {
-      // Grand Finals / Reset
-      if (completedMatch.is_reset) {
-        triggerConfetti();
-        await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
-      } else {
-        // Grand Final
-        if (winnerId === completedMatch.player1_id) {
-          // Winner Bracket Champ gagne
-          triggerConfetti();
-          await supabase.from('tournaments').update({ status: 'completed' }).eq('id', id);
-        } else {
-          // Reset nécessaire
-          const resetM = matches.find(m => m.is_reset);
-          if (resetM) await supabase.from('matches').update({ player1_id: completedMatch.player1_id, player2_id: completedMatch.player2_id, status: 'pending', score_p1: 0, score_p2: 0 }).eq('id', resetM.id);
-        }
-      }
+    } catch (error) {
+      console.error('Erreur saveScore:', error);
+      toast.error('Erreur score : ' + error.message);
     }
   };
 
@@ -938,7 +795,6 @@ export default function Tournament({ session }) {
         {shouldShowAdminFeatures && tournoi.status === 'ongoing' && (
           <AdminPanel
             tournamentId={id}
-            supabase={supabase}
             session={session}
             participants={participants}
             matches={matches}
@@ -980,8 +836,8 @@ export default function Tournament({ session }) {
         {/* --- ACTIONS JOUEURS (Inscription / Check-in) --- */}
         {tournoi.status === 'draft' && (
           <div className="mb-5 flex gap-3 items-center">
-            <TeamJoinButton tournamentId={id} supabase={supabase} session={session} onJoinSuccess={refetch} tournament={tournoi} />
-            <CheckInButton tournamentId={id} supabase={supabase} session={session} tournament={tournoi} />
+            <TeamJoinButton tournamentId={id} session={session} onJoinSuccess={refetch} tournament={tournoi} />
+            <CheckInButton tournamentId={id} session={session} tournament={tournoi} />
           </div>
         )}
 
@@ -1010,7 +866,7 @@ export default function Tournament({ session }) {
             <div className="border-t border-violet-500/20 p-4">
               <h3 className="font-display text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400 m-0 mb-3">💬 Chat Lobby</h3>
               <div className="h-[400px] flex flex-col">
-                <Chat tournamentId={id} session={session} supabase={supabase} />
+                <Chat tournamentId={id} session={session} />
               </div>
             </div>
           </div>
@@ -1062,7 +918,7 @@ export default function Tournament({ session }) {
           </div>
         )}
 
-        <SeedingModal isOpen={isSeedingModalOpen} onClose={() => setIsSeedingModalOpen(false)} participants={participants} tournamentId={id} supabase={supabase} onSave={() => refetch()} />
+        <SeedingModal isOpen={isSeedingModalOpen} onClose={() => setIsSeedingModalOpen(false)} participants={participants} tournamentId={id} onSave={() => refetch()} />
 
         <SchedulingModal
           isOpen={isSchedulingModalOpen}
@@ -1071,7 +927,6 @@ export default function Tournament({ session }) {
             setSchedulingMatch(null);
           }}
           match={schedulingMatch}
-          supabase={supabase}
           onSave={() => refetch()}
         />
       </div>

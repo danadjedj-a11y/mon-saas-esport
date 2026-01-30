@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button, Input } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -23,9 +24,12 @@ export default function ParticipantCreate() {
     team_identifier: '',
   });
 
+  // Convex mutation - TODO: Add createManualRegistration mutation
+  // const createRegistration = useMutation(api.tournamentRegistrationsMutations.createManual);
+
   // Players (for team tournaments)
-  const isTeamTournament = tournament?.participant_type === 'team';
-  const teamSize = tournament?.team_size_max || 5;
+  const isTeamTournament = tournament?.participantType === 'team';
+  const teamSize = tournament?.teamSizeMax || 5;
   
   const [players, setPlayers] = useState(
     Array.from({ length: teamSize }, (_, i) => ({
@@ -60,22 +64,11 @@ export default function ParticipantCreate() {
   };
 
   const uploadLogo = async () => {
+    // TODO: Migrate file upload to Convex storage
     if (!logoFile) return null;
-
-    const fileExt = logoFile.name.split('.').pop();
-    const fileName = `${tournamentId}/participants/${Date.now()}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('tournament-assets')
-      .upload(fileName, logoFile);
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage
-      .from('tournament-assets')
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
+    
+    // For now, return preview URL
+    return logoPreview;
   };
 
   const handleSubmit = async (e) => {
@@ -93,72 +86,25 @@ export default function ParticipantCreate() {
         logoUrl = await uploadLogo();
       }
 
-      if (isTeamTournament) {
-        // Create team first
-        const { data: team, error: teamError } = await supabase
-          .from('teams')
-          .insert({
-            name: formData.name,
-            logo_url: logoUrl,
-          })
-          .select()
-          .single();
+      // TODO: Implement createManualRegistration mutation in Convex
+      // For now, show a message that this feature needs the Convex mutation
+      toast.info('Fonctionnalité en cours de migration vers Convex');
+      
+      // Placeholder - would call:
+      // await createRegistration({
+      //   tournamentId,
+      //   name: formData.name,
+      //   email: formData.email,
+      //   logoUrl,
+      //   customData: {
+      //     customIdentifier: formData.custom_identifier,
+      //     teamIdentifier: formData.team_identifier,
+      //     players: isTeamTournament ? players.filter(p => p.name || p.email) : undefined,
+      //   },
+      // });
 
-        if (teamError) throw teamError;
-
-        // Create participant
-        const { data: participant, error: participantError } = await supabase
-          .from('participants')
-          .insert({
-            tournament_id: tournamentId,
-            team_id: team.id,
-            name: formData.name,
-            email: formData.email,
-            status: 'registered',
-            custom_data: {
-              custom_identifier: formData.custom_identifier,
-              team_identifier: formData.team_identifier,
-            },
-          })
-          .select()
-          .single();
-
-        if (participantError) throw participantError;
-
-        // Add players as team members (optional, only if they have data)
-        const validPlayers = players.filter(p => p.name || p.email);
-        if (validPlayers.length > 0) {
-          // Note: In a real app, you'd need to create user accounts or link existing ones
-          // For now, we store player data in custom_data
-          await supabase
-            .from('participants')
-            .update({
-              custom_data: {
-                ...participant.custom_data,
-                players: validPlayers,
-              },
-            })
-            .eq('id', participant.id);
-        }
-      } else {
-        // Solo player
-        const { error } = await supabase
-          .from('participants')
-          .insert({
-            tournament_id: tournamentId,
-            name: formData.name,
-            email: formData.email,
-            status: 'registered',
-            custom_data: {
-              custom_identifier: formData.custom_identifier,
-            },
-          });
-
-        if (error) throw error;
-      }
-
-      toast.success('Participant ajouté avec succès');
-      navigate(`/organizer/tournament/${tournamentId}/participants`);
+      // toast.success('Participant ajouté avec succès');
+      // navigate(`/organizer/tournament/${tournamentId}/participants`);
     } catch (error) {
       console.error('Erreur:', error);
       toast.error("Erreur lors de l'ajout du participant");

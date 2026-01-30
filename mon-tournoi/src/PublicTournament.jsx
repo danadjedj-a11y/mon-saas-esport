@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
-import { toast } from './utils/toast';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import {
   Trophy, Users, Calendar, Clock, Gamepad2, Share2, Bell,
   ChevronRight, Shield, Play, Swords, FileText, Gift, Crown,
@@ -34,61 +34,52 @@ const getFormatLabel = (format) => {
 export default function PublicTournament({ session }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [tournament, setTournament] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-  const [winnerName, setWinnerName] = useState(null);
-  const [organizer, setOrganizer] = useState(null);
 
-  useEffect(() => {
-    loadTournamentData();
-  }, [id]);
+  // Queries Convex
+  const tournament = useQuery(api.tournaments.getById, id ? { tournamentId: id } : "skip");
+  const participants = useQuery(api.tournamentRegistrations.listByTournament, id ? { tournamentId: id } : "skip") || [];
+  const matches = useQuery(api.matches.listByTournament, id ? { tournamentId: id } : "skip") || [];
+  const teams = useQuery(api.teams.list) || [];
+  const organizer = useQuery(api.users.getById, tournament?.organizerId ? { userId: tournament.organizerId } : "skip");
+  
+  // Créer un map des équipes pour enrichir les données
+  const teamsMap = useMemo(() => {
+    return teams.reduce((acc, t) => { acc[t._id] = t; return acc; }, {});
+  }, [teams]);
 
-  const loadTournamentData = async () => {
-    try {
-      setLoading(true);
+  // Enrichir les participants avec les données d'équipe
+  const enrichedParticipants = useMemo(() => {
+    return participants.map(p => ({
+      ...p,
+      teams: teamsMap[p.teamId] || null,
+      team_id: p.teamId,
+      checked_in: p.status === 'checked_in'
+    }));
+  }, [participants, teamsMap]);
 
-      const { data: tournamentData, error: tournamentError } = await supabase
-        .from('tournaments')
-        .select('*, profiles(*)')
-        .eq('id', id)
-        .single();
+  // Enrichir les matches avec les données d'équipe
+  const enrichedMatches = useMemo(() => {
+    return matches.map(m => ({
+      ...m,
+      player1: teamsMap[m.team1Id] || null,
+      player2: teamsMap[m.team2Id] || null,
+      player1_id: m.team1Id,
+      player2_id: m.team2Id,
+      round_number: m.round,
+      score_p1: m.scoreTeam1,
+      score_p2: m.scoreTeam2,
+      scheduled_at: m.scheduledTime
+    }));
+  }, [matches, teamsMap]);
 
-      if (tournamentError) throw tournamentError;
-      setTournament(tournamentData);
-      setOrganizer(tournamentData.profiles);
+  // Déterminer le nom du gagnant
+  const winnerName = useMemo(() => {
+    if (!tournament?.winnerId) return null;
+    return teamsMap[tournament.winnerId]?.name || null;
+  }, [tournament, teamsMap]);
 
-      const { data: participantsData } = await supabase
-        .from('participants')
-        .select('*, teams(*)')
-        .eq('tournament_id', id)
-        .order('seed', { ascending: true });
-
-      setParticipants(participantsData || []);
-
-      const { data: matchesData } = await supabase
-        .from('matches')
-        .select('*, player1:teams!matches_player1_id_fkey(*), player2:teams!matches_player2_id_fkey(*)')
-        .eq('tournament_id', id)
-        .order('round', { ascending: true });
-
-      setMatches(matchesData || []);
-
-      if (tournamentData.winner_id) {
-        const winner = participantsData?.find(p => p.team_id === tournamentData.winner_id);
-        if (winner?.teams) {
-          setWinnerName(winner.teams.name);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading tournament:', error);
-      toast.error('Erreur lors du chargement du tournoi');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = tournament === undefined;
 
   if (loading) {
     return (
@@ -120,8 +111,24 @@ export default function PublicTournament({ session }) {
     }
   };
 
-  const completedMatches = matches.filter(m => m.status === 'completed');
-  const checkedInCount = participants.filter(p => p.checked_in).length;
+  const completedMatches = enrichedMatches.filter(m => m.status === 'completed');
+  const checkedInCount = enrichedParticipants.filter(p => p.checked_in || p.status === 'checked_in').length;
+  
+  // Adapter pour les champs Convex
+  const tournamentForDisplay = {
+    ...tournament,
+    start_date: tournament.startDate,
+    max_participants: tournament.maxTeams,
+    check_in_enabled: tournament.checkInEnabled,
+    check_in_time: tournament.checkInTime,
+    prize_pool: tournament.prizePool,
+    registration_deadline: tournament.registrationDeadline
+  };
+
+  // Fonction de rafraîchissement (pas nécessaire avec Convex mais garde la compatibilité)
+  const loadTournamentData = () => {
+    // Les queries Convex se mettent à jour automatiquement
+  };
 
   return (
     <div className="min-h-screen bg-[#05050A] text-[#F8FAFC]">
@@ -173,12 +180,12 @@ export default function PublicTournament({ session }) {
               )}
             </div>
 
-            {tournament.prize_pool && (
+            {tournamentForDisplay.prize_pool && (
               <div className="hidden md:block">
                 <GlassCard className="px-6 py-4 text-center">
                   <p className="mb-1 text-xs uppercase tracking-wider text-[#94A3B8]">Prize Pool</p>
                   <p className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-3xl font-bold text-transparent">
-                    {tournament.prize_pool} EUR
+                    {tournamentForDisplay.prize_pool} EUR
                   </p>
                 </GlassCard>
               </div>
@@ -193,7 +200,7 @@ export default function PublicTournament({ session }) {
           <div className="flex flex-wrap items-center gap-6 text-sm">
             <div className="flex items-center gap-2 text-[#94A3B8]">
               <Calendar className="h-4 w-4 text-[#00F5FF]" />
-              <span>{new Date(tournament.start_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <span>{tournamentForDisplay.start_date ? new Date(tournamentForDisplay.start_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Date à définir'}</span>
             </div>
             <div className="flex items-center gap-2 text-[#94A3B8]">
               <MapPin className="h-4 w-4 text-[#00F5FF]" />
@@ -201,19 +208,19 @@ export default function PublicTournament({ session }) {
             </div>
             <div className="flex items-center gap-2 text-[#94A3B8]">
               <Users className="h-4 w-4 text-[#00F5FF]" />
-              <span>{participants.length}{tournament.max_participants ? ` / ${tournament.max_participants}` : ''} équipes</span>
+              <span>{enrichedParticipants.length}{tournamentForDisplay.max_participants ? ` / ${tournamentForDisplay.max_participants}` : ''} équipes</span>
             </div>
-            {tournament.check_in_enabled && (
+            {tournamentForDisplay.check_in_enabled && (
               <div className="flex items-center gap-2 text-[#94A3B8]">
                 <Clock className="h-4 w-4 text-[#00F5FF]" />
-                <span>Check-in: {tournament.check_in_time || '14h45'}</span>
+                <span>Check-in: {tournamentForDisplay.check_in_time || '14h45'}</span>
               </div>
             )}
-            {tournament.prize_pool && (
+            {tournamentForDisplay.prize_pool && (
               <div className="ml-auto md:hidden">
                 <GlassCard className="px-4 py-2">
                   <p className="text-xs text-[#94A3B8]">Prize Pool</p>
-                  <p className="font-bold text-yellow-400">{tournament.prize_pool} EUR</p>
+                  <p className="font-bold text-yellow-400">{tournamentForDisplay.prize_pool} EUR</p>
                 </GlassCard>
               </div>
             )}
@@ -247,9 +254,9 @@ export default function PublicTournament({ session }) {
       <div className="mx-auto max-w-7xl px-4 py-8">
         {activeTab === 'overview' && (
           <OverviewTab
-            tournament={tournament}
-            participants={participants}
-            matches={matches}
+            tournament={tournamentForDisplay}
+            participants={enrichedParticipants}
+            matches={enrichedMatches}
             session={session}
             onRefetch={loadTournamentData}
             winnerName={winnerName}
@@ -258,23 +265,23 @@ export default function PublicTournament({ session }) {
         )}
 
         {activeTab === 'participants' && (
-          <ParticipantsTab participants={participants} checkedInCount={checkedInCount} />
+          <ParticipantsTab participants={enrichedParticipants} checkedInCount={checkedInCount} />
         )}
 
         {activeTab === 'bracket' && (
-          <BracketTab matches={matches} participants={participants} />
+          <BracketTab matches={enrichedMatches} participants={enrichedParticipants} />
         )}
 
         {activeTab === 'schedule' && (
-          <ScheduleTab matches={matches} participants={participants} />
+          <ScheduleTab matches={enrichedMatches} participants={enrichedParticipants} />
         )}
 
         {activeTab === 'rules' && (
-          <RulesTab tournament={tournament} />
+          <RulesTab tournament={tournamentForDisplay} />
         )}
 
         {activeTab === 'prizes' && (
-          <PrizesTab tournament={tournament} />
+          <PrizesTab tournament={tournamentForDisplay} />
         )}
       </div>
 
@@ -285,8 +292,8 @@ export default function PublicTournament({ session }) {
             <div>
               <p className="font-bold">Prêt à participer ?</p>
               <p className="text-sm text-[#94A3B8]">
-                {tournament.registration_deadline
-                  ? `Inscriptions ouvertes jusqu'au ${new Date(tournament.registration_deadline).toLocaleDateString('fr-FR')}`
+                {tournamentForDisplay.registration_deadline
+                  ? `Inscriptions ouvertes jusqu'au ${new Date(tournamentForDisplay.registration_deadline).toLocaleDateString('fr-FR')}`
                   : 'Inscriptions ouvertes'}
               </p>
             </div>

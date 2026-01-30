@@ -1,72 +1,53 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { toast } from '../utils/toast';
-import { handleRateLimitError } from '../utils/rateLimitHandler';
 
-export default function FollowButton({ session, tournamentId, teamId, type = 'tournament' }) {
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [followersCount, setFollowersCount] = useState(0);
+export default function FollowButton({ tournamentId, teamId, type = 'tournament' }) {
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
+  // Get current user from Convex
+  const currentUser = useQuery(api.users.getCurrent);
 
-    checkFollowStatus();
-    fetchFollowersCount();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, tournamentId, teamId, type]);
+  // Query for follow status (tournament)
+  const isFollowingTournament = useQuery(
+    api.follows.isFollowingTournament,
+    currentUser && type === 'tournament' && tournamentId
+      ? { userId: currentUser._id, tournamentId }
+      : 'skip'
+  );
 
-  const checkFollowStatus = async () => {
-    if (!session?.user) return;
+  // Query for follow status (team)
+  const isFollowingTeam = useQuery(
+    api.follows.isFollowingTeam,
+    currentUser && type === 'team' && teamId
+      ? { userId: currentUser._id, teamId }
+      : 'skip'
+  );
 
-    try {
-      const table = type === 'tournament' ? 'tournament_follows' : 'team_follows';
-      const idField = type === 'tournament' ? 'tournament_id' : 'team_id';
+  // Query for followers count (tournament)
+  const tournamentFollowersCount = useQuery(
+    api.follows.getTournamentFollowersCount,
+    type === 'tournament' && tournamentId ? { tournamentId } : 'skip'
+  );
 
-      const { data, error } = await supabase
-        .from(table)
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq(idField, type === 'tournament' ? tournamentId : teamId)
-        .single();
+  // Query for followers count (team)
+  const teamFollowersCount = useQuery(
+    api.follows.getTeamFollowersCount,
+    type === 'team' && teamId ? { teamId } : 'skip'
+  );
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Erreur vérification follow:', error);
-      } else {
-        setIsFollowing(!!data);
-      }
-    } catch (err) {
-      console.error('Erreur vérification follow:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Mutations
+  const toggleTournamentFollow = useMutation(api.follows.toggleTournamentFollow);
+  const toggleTeamFollow = useMutation(api.follows.toggleTeamFollow);
 
-  const fetchFollowersCount = async () => {
-    try {
-      const table = type === 'tournament' ? 'tournament_follows' : 'team_follows';
-      const idField = type === 'tournament' ? 'tournament_id' : 'team_id';
-
-      const { count, error } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq(idField, type === 'tournament' ? tournamentId : teamId);
-
-      if (error) {
-        console.error('Erreur comptage followers:', error);
-      } else {
-        setFollowersCount(count || 0);
-      }
-    } catch (err) {
-      console.error('Erreur comptage followers:', err);
-    }
-  };
+  // Derived state
+  const isFollowing = type === 'tournament' ? isFollowingTournament : isFollowingTeam;
+  const followersCount = type === 'tournament' ? tournamentFollowersCount : teamFollowersCount;
+  const isLoading = isFollowing === undefined || followersCount === undefined;
 
   const handleToggleFollow = async () => {
-    if (!session?.user) {
+    if (!currentUser) {
       toast.error('Vous devez être connecté pour suivre');
       return;
     }
@@ -74,49 +55,35 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
     setLoading(true);
 
     try {
-      const table = type === 'tournament' ? 'tournament_follows' : 'team_follows';
-      const idField = type === 'tournament' ? 'tournament_id' : 'team_id';
-      const idValue = type === 'tournament' ? tournamentId : teamId;
+      let result;
+      if (type === 'tournament' && tournamentId) {
+        result = await toggleTournamentFollow({
+          userId: currentUser._id,
+          tournamentId,
+        });
+      } else if (type === 'team' && teamId) {
+        result = await toggleTeamFollow({
+          userId: currentUser._id,
+          teamId,
+        });
+      }
 
-      if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from(table)
-          .delete()
-          .eq('user_id', session.user.id)
-          .eq(idField, idValue);
-
-        if (error) throw error;
-
-        setIsFollowing(false);
-        setFollowersCount(prev => Math.max(0, prev - 1));
-        toast.success(`Vous ne suivez plus ce ${type === 'tournament' ? 'tournoi' : 'équipe'}`);
-      } else {
-        // Follow
-        const { error } = await supabase
-          .from(table)
-          .insert([{
-            user_id: session.user.id,
-            [idField]: idValue
-          }]);
-
-        if (error) throw error;
-
-        setIsFollowing(true);
-        setFollowersCount(prev => prev + 1);
-        toast.success(`Vous suivez maintenant ce ${type === 'tournament' ? 'tournoi' : 'équipe'}`);
+      if (result?.action === 'unfollowed') {
+        toast.success(`Vous ne suivez plus ${type === 'tournament' ? 'ce tournoi' : 'cette équipe'}`);
+      } else if (result?.action === 'followed') {
+        toast.success(`Vous suivez maintenant ${type === 'tournament' ? 'ce tournoi' : 'cette équipe'}`);
       }
     } catch (err) {
       console.error('Erreur toggle follow:', err);
-      const errorMessage = handleRateLimitError(err, 'actions de suivi');
-      toast.error(errorMessage);
+      toast.error('Une erreur est survenue');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!session?.user) {
-    return null; // Ne pas afficher le bouton si non connecté
+  // Don't render if no user or still loading user
+  if (!currentUser) {
+    return null;
   }
 
   return (
@@ -124,7 +91,7 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
       <button
         type="button"
         onClick={handleToggleFollow}
-        disabled={loading}
+        disabled={loading || isLoading}
         className={`
           px-5 py-2.5 rounded-lg font-medium text-sm uppercase tracking-wide
           transition-all duration-300 flex items-center gap-2
@@ -136,7 +103,7 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
           hover:-translate-y-0.5
         `}
       >
-        {loading ? (
+        {loading || isLoading ? (
           <span className="animate-spin">⏳</span>
         ) : isFollowing ? (
           <>
@@ -148,7 +115,7 @@ export default function FollowButton({ session, tournamentId, teamId, type = 'to
           </>
         )}
       </button>
-      {followersCount > 0 && (
+      {followersCount != null && followersCount > 0 && (
         <span className="text-violet-400 text-sm">
           {followersCount} {followersCount === 1 ? 'follower' : 'followers'}
         </span>

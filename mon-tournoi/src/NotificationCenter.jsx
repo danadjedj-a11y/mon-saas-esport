@@ -1,142 +1,84 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import Skeleton from './components/Skeleton';
 import { EmptyNotifications } from './components/EmptyState';
 import useUIStore from './stores/uiStore';
 
 export default function NotificationCenter({ session }) {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-  const lastNotificationIdRef = useRef(null);
   const notifiedIdsRef = useRef(new Set()); // IDs déjà notifiés (son/toast)
-  const sessionStartRef = useRef(new Date().toISOString()); // Moment de connexion
+  const sessionStartRef = useRef(Date.now()); // Moment de connexion
   const addToast = useUIStore((state) => state.addToast);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!session?.user) return;
-    
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    
-    if (data) {
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.is_read).length);
-      
-      // Marquer toutes les notifications existantes comme "déjà notifiées"
-      // pour ne pas rejouer le son/toast au changement de page
-      data.forEach(n => notifiedIdsRef.current.add(n.id));
-    }
-    setLoading(false);
-  }, [session]);
+  // Query Convex pour l'utilisateur courant
+  const currentUser = useQuery(api.users.current);
+  
+  // Queries Convex pour les notifications - se mettent à jour automatiquement en temps réel
+  const rawNotifications = useQuery(
+    api.notifications.listByUser, 
+    currentUser?._id ? { userId: currentUser._id, limit: 50 } : "skip"
+  );
+  
+  // Compter les non lues
+  const unreadCountQuery = useQuery(
+    api.notifications.countUnread,
+    currentUser?._id ? { userId: currentUser._id } : "skip"
+  );
+  
+  const unreadCount = unreadCountQuery ?? 0;
+  const notifications = rawNotifications ?? [];
+  const loading = rawNotifications === undefined;
+  
+  // Mutation pour marquer comme lu
+  const markAsReadMut = useMutation(api.notifications.markAsRead);
+  const markAllAsReadMut = useMutation(api.notifications.markAllAsRead);
 
+  // Adapter les notifications pour l'affichage (champs Convex -> champs attendus par l'UI)
+  const adaptedNotifications = useMemo(() => {
+    return notifications.map(n => ({
+      ...n,
+      id: n._id,
+      is_read: n.read,
+      created_at: n.createdAt
+    }));
+  }, [notifications]);
+
+  // Effet pour détecter les nouvelles notifications et jouer le son/toast
   useEffect(() => {
-    if (!session?.user) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchNotifications();
+    if (!notifications || notifications.length === 0) return;
+    
+    // Lors du premier chargement, marquer tout comme "déjà notifié"
+    if (notifiedIdsRef.current.size === 0) {
+      notifications.forEach(n => notifiedIdsRef.current.add(n._id));
+      return;
+    }
+    
+    // Vérifier les nouvelles notifications
+    notifications.forEach(notification => {
+      // Ne notifier que les nouvelles notifs créées APRÈS le début de la session
+      if (!notifiedIdsRef.current.has(notification._id) && notification.createdAt > sessionStartRef.current) {
+        console.log('🔔 New notification detected:', notification);
+        notifiedIdsRef.current.add(notification._id);
+        
+        // Afficher un toast
+        addToast({
+          message: `${getIconForType(notification.type)} ${notification.title}: ${notification.message}`,
+          variant: getToastVariant(notification.type),
+          duration: 6000,
+        });
 
-    console.log('🔔 Subscribing to notifications for user:', session.user.id);
-
-    // Abonnement temps réel aux notifications - SANS filtre pour éviter les problèmes RLS
-    const channel = supabase
-      .channel('notifications-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-        },
-        (payload) => {
-          console.log('🔔 REALTIME event received:', payload);
-          
-          // Filtrer côté client pour ne traiter que nos notifications
-          if (payload.eventType === 'INSERT' && payload.new?.user_id === session.user.id) {
-            const newNotification = payload.new;
-            
-            // Éviter les doublons - vérifier si déjà notifié
-            if (notifiedIdsRef.current.has(newNotification.id)) return;
-            notifiedIdsRef.current.add(newNotification.id);
-            
-            // Ajouter la notification à la liste
-            setNotifications((prev) => [newNotification, ...prev]);
-            setUnreadCount((prev) => prev + 1);
-            
-            // Afficher un toast en temps réel
-            console.log('🔔 Showing toast...');
-            addToast({
-              message: `${getIconForType(newNotification.type)} ${newNotification.title}: ${newNotification.message}`,
-              variant: getToastVariant(newNotification.type),
-              duration: 6000,
-            });
-
-            // Jouer un son de notification
-            console.log('🔔 Playing sound...');
-            playNotificationSound();
-            
-            // Notification navigateur si autorisé
-            showBrowserNotification(newNotification);
-          } else if (payload.eventType === 'UPDATE' && payload.new?.user_id === session.user.id) {
-            fetchNotifications();
-          } else if (payload.eventType === 'DELETE' && payload.old?.user_id === session.user.id) {
-            fetchNotifications();
-          }
-        }
-      )
-      .subscribe();
-
-    // FALLBACK: Polling toutes les 5 secondes si le Realtime ne marche pas
-    const pollInterval = setInterval(async () => {
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('is_read', false)
-        .gt('created_at', sessionStartRef.current) // Seulement les notifs créées APRÈS connexion
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (data && data.length > 0) {
-        for (const latestNotif of data) {
-          // Vérifier si on n'a pas déjà notifié cette notification
-          if (!notifiedIdsRef.current.has(latestNotif.id)) {
-            console.log('🔔 New notification via polling:', latestNotif);
-            notifiedIdsRef.current.add(latestNotif.id);
-            
-            setNotifications((prev) => {
-              const exists = prev.some(n => n.id === latestNotif.id);
-              if (exists) return prev;
-              return [latestNotif, ...prev];
-            });
-            setUnreadCount((prev) => prev + 1);
-            
-            addToast({
-              message: `${getIconForType(latestNotif.type)} ${latestNotif.title}: ${latestNotif.message}`,
-              variant: getToastVariant(latestNotif.type),
-              duration: 6000,
-            });
-            
-            playNotificationSound();
-            showBrowserNotification(latestNotif);
-          }
-        }
+        // Jouer un son de notification
+        playNotificationSound();
+        
+        // Notification navigateur si autorisé
+        showBrowserNotification(notification);
       }
-    }, 5000); // Toutes les 5 secondes
-
-    return () => {
-      console.log('🔔 Unsubscribing from channel');
-      supabase.removeChannel(channel);
-      clearInterval(pollInterval);
-    };
-  }, [session, fetchNotifications, addToast]);
+    });
+  }, [notifications, addToast]);
 
   // Fonction pour obtenir l'icône selon le type
   const getIconForType = (type) => {
@@ -225,55 +167,31 @@ export default function NotificationCenter({ session }) {
   }, [isOpen]);
 
   const markAsRead = async (notificationId) => {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId)
-      .eq('user_id', session.user.id);
-
-    if (!error) {
-      setNotifications(notifications.map(n => 
-        n.id === notificationId ? { ...n, is_read: true } : n
-      ));
-      setUnreadCount(Math.max(0, unreadCount - 1));
+    try {
+      await markAsReadMut({ notificationId });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
   const markAllAsRead = async () => {
-    if (!session?.user) return;
-    
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', session.user.id)
-      .eq('is_read', false);
-
-    if (!error) {
-      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
-      setUnreadCount(0);
+    try {
+      await markAllAsReadMut();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
     }
   };
 
   const deleteNotification = async (notificationId, e) => {
     e.stopPropagation();
-    
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('id', notificationId);
-
-    if (!error) {
-      const deleted = notifications.find(n => n.id === notificationId);
-      setNotifications(notifications.filter(n => n.id !== notificationId));
-      if (deleted && !deleted.is_read) {
-        setUnreadCount(Math.max(0, unreadCount - 1));
-      }
-    }
+    // Pour l'instant, on ne peut pas supprimer les notifications dans Convex
+    // La suppression nécessiterait une mutation supplémentaire
+    console.log('Delete notification not implemented yet');
   };
 
   const handleNotificationClick = async (notification) => {
-    if (!notification.is_read) {
-      await markAsRead(notification.id);
+    if (!notification.is_read && !notification.read) {
+      await markAsRead(notification._id || notification.id);
     }
     
     if (notification.link) {
@@ -284,8 +202,9 @@ export default function NotificationCenter({ session }) {
 
   const getIcon = (type) => getIconForType(type);
 
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
+  const formatTime = (dateValue) => {
+    // Gérer les timestamps Convex (numbers) ou les dates ISO (strings)
+    const date = typeof dateValue === 'number' ? new Date(dateValue) : new Date(dateValue);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -299,7 +218,8 @@ export default function NotificationCenter({ session }) {
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
 
-  if (!session?.user) return null;
+  // Utiliser session?.user ou currentUser pour la condition d'affichage
+  if (!currentUser && !session?.user) return null;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -372,17 +292,17 @@ export default function NotificationCenter({ session }) {
                   </div>
                 ))}
               </div>
-            ) : notifications.length === 0 ? (
+            ) : adaptedNotifications.length === 0 ? (
               <div className="p-5">
                 <EmptyNotifications />
               </div>
             ) : (
-              notifications.map((notification) => (
+              adaptedNotifications.map((notification) => (
                 <div
-                  key={notification.id}
+                  key={notification.id || notification._id}
                   onClick={() => handleNotificationClick(notification)}
                   className={`p-4 border-b border-violet-500/10 cursor-pointer relative transition-all duration-200 hover:bg-violet-500/10 ${
-                    notification.is_read ? 'bg-transparent' : 'bg-violet-500/5'
+                    notification.is_read || notification.read ? 'bg-transparent' : 'bg-violet-500/5'
                   }`}
                 >
                   <div className="flex gap-3 items-start">
@@ -390,21 +310,21 @@ export default function NotificationCenter({ session }) {
                       {getIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className={`text-sm mb-1 text-white ${notification.is_read ? 'font-normal' : 'font-bold'}`}>
+                      <div className={`text-sm mb-1 text-white ${(notification.is_read || notification.read) ? 'font-normal' : 'font-bold'}`}>
                         {notification.title}
                       </div>
                       <div className="text-sm text-gray-400 mb-1.5 leading-relaxed">
                         {notification.message}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {formatTime(notification.created_at)}
+                        {formatTime(notification.created_at || notification.createdAt)}
                       </div>
                     </div>
-                    {!notification.is_read && (
+                    {!(notification.is_read || notification.read) && (
                       <div className="w-2 h-2 bg-cyan-400 rounded-full flex-shrink-0 mt-1.5 animate-pulse" />
                     )}
                     <button
-                      onClick={(e) => deleteNotification(notification.id, e)}
+                      onClick={(e) => deleteNotification(notification.id || notification._id, e)}
                       className="bg-transparent border-none text-gray-600 cursor-pointer text-base p-1 flex-shrink-0 hover:text-pink-500 transition-colors"
                     >
                       ✕

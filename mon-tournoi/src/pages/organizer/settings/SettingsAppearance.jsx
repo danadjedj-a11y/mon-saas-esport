@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, Select, Modal, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -19,35 +20,15 @@ export default function SettingsAppearance() {
 
   useEffect(() => {
     if (context?.tournament) {
-      if (context.tournament.logo_url) {
-        setLogoPreview(context.tournament.logo_url);
+      if (context.tournament.logoUrl) {
+        setLogoPreview(context.tournament.logoUrl);
       }
-      if (context.tournament.banner_url) {
-        setBannerPreview(context.tournament.banner_url);
+      if (context.tournament.bannerUrl) {
+        setBannerPreview(context.tournament.bannerUrl);
       }
       setLoading(false);
-    } else {
-      fetchTournament();
     }
-  }, [context?.tournament, tournamentId]);
-
-  const fetchTournament = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('logo_url, banner_url')
-        .eq('id', tournamentId)
-        .single();
-
-      if (error) throw error;
-      if (data.logo_url) setLogoPreview(data.logo_url);
-      if (data.banner_url) setBannerPreview(data.banner_url);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [context?.tournament]);
 
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
@@ -81,21 +62,19 @@ export default function SettingsAppearance() {
     }
   };
 
+  const updateTournament = useMutation(api.tournamentsMutations.update);
+
+  // Note: File upload to Convex storage would need to be implemented
+  // For now, we'll use URL-based approach or external storage
   const uploadFile = async (file, path) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${tournamentId}/${path}.${fileExt}`;
-
-    const { error } = await supabase.storage
-      .from('tournament-assets')
-      .upload(fileName, file, { upsert: true });
-
-    if (error) throw error;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('tournament-assets')
-      .getPublicUrl(fileName);
-
-    return publicUrl;
+    // TODO: Implement Convex file storage or use external service
+    // For now, return a placeholder or use an external upload service
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -107,21 +86,19 @@ export default function SettingsAppearance() {
 
       if (logoFile) {
         const logoUrl = await uploadFile(logoFile, 'logo');
-        updates.logo_url = logoUrl;
+        updates.logoUrl = logoUrl;
       }
 
       if (bannerFile) {
         const bannerUrl = await uploadFile(bannerFile, 'banner');
-        updates.banner_url = bannerUrl;
+        updates.bannerUrl = bannerUrl;
       }
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await supabase
-          .from('tournaments')
-          .update(updates)
-          .eq('id', tournamentId);
-
-        if (error) throw error;
+        await updateTournament({
+          tournamentId: context?.tournament?._id,
+          ...updates,
+        });
 
         if (context?.refreshTournament) {
           context.refreshTournament();

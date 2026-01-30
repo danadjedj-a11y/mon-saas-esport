@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
 import { toast } from '../../../utils/toast';
 
 const WIDGET_TYPES = [

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { getSwissScores } from '../swissUtils';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 /**
  * Composant API qui retourne des données JSON pour les endpoints API
  * Usage: Utiliser avec un route handler ou directement comme composant React
+ * Note: Migré vers Convex - les données sont maintenant réactives
  */
 export default function TournamentAPI() {
   const { id, endpoint } = useParams();
@@ -13,11 +14,20 @@ export default function TournamentAPI() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [id, endpoint]);
+  // Convex queries - automatically reactive
+  const tournament = useQuery(api.tournaments.getById, id ? { tournamentId: id } : "skip");
+  const matches = useQuery(api.matches.listByTournament, id ? { tournamentId: id } : "skip");
 
-  const fetchData = async () => {
+  useEffect(() => {
+    if (tournament === undefined || matches === undefined) {
+      setLoading(true);
+      return;
+    }
+    
+    processData();
+  }, [tournament, matches, endpoint]);
+
+  const processData = () => {
     try {
       setLoading(true);
       setError(null);
@@ -26,16 +36,16 @@ export default function TournamentAPI() {
 
       switch (endpoint) {
         case 'info':
-          result = await fetchTournamentInfo(id);
+          result = formatTournamentInfo(tournament, matches);
           break;
         case 'bracket':
-          result = await fetchBracket(id);
+          result = formatBracket(tournament, matches);
           break;
         case 'standings':
-          result = await fetchStandings(id);
+          result = formatStandings(tournament, matches);
           break;
         case 'results':
-          result = await fetchResults(id);
+          result = formatResults(tournament, matches);
           break;
         default:
           throw new Error(`Endpoint invalide: ${endpoint}`);
@@ -50,7 +60,7 @@ export default function TournamentAPI() {
   };
 
   // Retourner JSON pour les endpoints API
-  // Note: Pour une vraie API REST, on utiliserait Supabase Edge Functions
+  // Note: Pour une vraie API REST, on utiliserait Convex HTTP actions
   // Ici, on retourne les données via React (utile pour le développement)
   if (loading) {
     return <div style={{ padding: '20px', color: '#666' }}>Chargement...</div>;
@@ -79,195 +89,123 @@ export default function TournamentAPI() {
   );
 }
 
-// Fonctions helper pour récupérer les données
+// Helper functions for formatting Convex data
 
-async function fetchTournamentInfo(tournamentId) {
-  const { data: tournament, error } = await supabase
-    .from('tournaments')
-    .select('*')
-    .eq('id', tournamentId)
-    .single();
-
-  if (error) throw error;
-
-  const { data: participants } = await supabase
-    .from('participants')
-    .select('*, teams(name, tag, logo_url)')
-    .eq('tournament_id', tournamentId);
-
-  const { data: matches } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('tournament_id', tournamentId);
-
+function formatTournamentInfo(tournament, matches) {
+  if (!tournament) return null;
+  
   return {
     tournament: {
-      id: tournament.id,
+      id: tournament._id,
       name: tournament.name,
       game: tournament.game,
       format: tournament.format,
       status: tournament.status,
-      start_date: tournament.start_date,
-      best_of: tournament.best_of,
-      maps_pool: tournament.maps_pool
+      startDate: tournament.startDate,
+      bestOf: tournament.bestOf,
+      mapsPool: tournament.mapsPool
     },
-    participants_count: participants?.length || 0,
-    matches_count: matches?.length || 0,
-    completed_matches: matches?.filter(m => m.status === 'completed').length || 0
+    participantsCount: tournament.participantCount || 0,
+    matchesCount: matches?.length || 0,
+    completedMatches: matches?.filter(m => m.status === 'completed').length || 0
   };
 }
 
-async function fetchBracket(tournamentId) {
-  const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('*')
-    .eq('id', tournamentId)
-    .single();
-
-  const { data: participants } = await supabase
-    .from('participants')
-    .select('*, teams(*)')
-    .eq('tournament_id', tournamentId);
-
-  const { data: matches } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('tournament_id', tournamentId)
-    .order('round_number', { ascending: true })
-    .order('match_number', { ascending: true });
-
-  if (!matches || !participants) {
+function formatBracket(tournament, matches) {
+  if (!matches) {
     return { matches: [], rounds: [] };
   }
 
-  const participantsMap = new Map(participants.map(p => [p.team_id, p]));
-  
-  const enrichedMatches = matches.map(match => {
-    const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
-    const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
+  const enrichedMatches = matches.map(match => ({
+    id: match._id,
+    matchNumber: match.matchNumber,
+    roundNumber: match.round,
+    bracketType: match.isLosersBracket ? 'losers' : 'winners',
+    status: match.status,
+    scoreP1: match.scoreTeam1,
+    scoreP2: match.scoreTeam2,
+    scheduledAt: match.scheduledAt,
+    team1: match.team1 ? {
+      id: match.team1._id,
+      name: match.team1.name,
+      tag: match.team1.tag,
+      logoUrl: match.team1.logoUrl
+    } : null,
+    team2: match.team2 ? {
+      id: match.team2._id,
+      name: match.team2.name,
+      tag: match.team2.tag,
+      logoUrl: match.team2.logoUrl
+    } : null
+  }));
 
-    return {
-      id: match.id,
-      match_number: match.match_number,
-      round_number: match.round_number,
-      bracket_type: match.bracket_type,
-      status: match.status,
-      score_p1: match.score_p1,
-      score_p2: match.score_p2,
-      scheduled_at: match.scheduled_at,
-      team1: p1 ? {
-        id: p1.team_id,
-        name: p1.teams.name,
-        tag: p1.teams.tag,
-        logo_url: p1.teams.logo_url
-      } : null,
-      team2: p2 ? {
-        id: p2.team_id,
-        name: p2.teams.name,
-        tag: p2.teams.tag,
-        logo_url: p2.teams.logo_url
-      } : null
-    };
-  });
-
-  const rounds = [...new Set(matches.map(m => m.round_number))].sort();
+  const rounds = [...new Set(matches.map(m => m.round))].sort((a, b) => a - b);
 
   return {
-    tournament_id: tournamentId,
+    tournamentId: tournament?._id,
     format: tournament?.format,
     matches: enrichedMatches,
     rounds: rounds.map(round => ({
-      round_number: round,
-      matches: enrichedMatches.filter(m => m.round_number === round)
+      roundNumber: round,
+      matches: enrichedMatches.filter(m => m.roundNumber === round)
     }))
   };
 }
 
-async function fetchStandings(tournamentId) {
-  const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('format')
-    .eq('id', tournamentId)
-    .single();
-
-  if (tournament?.format === 'swiss') {
-    const scores = await getSwissScores(supabase, tournamentId);
-    const { data: participants } = await supabase
-      .from('participants')
-      .select('*, teams(*)')
-      .eq('tournament_id', tournamentId);
-
-    const standings = scores
-      .sort((a, b) => {
-        if (b.wins !== a.wins) return b.wins - a.wins;
-        if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
-        return 0;
-      })
-      .map((score, index) => {
-        const participant = participants?.find(p => p.team_id === score.team_id);
-        return {
-          rank: index + 1,
-          team: participant ? {
-            id: participant.team_id,
-            name: participant.teams.name,
-            tag: participant.teams.tag,
-            logo_url: participant.teams.logo_url
-          } : null,
-          wins: score.wins,
-          losses: score.losses,
-          draws: score.draws,
-          buchholz_score: parseFloat(score.buchholz_score || 0)
-        };
-      });
-
-    return {
-      tournament_id: tournamentId,
-      format: 'swiss',
-      standings
-    };
+function formatStandings(tournament, matches) {
+  if (!matches || !tournament) {
+    return { tournamentId: tournament?._id, format: tournament?.format, standings: [] };
   }
 
-  // Pour les autres formats, calculer depuis les matchs
-  const { data: participants } = await supabase
-    .from('participants')
-    .select('*, teams(*)')
-    .eq('tournament_id', tournamentId);
-
-  const { data: matches } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('tournament_id', tournamentId)
-    .eq('status', 'completed');
-
+  // Calculate standings from completed matches
   const teamStats = new Map();
-  participants?.forEach(p => {
-    teamStats.set(p.team_id, {
-      team: {
-        id: p.team_id,
-        name: p.teams.name,
-        tag: p.teams.tag,
-        logo_url: p.teams.logo_url
-      },
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      matches_played: 0
-    });
-  });
+  
+  matches.forEach(match => {
+    if (match.status !== 'completed') return;
+    
+    // Initialize teams if not seen
+    if (match.team1 && !teamStats.has(match.team1._id)) {
+      teamStats.set(match.team1._id, {
+        team: {
+          id: match.team1._id,
+          name: match.team1.name,
+          tag: match.team1.tag,
+          logoUrl: match.team1.logoUrl
+        },
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        matchesPlayed: 0
+      });
+    }
+    if (match.team2 && !teamStats.has(match.team2._id)) {
+      teamStats.set(match.team2._id, {
+        team: {
+          id: match.team2._id,
+          name: match.team2.name,
+          tag: match.team2.tag,
+          logoUrl: match.team2.logoUrl
+        },
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        matchesPlayed: 0
+      });
+    }
 
-  matches?.forEach(m => {
-    if (m.player1_id && teamStats.has(m.player1_id)) {
-      const stats = teamStats.get(m.player1_id);
-      stats.matches_played++;
-      if ((m.score_p1 || 0) > (m.score_p2 || 0)) stats.wins++;
-      else if ((m.score_p1 || 0) < (m.score_p2 || 0)) stats.losses++;
+    // Update stats
+    if (match.team1?._id) {
+      const stats = teamStats.get(match.team1._id);
+      stats.matchesPlayed++;
+      if ((match.scoreTeam1 || 0) > (match.scoreTeam2 || 0)) stats.wins++;
+      else if ((match.scoreTeam1 || 0) < (match.scoreTeam2 || 0)) stats.losses++;
       else stats.draws++;
     }
-    if (m.player2_id && teamStats.has(m.player2_id)) {
-      const stats = teamStats.get(m.player2_id);
-      stats.matches_played++;
-      if ((m.score_p2 || 0) > (m.score_p1 || 0)) stats.wins++;
-      else if ((m.score_p2 || 0) < (m.score_p1 || 0)) stats.losses++;
+    if (match.team2?._id) {
+      const stats = teamStats.get(match.team2._id);
+      stats.matchesPlayed++;
+      if ((match.scoreTeam2 || 0) > (match.scoreTeam1 || 0)) stats.wins++;
+      else if ((match.scoreTeam2 || 0) < (match.scoreTeam1 || 0)) stats.losses++;
       else stats.draws++;
     }
   });
@@ -283,70 +221,54 @@ async function fetchStandings(tournamentId) {
     }));
 
   return {
-    tournament_id: tournamentId,
-    format: tournament?.format || 'elimination',
+    tournamentId: tournament._id,
+    format: tournament.format,
     standings
   };
 }
 
-async function fetchResults(tournamentId) {
-  const { data: participants } = await supabase
-    .from('participants')
-    .select('*, teams(*)')
-    .eq('tournament_id', tournamentId);
-
-  const { data: matches } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('tournament_id', tournamentId)
-    .eq('status', 'completed')
-    .order('round_number', { ascending: true })
-    .order('match_number', { ascending: true });
-
-  if (!matches || !participants) {
+function formatResults(tournament, matches) {
+  if (!matches) {
     return { results: [] };
   }
 
-  const participantsMap = new Map(participants.map(p => [p.team_id, p]));
+  const completedMatches = matches.filter(m => m.status === 'completed');
 
-  const results = matches.map(match => {
-    const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
-    const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
-
-    const winnerId = (match.score_p1 || 0) > (match.score_p2 || 0) ? match.player1_id :
-                     (match.score_p2 || 0) > (match.score_p1 || 0) ? match.player2_id : null;
+  const results = completedMatches.map(match => {
+    const winnerId = (match.scoreTeam1 || 0) > (match.scoreTeam2 || 0) ? match.team1?._id :
+                     (match.scoreTeam2 || 0) > (match.scoreTeam1 || 0) ? match.team2?._id : null;
 
     return {
-      id: match.id,
-      match_number: match.match_number,
-      round_number: match.round_number,
-      bracket_type: match.bracket_type,
-      score_p1: match.score_p1,
-      score_p2: match.score_p2,
-      scheduled_at: match.scheduled_at,
-      team1: p1 ? {
-        id: p1.team_id,
-        name: p1.teams.name,
-        tag: p1.teams.tag,
-        logo_url: p1.teams.logo_url
+      id: match._id,
+      matchNumber: match.matchNumber,
+      roundNumber: match.round,
+      bracketType: match.isLosersBracket ? 'losers' : 'winners',
+      scoreP1: match.scoreTeam1,
+      scoreP2: match.scoreTeam2,
+      scheduledAt: match.scheduledAt,
+      team1: match.team1 ? {
+        id: match.team1._id,
+        name: match.team1.name,
+        tag: match.team1.tag,
+        logoUrl: match.team1.logoUrl
       } : null,
-      team2: p2 ? {
-        id: p2.team_id,
-        name: p2.teams.name,
-        tag: p2.teams.tag,
-        logo_url: p2.teams.logo_url
+      team2: match.team2 ? {
+        id: match.team2._id,
+        name: match.team2.name,
+        tag: match.team2.tag,
+        logoUrl: match.team2.logoUrl
       } : null,
-      winner: winnerId ? (winnerId === match.player1_id ? 'team1' : 'team2') : null
+      winner: winnerId ? (winnerId === match.team1?._id ? 'team1' : 'team2') : null
     };
   });
 
   return {
-    tournament_id: tournamentId,
-    total_results: results.length,
+    tournamentId: tournament?._id,
+    totalResults: results.length,
     results
   };
 }
 
-// Fonction utilitaire pour exporter les données (utilisable depuis l'extérieur)
-export { fetchTournamentInfo, fetchBracket, fetchStandings, fetchResults };
+// Export for external use (these now work with Convex data format)
+export { formatTournamentInfo, formatBracket, formatStandings, formatResults };
 

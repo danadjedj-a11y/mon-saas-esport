@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { Button, Card, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import { generateBracketMatches, calculateMatchCount } from '../../utils/matchGenerator';
@@ -217,62 +218,32 @@ export default function TournamentStructure() {
   const context = useOutletContext();
   const tournament = context?.tournament;
   
-  const [phases, setPhases] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showCreator, setShowCreator] = useState(false);
 
-  // Charger les phases
-  useEffect(() => {
-    fetchPhases();
-  }, [tournamentId]);
+  // Charger les phases via Convex
+  const phasesData = useQuery(
+    api.tournamentPhases.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const phases = phasesData ?? [];
+  const loading = phasesData === undefined;
 
-  const fetchPhases = async () => {
-    if (!tournamentId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tournament_phases')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('phase_order', { ascending: true });
-
-      if (error) {
-        // Si la table n'existe pas encore, on affiche juste une liste vide
-        console.log('Phases table might not exist yet:', error);
-        setPhases([]);
-      } else {
-        setPhases(data || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement phases:', error);
-      setPhases([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const deletePhase = useMutation(api.tournamentPhases.remove);
 
   const handleConfigure = (phase) => {
-    navigate(`/organizer/tournament/${tournamentId}/structure/${phase.id}/settings`);
+    navigate(`/organizer/tournament/${tournamentId}/structure/${phase._id}/settings`);
   };
 
   const handleEditBracket = (phase) => {
-    navigate(`/organizer/tournament/${tournamentId}/structure/${phase.id}/bracket`);
+    navigate(`/organizer/tournament/${tournamentId}/structure/${phase._id}/bracket`);
   };
 
   const handleDelete = async (phase) => {
     if (!confirm(`Supprimer la phase "${phase.name}" ? Cette action est irréversible.`)) return;
 
     try {
-      const { error } = await supabase
-        .from('tournament_phases')
-        .delete()
-        .eq('id', phase.id);
-
-      if (error) throw error;
-
+      await deletePhase({ phaseId: phase._id });
       toast.success('Phase supprimée');
-      fetchPhases();
     } catch (error) {
       toast.error('Erreur lors de la suppression: ' + error.message);
     }
@@ -297,9 +268,8 @@ export default function TournamentStructure() {
   const handlePhaseCreated = (newPhase) => {
     setShowCreator(false);
     toast.success(`Phase "${newPhase.name}" créée avec succès`);
-    fetchPhases();
     // Rediriger vers l'éditeur de bracket
-    navigate(`/organizer/tournament/${tournamentId}/structure/${newPhase.id}/bracket`);
+    navigate(`/organizer/tournament/${tournamentId}/structure/${newPhase._id}/bracket`);
   };
 
   if (loading) {
@@ -331,7 +301,7 @@ export default function TournamentStructure() {
         {/* Phases existantes */}
         {phases.map((phase, index) => (
           <PhaseCard
-            key={phase.id}
+            key={phase._id}
             phase={phase}
             index={index}
             onConfigure={handleConfigure}

@@ -64,9 +64,9 @@
   --color-text-muted: #64748B;
   
   /* === Glass Effect Colors === */
-  --color-glass-bg: rgba(13, 13, 20, 0.8);
-  --color-glass-border: rgba(148, 163, 184, 0.1);
-  --color-glass-hover: rgba(139, 92, 246, 0.15);
+  --color-glass-bg: rgba(5, 5, 10, 0.6);
+  --color-glass-border: rgba(255, 255, 255, 0.05);
+  --color-glass-hover: rgba(139, 92, 246, 0.1);
   
   /* === Typography === */
   --font-display: 'Space Grotesk', sans-serif;
@@ -202,19 +202,19 @@ a:hover {
 }
 
 .glass-card {
-  background: var(--color-glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--color-glass-border);
+  background: rgba(5, 5, 10, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   transition: all var(--transition-normal);
 }
 
 .glass-card:hover {
-  background: var(--color-glass-hover);
-  border-color: var(--color-violet);
-  box-shadow: var(--shadow-glow);
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
   transform: translateY(-2px);
 }
 

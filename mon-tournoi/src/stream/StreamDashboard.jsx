@@ -1,94 +1,112 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { getSwissScores } from '../swissUtils';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export default function StreamDashboard() {
   const { id } = useParams();
   
-  const [tournoi, setTournoi] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [swissScores, setSwissScores] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Convex queries - automatically reactive, no subscriptions needed
+  const tournoi = useQuery(api.tournaments.getById, id ? { tournamentId: id } : "skip");
+  const matchesData = useQuery(api.matches.listByTournament, id ? { tournamentId: id } : "skip");
+  const participantsData = useQuery(api.tournamentRegistrations.listByTournament, id ? { tournamentId: id } : "skip");
+  
+  const loading = tournoi === undefined || matchesData === undefined || participantsData === undefined;
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'recent', 'stats'
 
-  const fetchData = useCallback(async () => {
-    try {
-      const { data: tData } = await supabase.from('tournaments').select('*').eq('id', id).single();
-      setTournoi(tData);
-
-      const { data: pData } = await supabase
-        .from('participants')
-        .select('*, teams(*)')
-        .eq('tournament_id', id)
-        .order('seed_order', { ascending: true, nullsLast: true });
-      setParticipants(pData || []);
-
-      const { data: mData } = await supabase.from('matches').select('*').eq('tournament_id', id).order('match_number');
-
-      if (mData && mData.length > 0 && pData) {
-        // Supporter équipes permanentes ET temporaires
-        const participantsMap = new Map();
-        pData.forEach(p => {
-          if (p.team_id) participantsMap.set(p.team_id, p);
-          if (p.temporary_team_id) participantsMap.set(p.temporary_team_id, p);
-        });
-        
-        const enrichedMatches = mData.map(match => {
-          const p1 = match.player1_id ? participantsMap.get(match.player1_id) : null;
-          const p2 = match.player2_id ? participantsMap.get(match.player2_id) : null;
-          
-          const getTeamData = (p) => {
-            if (!p) return null;
-            const isTemp = !!p.temporary_team_id && !p.team_id;
-            return isTemp ? p.temporary_teams : p.teams;
-          };
-          
-          const getTeamName = (p) => {
-            if (!p) return 'En attente';
-            const team = getTeamData(p);
-            return `${team?.name || 'Inconnu'} [${team?.tag || '?'}]`;
-          };
-          
-          const getTeamLogo = (p) => {
-            const team = getTeamData(p);
-            return team?.logo_url || `https://ui-avatars.com/api/?name=${team?.tag || '?'}&background=random&size=64`;
-          };
-
-          return {
-            ...match,
-            p1_name: match.player1_id ? getTeamName(p1) : 'En attente',
-            p1_avatar: getTeamLogo(p1),
-            p2_name: match.player2_id ? getTeamName(p2) : 'En attente',
-            p2_avatar: getTeamLogo(p2),
-          };
-        });
-        setMatches(enrichedMatches);
-      }
-
-      if (tData?.format === 'swiss') {
-        const scores = await getSwissScores(supabase, id);
-        setSwissScores(scores);
-      }
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur fetchData dashboard:', error);
-      setLoading(false);
+  // Process participants and matches with useMemo for performance
+  const { participants, matches, swissScores } = useMemo(() => {
+    if (!participantsData || !matchesData) {
+      return { participants: [], matches: [], swissScores: [] };
     }
-  }, [id]);
 
-  useEffect(() => {
-    fetchData();
+    // Build participants map
+    const participantsMap = new Map();
+    participantsData.forEach(p => {
+      if (p.teamId) participantsMap.set(p.teamId, p);
+      if (p.temporaryTeamId) participantsMap.set(p.temporaryTeamId, p);
+    });
+    
+    const enrichedMatches = matchesData.map(match => {
+      const p1 = match.team1Id ? participantsMap.get(match.team1Id) : null;
+      const p2 = match.team2Id ? participantsMap.get(match.team2Id) : null;
+      
+      const getTeamData = (p) => {
+        if (!p) return null;
+        return p.team || null;
+      };
+      
+      const getTeamName = (p) => {
+        if (!p) return 'En attente';
+        const team = getTeamData(p);
+        return `${team?.name || 'Inconnu'} [${team?.tag || '?'}]`;
+      };
+      
+      const getTeamLogo = (p) => {
+        const team = getTeamData(p);
+        return team?.logoUrl || `https://ui-avatars.com/api/?name=${team?.tag || '?'}&background=random&size=64`;
+      };
 
-    const channel = supabase.channel('stream-dashboard-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'swiss_scores', filter: `tournament_id=eq.${id}` }, () => fetchData())
-      .subscribe();
+      return {
+        ...match,
+        // Map Convex fields to expected field names for UI
+        id: match._id,
+        player1_id: match.team1Id,
+        player2_id: match.team2Id,
+        match_number: match.matchNumber,
+        round_number: match.roundNumber,
+        score_p1: match.scoreTeam1,
+        score_p2: match.scoreTeam2,
+        bracket_type: match.bracketType,
+        scheduled_at: match.scheduledAt,
+        p1_name: match.team1Id ? getTeamName(p1) : 'En attente',
+        p1_avatar: getTeamLogo(p1),
+        p2_name: match.team2Id ? getTeamName(p2) : 'En attente',
+        p2_avatar: getTeamLogo(p2),
+      };
+    }).sort((a, b) => a.match_number - b.match_number);
 
-    return () => supabase.removeChannel(channel);
-  }, [id, fetchData]);
+    // Swiss scores (computed from matches if format is swiss)
+    let swissScoresData = [];
+    if (tournoi?.format === 'swiss') {
+      const scoreMap = new Map();
+      participantsData.forEach(p => {
+        if (p.teamId) {
+          scoreMap.set(p.teamId, {
+            id: p.teamId,
+            teamId: p.teamId,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            buchholzScore: 0,
+          });
+        }
+      });
+
+      enrichedMatches.filter(m => m.status === 'completed').forEach(m => {
+        if (m.player1_id && scoreMap.has(m.player1_id)) {
+          const stats = scoreMap.get(m.player1_id);
+          if ((m.score_p1 || 0) > (m.score_p2 || 0)) stats.wins++;
+          else if ((m.score_p1 || 0) < (m.score_p2 || 0)) stats.losses++;
+          else stats.draws++;
+        }
+        if (m.player2_id && scoreMap.has(m.player2_id)) {
+          const stats = scoreMap.get(m.player2_id);
+          if ((m.score_p2 || 0) > (m.score_p1 || 0)) stats.wins++;
+          else if ((m.score_p2 || 0) < (m.score_p1 || 0)) stats.losses++;
+          else stats.draws++;
+        }
+      });
+
+      swissScoresData = Array.from(scoreMap.values());
+    }
+
+    return { 
+      participants: participantsData, 
+      matches: enrichedMatches, 
+      swissScores: swissScoresData 
+    };
+  }, [matchesData, participantsData, tournoi?.format]);
 
   if (loading) {
     return (
@@ -343,19 +361,19 @@ export default function StreamDashboard() {
               </div>
             </div>
 
-            {tournoi.format === 'swiss' && swissScores.length > 0 && (
+            {tournoi?.format === 'swiss' && swissScores.length > 0 && (
               <div>
                 <h3 style={{ marginBottom: '20px' }}>🇨🇭 Classement Suisse (Top 5)</h3>
                 <div style={{ display: 'grid', gap: '10px' }}>
                   {swissScores
                     .sort((a, b) => {
                       if (b.wins !== a.wins) return b.wins - a.wins;
-                      if (b.buchholz_score !== a.buchholz_score) return b.buchholz_score - a.buchholz_score;
+                      if (b.buchholzScore !== a.buchholzScore) return b.buchholzScore - a.buchholzScore;
                       return 0;
                     })
                     .slice(0, 5)
                     .map((score, index) => {
-                      const team = participants.find(p => p.team_id === score.team_id);
+                      const participant = participants.find(p => p.teamId === score.teamId);
                       return (
                         <div
                           key={score.id}
@@ -372,14 +390,14 @@ export default function StreamDashboard() {
                           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', minWidth: '50px', textAlign: 'center', color: index === 0 ? '#f1c40f' : '#fff' }}>
                             #{index + 1}
                           </div>
-                          {team?.teams?.logo_url && (
-                            <img loading="lazy" src={team.teams.logo_url} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
+                          {participant?.team?.logoUrl && (
+                            <img loading="lazy" src={participant.team.logoUrl} alt="" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />
                           )}
-                          <div style={{ flex: 1, fontSize: '1.2rem', fontWeight: 'bold' }}>{team?.teams?.name || 'Inconnu'}</div>
+                          <div style={{ flex: 1, fontSize: '1.2rem', fontWeight: 'bold' }}>{participant?.team?.name || 'Inconnu'}</div>
                           <div style={{ display: 'flex', gap: '15px', fontSize: '1rem' }}>
                             <span style={{ color: '#2ecc71' }}>V: {score.wins}</span>
                             <span style={{ color: '#e74c3c' }}>D: {score.losses}</span>
-                            <span style={{ color: '#3498db', fontWeight: 'bold' }}>BH: {parseFloat(score.buchholz_score || 0).toFixed(1)}</span>
+                            <span style={{ color: '#3498db', fontWeight: 'bold' }}>BH: {parseFloat(score.buchholzScore || 0).toFixed(1)}</span>
                           </div>
                         </div>
                       );

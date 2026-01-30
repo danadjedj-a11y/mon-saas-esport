@@ -1,101 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { toast } from '../../utils/toast';
 import { getPlatformForGame, PLATFORM_NAMES, PLATFORM_LOGOS } from '../../utils/gamePlatforms';
 
 /**
- * TournamentRegister - Page d'inscription à un tournoi
+ * TournamentRegister - Page d'inscription à un tournoi (Convex)
  */
 export default function TournamentRegister({ session }) {
   const { id: tournamentId } = useParams();
   const navigate = useNavigate();
   
-  const [tournament, setTournament] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [userTeams, setUserTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState('');
-  const [registrationType, setRegistrationType] = useState('solo'); // 'solo' ou 'team'
-  const [userProfile, setUserProfile] = useState(null);
-  const [hasRequiredGamingAccount, setHasRequiredGamingAccount] = useState(false);
-  const [requiredPlatform, setRequiredPlatform] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [tournamentId, session]);
+  // Convex queries
+  const tournament = useQuery(api.tournaments.getById, 
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const currentUser = useQuery(api.users.current);
+  const userTeams = useQuery(api.teams.listByCaptain, 
+    currentUser?._id ? { userId: currentUser._id } : "skip"
+  );
+  const registrations = useQuery(api.tournamentRegistrations.listByTournament, 
+    tournamentId ? { tournamentId } : "skip"
+  );
+  
+  // Mutation pour l'inscription
+  const registerMutation = useMutation(api.tournamentRegistrationsMutations.register);
 
-  const fetchData = async () => {
-    try {
-      // Charger le tournoi
-      const { data: tournamentData, error: tournamentError } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', tournamentId)
-        .single();
+  // Vérifier si déjà inscrit
+  const isRegistered = useMemo(() => {
+    if (!registrations || !currentUser) return false;
+    return registrations.some(r => 
+      r.userId === currentUser._id || 
+      (r.teamId && userTeams?.some(t => t._id === r.teamId))
+    );
+  }, [registrations, currentUser, userTeams]);
 
-      if (tournamentError) throw tournamentError;
-      setTournament(tournamentData);
+  // Déterminer le type d'inscription
+  const teamSize = tournament?.teamSize || 1;
+  const registrationType = teamSize > 1 ? 'team' : 'solo';
 
-      // Déterminer la plateforme gaming requise pour ce jeu
-      const platform = getPlatformForGame(tournamentData.game);
-      setRequiredPlatform(platform);
+  // Plateforme gaming requise
+  const requiredPlatform = tournament?.game ? getPlatformForGame(tournament.game) : null;
+  
+  // Vérifier si l'utilisateur a le compte gaming requis
+  const hasRequiredGamingAccount = useMemo(() => {
+    if (!requiredPlatform) return true;
+    if (!currentUser?.gamingAccounts) return false;
+    const account = currentUser.gamingAccounts[requiredPlatform];
+    return account && account.trim() !== '';
+  }, [requiredPlatform, currentUser?.gamingAccounts]);
 
-      // Déterminer le type d'inscription
-      const teamSize = tournamentData.team_size || 1;
-      setRegistrationType(teamSize > 1 ? 'team' : 'solo');
-
-      if (session?.user) {
-        // Charger le profil utilisateur avec les comptes gaming
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*, gaming_accounts')
-          .eq('id', session.user.id)
-          .single();
-        
-        setUserProfile(profileData);
-
-        // Vérifier si l'utilisateur a le compte gaming requis
-        if (platform && profileData?.gaming_accounts) {
-          const gamingAccounts = profileData.gaming_accounts;
-          const hasAccount = gamingAccounts[platform] && gamingAccounts[platform].trim() !== '';
-          setHasRequiredGamingAccount(hasAccount);
-        } else if (!platform) {
-          // Si aucune plateforme n'est requise, on permet l'inscription
-          setHasRequiredGamingAccount(true);
-        }
-
-        // Vérifier si déjà inscrit
-        const { data: existingReg } = await supabase
-          .from('participants')
-          .select('id')
-          .eq('tournament_id', tournamentId)
-          .eq('user_id', session.user.id)
-          .single();
-
-        setIsRegistered(!!existingReg);
-
-        // Charger les équipes de l'utilisateur si inscription par équipe
-        if (teamSize > 1) {
-          const { data: teams } = await supabase
-            .from('teams')
-            .select('*')
-            .or(`captain_id.eq.${session.user.id},members.cs.{${session.user.id}}`);
-          
-          setUserTeams(teams || []);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Impossible de charger le tournoi');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Compter les participants
+  const participantCount = registrations?.length || 0;
 
   const handleRegister = async () => {
-    if (!session?.user) {
+    if (!session?.user || !currentUser) {
       toast.error('Vous devez être connecté pour vous inscrire');
       navigate('/auth', { state: { returnTo: `/tournament/${tournamentId}/register` } });
       return;
@@ -115,43 +78,24 @@ export default function TournamentRegister({ session }) {
     setRegistering(true);
 
     try {
-      const participantData = {
-        tournament_id: tournamentId,
-        user_id: session.user.id,
-        name: session.user.user_metadata?.username || session.user.email?.split('@')[0],
-        status: tournament.require_approval ? 'pending' : 'confirmed',
-        registered_at: new Date().toISOString(),
-      };
-
-      // Si inscription par équipe
-      if (registrationType === 'team' && selectedTeam) {
-        const team = userTeams.find(t => t.id === selectedTeam);
-        participantData.team_id = selectedTeam;
-        participantData.team_name = team?.name;
-        participantData.name = team?.name;
-      }
-
-      const { error } = await supabase
-        .from('participants')
-        .insert([participantData]);
-
-      if (error) throw error;
+      await registerMutation({
+        tournamentId,
+        teamId: registrationType === 'team' && selectedTeam ? selectedTeam : undefined,
+      });
 
       toast.success(
-        tournament.require_approval 
+        tournament?.requireApproval 
           ? 'Inscription envoyée ! En attente de validation.' 
           : 'Inscription confirmée !'
       );
-      setIsRegistered(true);
       
       // Rediriger vers la page du tournoi
       setTimeout(() => navigate(`/tournament/${tournamentId}`), 1500);
 
     } catch (error) {
       console.error('Erreur inscription:', error);
-      if (error.code === '23505') {
+      if (error.message?.includes('déjà inscrit')) {
         toast.error('Vous êtes déjà inscrit à ce tournoi');
-        setIsRegistered(true);
       } else {
         toast.error('Erreur lors de l\'inscription');
       }
@@ -159,6 +103,9 @@ export default function TournamentRegister({ session }) {
       setRegistering(false);
     }
   };
+
+  // Loading state
+  const loading = tournament === undefined || currentUser === undefined;
 
   if (loading) {
     return (
@@ -180,7 +127,7 @@ export default function TournamentRegister({ session }) {
   }
 
   const canRegister = tournament.status === 'draft' || tournament.status === 'registration_open';
-  const isFull = tournament.max_participants && tournament.participant_count >= tournament.max_participants;
+  const isFull = tournament.maxParticipants && participantCount >= tournament.maxParticipants;
 
   return (
     <div className="min-h-screen bg-[#0d1117]">
@@ -215,17 +162,17 @@ export default function TournamentRegister({ session }) {
             <div className="mt-6 grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-white/5 rounded-lg">
                 <p className="text-lg font-bold text-white">
-                  {tournament.participant_count || 0}
-                  {tournament.max_participants && <span className="text-gray-500">/{tournament.max_participants}</span>}
+                  {participantCount}
+                  {tournament.maxParticipants && <span className="text-gray-500">/{tournament.maxParticipants}</span>}
                 </p>
                 <p className="text-xs text-gray-500">Participants</p>
               </div>
               <div className="text-center p-3 bg-white/5 rounded-lg">
-                <p className="text-lg font-bold text-white">{tournament.team_size || 1}v{tournament.team_size || 1}</p>
+                <p className="text-lg font-bold text-white">{tournament.teamSize || 1}v{tournament.teamSize || 1}</p>
                 <p className="text-xs text-gray-500">Format</p>
               </div>
               <div className="text-center p-3 bg-white/5 rounded-lg">
-                <p className="text-lg font-bold text-white">{tournament.prize_pool || '-'}</p>
+                <p className="text-lg font-bold text-white">{tournament.prizePool || '-'}</p>
                 <p className="text-xs text-gray-500">Prize Pool</p>
               </div>
             </div>
@@ -313,7 +260,7 @@ export default function TournamentRegister({ session }) {
                 )}
 
                 {/* Gaming account configured indicator */}
-                {requiredPlatform && hasRequiredGamingAccount && userProfile?.gaming_accounts?.[requiredPlatform] && (
+                {requiredPlatform && hasRequiredGamingAccount && currentUser?.gamingAccounts?.[requiredPlatform] && (
                   <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <div className="flex items-center gap-3">
                       {PLATFORM_LOGOS[requiredPlatform] && (
@@ -325,7 +272,7 @@ export default function TournamentRegister({ session }) {
                       )}
                       <div>
                         <p className="text-green-400 text-sm">
-                          ✓ Compte {PLATFORM_NAMES[requiredPlatform]} : <span className="font-medium text-white">{userProfile.gaming_accounts[requiredPlatform]}</span>
+                          ✓ Compte {PLATFORM_NAMES[requiredPlatform]} : <span className="font-medium text-white">{currentUser.gamingAccounts[requiredPlatform]}</span>
                         </p>
                       </div>
                     </div>
@@ -338,7 +285,7 @@ export default function TournamentRegister({ session }) {
                     <label className="block text-sm font-medium text-gray-400 mb-2">
                       Sélectionnez votre équipe
                     </label>
-                    {userTeams.length > 0 ? (
+                    {userTeams && userTeams.length > 0 ? (
                       <select
                         value={selectedTeam}
                         onChange={(e) => setSelectedTeam(e.target.value)}
@@ -346,7 +293,7 @@ export default function TournamentRegister({ session }) {
                       >
                         <option value="">-- Choisir une équipe --</option>
                         {userTeams.map(team => (
-                          <option key={team.id} value={team.id}>{team.name}</option>
+                          <option key={team._id} value={team._id}>{team.name}</option>
                         ))}
                       </select>
                     ) : (
@@ -370,8 +317,8 @@ export default function TournamentRegister({ session }) {
                   <p className="text-sm text-gray-400 mb-1">Inscrit en tant que</p>
                   <p className="text-white font-medium">
                     {registrationType === 'team' && selectedTeam 
-                      ? userTeams.find(t => t.id === selectedTeam)?.name
-                      : session.user.user_metadata?.username || session.user.email?.split('@')[0]
+                      ? userTeams?.find(t => t._id === selectedTeam)?.name
+                      : currentUser?.username || session?.user?.email?.split('@')[0]
                     }
                   </p>
                 </div>
@@ -400,7 +347,7 @@ export default function TournamentRegister({ session }) {
                   )}
                 </button>
 
-                {tournament.require_approval && (
+                {tournament.requireApproval && (
                   <p className="mt-3 text-center text-xs text-gray-500">
                     ⚠️ L'inscription nécessite l'approbation de l'organisateur
                   </p>

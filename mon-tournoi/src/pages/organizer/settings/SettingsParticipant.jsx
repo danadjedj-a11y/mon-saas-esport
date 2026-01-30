@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, GlassCard, PageHeader } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -28,46 +29,29 @@ export default function SettingsParticipant() {
     if (context?.tournament) {
       populateForm(context.tournament);
       setLoading(false);
-    } else {
-      fetchTournament();
     }
-  }, [context?.tournament, tournamentId]);
+  }, [context?.tournament]);
 
   const populateForm = (tournament) => {
-    const checkInDeadline = tournament.check_in_deadline 
-      ? new Date(tournament.check_in_deadline)
+    const checkInEnd = tournament.checkInEnd
+      ? new Date(tournament.checkInEnd)
       : null;
     
     setFormData(prev => ({
       ...prev,
-      check_in_mode: tournament.check_in_window_minutes > 0 ? 'participant' : 'none',
-      check_in_close_date: checkInDeadline ? checkInDeadline.toISOString().split('T')[0] : '',
-      check_in_close_time: checkInDeadline ? checkInDeadline.toTimeString().slice(0, 5) : '',
-      min_players_per_team: tournament.team_size_min || 5,
-      max_players_per_team: tournament.team_size_max || tournament.team_size || 5,
+      check_in_mode: tournament.checkInRequired ? 'participant' : 'none',
+      check_in_close_date: checkInEnd ? checkInEnd.toISOString().split('T')[0] : '',
+      check_in_close_time: checkInEnd ? checkInEnd.toTimeString().slice(0, 5) : '',
+      min_players_per_team: tournament.teamSizeMin || 5,
+      max_players_per_team: tournament.teamSizeMax || tournament.teamSize || 5,
     }));
-  };
-
-  const fetchTournament = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', tournamentId)
-        .single();
-
-      if (error) throw error;
-      populateForm(data);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const updateTournament = useMutation(api.tournamentsMutations.update);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,23 +59,19 @@ export default function SettingsParticipant() {
 
     try {
       // Construire la date de deadline check-in
-      let checkInDeadline = null;
+      let checkInEnd = undefined;
       if (formData.check_in_mode !== 'none' && formData.check_in_close_date) {
         const dateStr = formData.check_in_close_date;
         const timeStr = formData.check_in_close_time || '23:59';
-        checkInDeadline = new Date(`${dateStr}T${timeStr}`).toISOString();
+        checkInEnd = new Date(`${dateStr}T${timeStr}`).getTime();
       }
 
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          check_in_deadline: checkInDeadline,
-          check_in_window_minutes: formData.check_in_mode !== 'none' ? 15 : 0,
-        })
-        .eq('id', tournamentId);
+      await updateTournament({
+        tournamentId: context?.tournament?._id,
+        checkInEnd: checkInEnd,
+        checkInRequired: formData.check_in_mode !== 'none',
+      });
 
-      if (error) throw error;
-      
       if (context?.refreshTournament) {
         context.refreshTournament();
       }

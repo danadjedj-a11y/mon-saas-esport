@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import clsx from 'clsx';
 
 /**
@@ -10,71 +11,28 @@ import clsx from 'clsx';
 export default function EmbedBracket() {
   const { id: tournamentId } = useParams();
   const [searchParams] = useSearchParams();
-  
-  const [tournament, setTournament] = useState(null);
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Options de personnalisation via query params
   const theme = searchParams.get('theme') || 'dark';
   const showHeader = searchParams.get('header') !== 'false';
   const compact = searchParams.get('compact') === 'true';
 
-  useEffect(() => {
-    fetchData();
-  }, [tournamentId]);
+  // Convex queries
+  const tournament = useQuery(api.tournaments.getById, { tournamentId });
+  const rawMatches = useQuery(api.matches.listByTournament, { tournamentId }) ?? [];
 
-  const fetchData = async () => {
-    try {
-      const [tournamentRes, matchesRes] = await Promise.all([
-        supabase
-          .from('tournaments')
-          .select('id, name, game, logo_url')
-          .eq('id', tournamentId)
-          .single(),
-        supabase
-          .from('matches')
-          .select('*')
-          .eq('tournament_id', tournamentId)
-          .order('round_number', { ascending: true }),
-      ]);
+  const loading = tournament === undefined || rawMatches === undefined;
 
-      if (tournamentRes.error) throw tournamentRes.error;
-      setTournament(tournamentRes.data);
-
-      // Enrichir avec les noms des équipes
-      const teamIds = [...new Set(
-        (matchesRes.data || []).flatMap(m => [m.player1_id, m.player2_id]).filter(Boolean)
-      )];
-      
-      let teamsMap = {};
-      if (teamIds.length > 0) {
-        const { data: teamsData } = await supabase
-          .from('teams')
-          .select('id, name, logo_url')
-          .in('id', teamIds);
-        teamsMap = Object.fromEntries((teamsData || []).map(t => [t.id, t]));
-      }
-
-      const enriched = (matchesRes.data || []).map(m => ({
-        ...m,
-        team1: teamsMap[m.player1_id],
-        team2: teamsMap[m.player2_id],
-      }));
-
-      setMatches(enriched);
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Process matches - sort by round
+  const matches = useMemo(() => {
+    return [...rawMatches].sort((a, b) => (a.round || 1) - (b.round || 1));
+  }, [rawMatches]);
 
   // Organiser par rounds
   const rounds = matches.reduce((acc, match) => {
-    const round = match.round_number || 1;
-    if (!acc[round]) acc[round] = [];
-    acc[round].push(match);
+    const roundNum = match.round || 1;
+    if (!acc[roundNum]) acc[roundNum] = [];
+    acc[roundNum].push(match);
     return acc;
   }, {});
 
@@ -97,8 +55,8 @@ export default function EmbedBracket() {
       {showHeader && (
         <div className={clsx('p-4 border-b', borderColor)}>
           <div className="flex items-center gap-3">
-            {tournament?.logo_url && (
-              <img src={tournament.logo_url} alt="" className="w-10 h-10 rounded-lg" />
+            {tournament?.logoUrl && (
+              <img src={tournament.logoUrl} alt="" className="w-10 h-10 rounded-lg" />
             )}
             <div>
               <h1 className="font-bold">{tournament?.name}</h1>
@@ -120,7 +78,7 @@ export default function EmbedBracket() {
               <div className="flex flex-col gap-4 justify-around flex-1">
                 {roundMatches.map((match) => (
                   <div
-                    key={match.id}
+                    key={match._id}
                     className={clsx(
                       'rounded-lg border overflow-hidden',
                       borderColor,
@@ -132,11 +90,11 @@ export default function EmbedBracket() {
                     <div className={clsx(
                       'flex items-center justify-between p-2 border-b',
                       borderColor,
-                      match.status === 'completed' && match.score_p1 > match.score_p2 && 'bg-green-500/10'
+                      match.status === 'completed' && match.scoreP1 > match.scoreP2 && 'bg-green-500/10'
                     )}>
                       <div className="flex items-center gap-2 truncate flex-1">
-                        {match.team1?.logo_url && (
-                          <img src={match.team1.logo_url} alt="" className="w-5 h-5 rounded" />
+                        {match.team1?.logoUrl && (
+                          <img src={match.team1.logoUrl} alt="" className="w-5 h-5 rounded" />
                         )}
                         <span className={clsx('truncate', compact ? 'text-xs' : 'text-sm')}>
                           {match.team1?.name || 'TBD'}
@@ -144,20 +102,20 @@ export default function EmbedBracket() {
                       </div>
                       <span className={clsx(
                         'font-mono font-bold',
-                        match.status === 'completed' && match.score_p1 > match.score_p2 && 'text-green-400'
+                        match.status === 'completed' && match.scoreP1 > match.scoreP2 && 'text-green-400'
                       )}>
-                        {match.score_p1 ?? '-'}
+                        {match.scoreP1 ?? '-'}
                       </span>
                     </div>
 
                     {/* Team 2 */}
                     <div className={clsx(
                       'flex items-center justify-between p-2',
-                      match.status === 'completed' && match.score_p2 > match.score_p1 && 'bg-green-500/10'
+                      match.status === 'completed' && match.scoreP2 > match.scoreP1 && 'bg-green-500/10'
                     )}>
                       <div className="flex items-center gap-2 truncate flex-1">
-                        {match.team2?.logo_url && (
-                          <img src={match.team2.logo_url} alt="" className="w-5 h-5 rounded" />
+                        {match.team2?.logoUrl && (
+                          <img src={match.team2.logoUrl} alt="" className="w-5 h-5 rounded" />
                         )}
                         <span className={clsx('truncate', compact ? 'text-xs' : 'text-sm')}>
                           {match.team2?.name || 'TBD'}
@@ -165,9 +123,9 @@ export default function EmbedBracket() {
                       </div>
                       <span className={clsx(
                         'font-mono font-bold',
-                        match.status === 'completed' && match.score_p2 > match.score_p1 && 'text-green-400'
+                        match.status === 'completed' && match.scoreP2 > match.scoreP1 && 'text-green-400'
                       )}>
-                        {match.score_p2 ?? '-'}
+                        {match.scoreP2 ?? '-'}
                       </span>
                     </div>
                   </div>

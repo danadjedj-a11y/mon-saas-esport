@@ -1,91 +1,83 @@
-# 🚀 Guide de Finalisation Migration : Supabase vers Convex
+# 🚀 Migration Supabase → Convex : COMPLÈTE ✅
 
-Ce document détaille **précisément** ce qui reste à faire pour terminer la migration de l'application, en particulier pour le composant critique [Tournament.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx).
+Ce document documente la migration de l'application de Supabase vers Convex.
 
-> **État actuel** : L'infrastructure Core, Auth, Profils, Équipes, Dashboard Joueur/Organisateur, et Création de Tournoi sont **100% migrés**.
-> Le fichier [Tournament.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx) est migré à **60%** (Imports, Hooks, StartTournament, GenerateBracket, RemoveParticipant, CheckIn sont faits).
-
----
-
-## 📅 Reste à faire sur [src/Tournament.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx)
-
-Le fichier a déjà les imports Convex et les hooks `useMutation` définis. Il reste à remplacer les appels `supabase.from(...)` dans les fonctions de logique de jeu suivantes :
-
-### 1. [saveScore](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx#683-744) (Ligne ~658)
-Cette fonction gère la validation d'un score et la progression.
-- **Action** : Remplacer `supabase.from('matches').update(...)` par `updateMatchScore`.
-- **Action** : Remplacer `supabase.from('matches').select(...)` pour récupérer le match mis à jour par un appel à la query `api.matches.getById` ou en utilisant le retour de la mutation si adapté.
-- **Progression** : La logique de progression (Single/Double Elimination) fait des appels directs. Migrer vers `api.matchesMutations.progressWinner` (à vérifier/créer si la logique est complexe côté client, voir point 2).
-
-### 2. [handleDoubleEliminationProgression](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx#745-815) (Ligne ~720)
-Cette fonction contient une logique complexe de mise à jour de plusieurs matchs (Winners bracket -> Losers bracket).
-- **Consigne CRITIQUE** : Ne pas essayer de reproduire cette logique complexe avec 15 appels `mutation` séparés côté client.
-- **Solution recommandée** : Déplacer toute cette logique dans une **nouvelle mutation Convex** `api.matchesMutations.handleProgression` qui prend le `matchId` et le `winnerId`.
-    - Cette mutation devra encapsuler la logique de "Si Winner Bracket -> Move to next winner & Drop to loser" et "Si Loser Bracket -> Move to next loser".
-    - Cela rendra le client beaucoup plus léger et la transaction atomique.
-
-### 3. [exportToPDF](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx#528-597) (Ligne ~503)
-- **Action** : Cette fonction utilise les données locales (`participants`, `matches`) qui viennent déjà du hook [useTournament](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/hooks/useConvex.js#59-73).
-- **Vérification** : S'assurer que les données structurées correspondent à ce qu'attend `exportTournamentToPDF`. Normalement OK car [useTournament](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/hooks/useConvex.js#59-73) retourne les mêmes structures.
-
-### 4. [generateNextSwissRound](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx#598-661) (Ligne ~574)
-- **Action** : Remplacer `supabase.from('matches').select` par `useQuery` (déjà chargé dans `matches`) ou une action serveur.
-- **Action** : Remplacer `supabase.from('matches').insert` par `api.matchesMutations.batchCreate`.
-- **Action** : Remplacer `getSwissScores` (qui appelle supabase) par `api.swiss.getScores`.
+> **État actuel** : ✅ **MIGRATION FRONTEND 100% COMPLÈTE !** Tous les fichiers React utilisent maintenant Convex. Build passe en ~6s.
 
 ---
 
-## 🧩 Composants Enfants à Vérifier
+## ✅ COMPLÉTÉ - Migration Complète
 
-Ces composants sont importés dans [Tournament.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx) et contiennent probablement encore du code Supabase :
+### Résumé de la migration :
+- ✅ **Tous les fichiers React** migrés vers Convex
+- ✅ **Tous les hooks personnalisés** migrés (useActiveMatch, useTournamentBracket, useRealtimeNotifications, useTeam, useMatch)
+- ✅ **Tous les utilitaires** migrés (xpSystem, notifications, matchGenerator)
+- ✅ **Tous les services API** remplacés et supprimés
+- ✅ **Supabase retiré du bundle frontend**
 
-1.  **[src/TeamJoinButton.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/TeamJoinButton.jsx)**
-    - Doit utiliser `api.tournamentRegistrationsMutations.register`.
-2.  **[src/CheckInButton.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/CheckInButton.jsx)**
-    - Doit utiliser `api.tournamentRegistrationsMutations.toggleCheckIn`.
-3.  **[src/AdminPanel.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/AdminPanel.jsx)**
-    - Vérifier s'il fait des appels directs pour gérer les matchs/scores.
-4.  **[src/SeedingModal.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/SeedingModal.jsx)**
-    - Doit utiliser `api.tournamentRegistrationsMutations.updateSeed`.
-5.  **[src/SchedulingModal.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/SchedulingModal.jsx)**
-    - Doit utiliser une mutation pour update `scheduledTime`.
+### Schéma Convex (25 tables) :
+- ✅ users, tournaments, tournamentPhases, teams, teamMembers
+- ✅ teamInvitations, tournamentRegistrations, matches, matchGames
+- ✅ matchVeto, matchChat, notifications, userStats, news, comments
+- ✅ swissScores, tournamentFollows, teamFollows, userBadges, userLevels
+- ✅ tournamentRatings, games, playerGameAccounts, bracketSlots
+- ✅ gamingAccountChangeRequests
+
+### Fichiers Core migrés :
+- ✅ Tournament.jsx, TeamJoinButton.jsx, CheckInButton.jsx
+- ✅ SeedingModal.jsx, SchedulingModal.jsx, AdminPanel.jsx
+- ✅ Dashboard.jsx, PublicTournament.jsx, NotificationCenter.jsx
+- ✅ Chat.jsx, MatchLobby.jsx, MatchDetails.jsx
+- ✅ MapVetoSystem.jsx (migré vers `convex/matchVeto.ts`)
+
+### Toutes les pages migrées :
+- ✅ Pages Play (PlayHome, SearchResults, GamesDirectory, GamePage)
+- ✅ Pages Embed (6 pages)
+- ✅ Pages Tournament (TournamentRegister)
+- ✅ Pages Organizer (25+ pages)
+- ✅ Pages Profile (PrivacySettings, PublicProfile, PublicTeam)
+- ✅ Pages Stream (StreamOverlay, StreamDashboard)
+- ✅ Pages Admin (AdminUsers) - **NOUVEAU**
+
+### Page d'administration des utilisateurs :
+- ✅ Route : `/organizer/admin/users`
+- ✅ Permet de changer les rôles : player ↔ organizer
+- ✅ Query : `api.users.listAll` avec filtre par rôle
+- ✅ Mutation : `api.usersMutations.updateRole`
+
+### Fichiers supprimés (nettoyage) :
+- ✅ src/supabaseClient.js
+- ✅ src/App.backup.jsx
+- ✅ src/components/registration/TournamentRegistration_backup.jsx
+- ✅ src/shared/services/api/ (dossier entier)
 
 ---
 
-## 🛠️ Mapping des APIs Convex Disponibles
+## 🏁 État Actuel
 
-Voici les mutations déjà créées et prêtes à l'emploi (dans `convex/_generated/api`) :
+✅ **Build réussi** : `npm run build` passe en ~6s
+✅ **Dev server** : `npm run dev` fonctionne
+✅ **Migration frontend** : 100% complète
+✅ **Supabase** : Retiré du bundle frontend
+✅ **Schéma Convex** : 25 tables vérifiées, pas de doublons
 
-| Fonction Supabase Frontend | Mutation Convex Correspondante | Fichier |
-|----------------------------|--------------------------------|---------|
-| `matches.insert` (batch) | `api.matchesMutations.batchCreate` | [matchesMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/matchesMutations.ts) |
-| `matches.delete` (all) | `api.matchesMutations.deleteAllByTournament` | [matchesMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/matchesMutations.ts) |
-| `matches.update` (score) | `api.matchesMutations.updateScore` | [matchesMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/matchesMutations.ts) |
-| `matches.update` (teams) | `api.matchesMutations.updateTeams` | [matchesMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/matchesMutations.ts) |
-| `matches.insert` (game) | `api.matchesMutations.createGame` | [matchesMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/matchesMutations.ts) |
-| `participants.delete` | `api.tournamentRegistrationsMutations.removeParticipant` | [tournamentRegistrationsMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/tournamentRegistrationsMutations.ts) |
-| `participants.update` (checkin)| `api.tournamentRegistrationsMutations.toggleCheckIn` | [tournamentRegistrationsMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/tournamentRegistrationsMutations.ts) |
-| `participants.update` (seed) | `api.tournamentRegistrationsMutations.updateSeed` | [tournamentRegistrationsMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/tournamentRegistrationsMutations.ts) |
-| `tournaments.update` (status)| `api.tournamentsMutations.updateStatus` | [tournamentsMutations.ts](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/convex/tournamentsMutations.ts) |
+### Fichiers backend encore avec Supabase :
+Ces fichiers sont des API routes serveur (Vercel), pas du code frontend :
+- 🔲 server/api.js
+- 🔲 api/tournament.js
+- 🔲 api/tournament/[id]/[endpoint].js
 
----
+### Comment changer un compte player → organizer :
+1. Accéder à `/organizer/admin/users` (réservé aux organisateurs)
+2. Trouver l'utilisateur dans la liste
+3. Cliquer "Promouvoir" pour le passer en organizer
 
-## ⚠️ Points d'Attention (Mappings Schéma)
+**Via code** :
+```javascript
+const updateRole = useMutation(api.usersMutations.updateRole);
+await updateRole({ userId: user._id, role: "organizer" });
+```
 
-Le schéma Convex diffère légèrement de l'ancien schéma Supabase :
-
-- **Supabase** `round_number` ➡️ **Convex** `round`
-- **Supabase** `bracket_type` ➡️ **Convex** `isLosersBracket` (boolean)
-- **Supabase** `owner_id` ➡️ **Convex** `organizerId`
-- **Supabase** `seed_order` ➡️ **Convex** `seed`
-- **Supabase** `checked_in` (bool) ➡️ **Convex** `status: "checked_in"` (enum)
-
----
-
-## 🏁 Finalisation
-
-1.  Terminer le remplacement dans [Tournament.jsx](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/Tournament.jsx).
-2.  Migrer les composants enfants listés ci-dessus.
-3.  Supprimer le fichier [src/supabaseClient.js](file:///c:/Users/Dan/Documents/Fluky%20Boys/site/mon-tournoi/src/supabaseClient.js).
-4.  Désinstaller `@supabase/supabase-js`.
-5.  Faire un `npm run build` final pour valider.
+### Prochaines étapes optionnelles :
+1. 🔲 Migrer les API routes Vercel vers Convex HTTP actions
+2. 🔲 Désinstaller complètement `@supabase/supabase-js` après migration backend

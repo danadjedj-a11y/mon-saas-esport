@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { GradientButton, Input, Modal, GlassCard } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 import { regeneratePhaseMatches, calculateMatchCount } from '../../../utils/matchGenerator';
@@ -41,7 +42,6 @@ export default function PhaseSettings() {
   const context = useOutletContext();
 
   const [phase, setPhase] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [activeGroup, setActiveGroup] = useState(null);
@@ -64,56 +64,45 @@ export default function PhaseSettings() {
   });
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Charger les données de la phase
+  // Charger les données de la phase via Convex
+  const phaseData = useQuery(
+    api.tournamentPhases.getById,
+    phaseId ? { phaseId } : "skip"
+  );
+  const updatePhase = useMutation(api.tournamentPhases.update);
+
+  // Initialiser quand les données arrivent
   useEffect(() => {
-    fetchPhaseData();
-  }, [phaseId]);
-
-  // Tracker les changements
-  const updateConfig = (updates) => {
-    setConfig(prev => ({ ...prev, ...updates }));
-    setHasChanges(true);
-  };
-
-  const fetchPhaseData = async () => {
-    if (!phaseId) return;
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tournament_phases')
-        .select('*')
-        .eq('id', phaseId)
-        .single();
-
-      if (error) throw error;
-
-      setPhase(data);
+    if (phaseData) {
+      setPhase(phaseData);
       const loadedConfig = {
-        name: data.name || '',
-        size: data.config?.size || 8,
-        grandFinal: data.config?.grand_final || 'none',
-        skipFirstRound: data.config?.skip_first_round || false,
-        threshold: data.config?.threshold || 0,
-        autoPlacement: data.config?.auto_placement || false,
-        matchFormat: data.config?.match_format || 'best_of',
-        bestOf: data.config?.best_of ?? 3,
-        fixedGames: data.config?.fixed_games || 2,
-        groups: data.config?.groups || generateDefaultGroups(data.format, data.config?.size || 8),
+        name: phaseData.name || '',
+        size: phaseData.settings?.maxTeams || 8,
+        grandFinal: phaseData.settings?.grandFinal || 'none',
+        skipFirstRound: phaseData.settings?.skipFirstRound || false,
+        threshold: phaseData.settings?.threshold || 0,
+        autoPlacement: phaseData.settings?.autoPlacement || false,
+        matchFormat: phaseData.settings?.matchFormat || 'best_of',
+        bestOf: phaseData.settings?.bestOf ?? 3,
+        fixedGames: phaseData.settings?.fixedGames || 2,
+        groups: phaseData.settings?.groups || generateDefaultGroups(phaseData.format, phaseData.settings?.maxTeams || 8),
       };
       setConfig(loadedConfig);
       setHasChanges(false);
 
       // Définir le premier groupe comme actif
-      if (data.format === 'double_elimination') {
+      if (phaseData.format === 'double_elimination') {
         setActiveGroup('winners');
       }
-    } catch (error) {
-      console.error('Erreur chargement phase:', error);
-      toast.error('Erreur lors du chargement de la phase');
-    } finally {
-      setLoading(false);
     }
+  }, [phaseData]);
+
+  const loading = phaseData === undefined;
+
+  // Tracker les changements
+  const updateConfig = (updates) => {
+    setConfig(prev => ({ ...prev, ...updates }));
+    setHasChanges(true);
   };
 
   // Générer les groupes par défaut selon le format
@@ -171,28 +160,23 @@ export default function PhaseSettings() {
 
     setSaving(true);
     try {
-      const configToSave = {
-        size: config.size,
-        grand_final: config.grandFinal,
-        skip_first_round: config.skipFirstRound,
+      const settingsToSave = {
+        maxTeams: config.size,
+        grandFinal: config.grandFinal,
+        skipFirstRound: config.skipFirstRound,
         threshold: config.threshold,
-        auto_placement: config.autoPlacement,
-        match_format: config.matchFormat,
-        best_of: config.matchFormat === 'best_of' ? config.bestOf : null,
-        fixed_games: config.matchFormat === 'fixed' ? config.fixedGames : null,
+        autoPlacement: config.autoPlacement,
+        matchFormat: config.matchFormat,
+        bestOf: config.matchFormat === 'best_of' ? config.bestOf : undefined,
+        fixedGames: config.matchFormat === 'fixed' ? config.fixedGames : undefined,
         groups: config.groups,
       };
 
-      const { error } = await supabase
-        .from('tournament_phases')
-        .update({
-          name: config.name.trim(),
-          config: configToSave,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', phaseId);
-
-      if (error) throw error;
+      await updatePhase({
+        phaseId: phaseId,
+        name: config.name.trim(),
+        settings: settingsToSave,
+      });
 
       toast.success('✓ Configuration sauvegardée avec succès');
       setHasChanges(false);
@@ -201,7 +185,7 @@ export default function PhaseSettings() {
       setPhase(prev => ({
         ...prev,
         name: config.name.trim(),
-        config: configToSave,
+        settings: settingsToSave,
       }));
 
       if (context?.refreshTournament) {

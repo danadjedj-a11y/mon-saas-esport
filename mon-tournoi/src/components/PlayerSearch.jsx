@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { Avatar } from '../shared/components/ui';
 
 /**
@@ -16,10 +17,17 @@ const PlayerSearch = ({
   className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef(null);
+
+  // Debounce du terme de recherche
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
 
   // Fermer le dropdown quand on clique en dehors
   useEffect(() => {
@@ -33,51 +41,42 @@ const PlayerSearch = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Rechercher les joueurs
+  // Rechercher les joueurs via Convex
+  const searchResults = useQuery(
+    api.users.search,
+    debouncedSearchTerm.length >= 2 ? { query: debouncedSearchTerm, limit: 10 } : "skip"
+  );
+
+  const loading = debouncedSearchTerm.length >= 2 && searchResults === undefined;
+
+  // Filtrer les joueurs déjà dans l'équipe et mapper les champs pour compatibilité
+  const results = useMemo(() => {
+    if (!searchResults) return [];
+    return searchResults
+      .filter((player) => !excludedUserIds.includes(player._id))
+      .map((player) => ({
+        id: player._id,
+        username: player.username,
+        avatar_url: player.avatarUrl,
+      }));
+  }, [searchResults, excludedUserIds]);
+
+  // Mettre à jour le dropdown quand les résultats changent
   useEffect(() => {
-    const searchPlayers = async () => {
-      if (searchTerm.length < 2) {
-        setResults([]);
-        setShowDropdown(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .ilike('username', `%${searchTerm}%`)
-          .limit(10);
-
-        if (error) throw error;
-
-        // Filtrer les joueurs déjà dans l'équipe
-        const filteredResults = (data || []).filter(
-          (player) => !excludedUserIds.includes(player.id)
-        );
-
-        setResults(filteredResults);
-        setShowDropdown(filteredResults.length > 0);
-      } catch (error) {
-        console.error('Erreur recherche joueurs:', error);
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const debounceTimer = setTimeout(searchPlayers, 500);
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, excludedUserIds]);
+    if (debouncedSearchTerm.length >= 2) {
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
+  }, [debouncedSearchTerm, results]);
 
   const handleSelectPlayer = (player) => {
     if (onSelectPlayer) {
       onSelectPlayer(player);
     }
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setShowDropdown(false);
-    setResults([]);
   };
 
   return (
@@ -131,10 +130,10 @@ const PlayerSearch = ({
       )}
 
       {/* Message si aucun résultat */}
-      {!loading && searchTerm.length >= 2 && results.length === 0 && showDropdown && (
+      {!loading && debouncedSearchTerm.length >= 2 && results.length === 0 && showDropdown && (
         <div className="absolute z-50 w-full mt-2 bg-[#030913] border-2 border-violet-500 rounded-lg shadow-xl shadow-violet-500/20 p-4">
           <p className="text-center text-gray-400 font-body">
-            Aucun joueur trouvé pour "{searchTerm}"
+            Aucun joueur trouvé pour "{debouncedSearchTerm}"
           </p>
         </div>
       )}

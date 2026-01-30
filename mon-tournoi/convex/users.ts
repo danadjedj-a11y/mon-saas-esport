@@ -292,3 +292,29 @@ export const getBadges = query({
         return badges;
     },
 });
+
+/**
+ * Liste tous les utilisateurs (pour admin)
+ */
+export const listAll = query({
+    args: {
+        limit: v.optional(v.number()),
+        role: v.optional(v.union(v.literal("player"), v.literal("organizer"))),
+    },
+    handler: async (ctx, args) => {
+        let users;
+        
+        if (args.role) {
+            users = await ctx.db
+                .query("users")
+                .withIndex("by_role", (q) => q.eq("role", args.role!))
+                .take(args.limit ?? 100);
+        } else {
+            users = await ctx.db
+                .query("users")
+                .take(args.limit ?? 100);
+        }
+
+        return users;
+    },
+});

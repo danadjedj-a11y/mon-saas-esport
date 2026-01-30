@@ -1,238 +1,109 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../../../supabaseClient';
-import { useSupabaseSubscription } from '../../../shared/hooks/useSupabaseSubscription';
+import { useCallback } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 
 /**
  * Hook personnalisé pour gérer une équipe
- * Simplifie la logique de chargement, membres, et mises à jour
+ * Utilise Convex pour la réactivité temps réel
  */
 export const useTeam = (teamId, options = {}) => {
-  const { enabled = true, subscribe = true } = options;
-  
-  const [team, setTeam] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(!!teamId); // Commencer à charger si teamId est présent
-  const [error, setError] = useState(null);
-  
-  const fetchVersionRef = useRef(0);
-  const fetchTeamRef = useRef(null); // Ref pour stocker fetchTeam pour les callbacks
+  const { enabled = true, currentUserId, isAdmin = false } = options;
 
-  // Charger l'équipe
-  const fetchTeam = useCallback(async () => {
-    if (!teamId) return;
-
-    const currentVersion = ++fetchVersionRef.current;
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Charger l'équipe
-      const { data: teamData, error: teamError } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('id', teamId)
-        .single();
-
-      if (teamError) throw teamError;
-
-      // Charger les membres
-      const { data: membersData, error: membersError } = await supabase
-        .from('team_members')
-        .select(`
-          *,
-          profiles (
-            id,
-            username,
-            avatar_url
-          )
-        `)
-        .eq('team_id', teamId);
-
-      if (membersError) throw membersError;
-
-      // Vérifier si c'est toujours la requête la plus récente
-      if (currentVersion !== fetchVersionRef.current) {
-        return;
-      }
-
-      setTeam(teamData);
-      setMembers(membersData || []);
-      setError(null);
-      setLoading(false);
-    } catch (err) {
-      console.error('Erreur chargement équipe:', err);
-      // Vérifier si c'est toujours la requête la plus récente
-      if (currentVersion === fetchVersionRef.current) {
-        setError(err);
-        setLoading(false);
-      }
-    }
-  }, [teamId, enabled]);
-
-  // Garder une ref à fetchTeam pour l'utiliser dans le callback
-  useEffect(() => {
-    fetchTeamRef.current = fetchTeam;
-  }, [fetchTeam]);
-
-  // Charger au montage ou quand teamId change
-  useEffect(() => {
-    if (teamId) {
-      setLoading(true);
-      fetchTeam();
-    } else {
-      setLoading(false);
-      setTeam(null);
-    }
-  }, [teamId, fetchTeam]);
-
-  // Subscription Realtime pour les mises à jour
-  useSupabaseSubscription(
-    `team-${teamId}`,
-    subscribe ? [
-      {
-        table: 'teams',
-        filter: `id=eq.${teamId}`,
-        event: 'UPDATE',
-        callback: (payload) => {
-          if (payload.new) {
-            setTeam((prev) => ({ ...prev, ...payload.new }));
-          }
-        },
-      },
-      {
-        table: 'teams',
-        filter: `id=eq.${teamId}`,
-        event: 'DELETE',
-        callback: () => {
-          setTeam(null);
-        },
-      },
-      {
-        table: 'team_members',
-        filter: `team_id=eq.${teamId}`,
-        event: '*',
-        callback: () => {
-          if (fetchTeamRef.current) {
-            fetchTeamRef.current();
-          }
-        },
-      },
-    ] : [],
-    { enabled: subscribe && !!teamId }
+  // Récupérer l'équipe via Convex (temps réel automatique)
+  const team = useQuery(
+    api.teams.getById,
+    enabled && teamId ? { teamId } : "skip"
   );
+
+  // Récupérer les membres de l'équipe
+  const members = useQuery(
+    api.teams.getMembers,
+    enabled && teamId ? { teamId } : "skip"
+  ) || [];
+
+  // Loading state
+  const loading = enabled && teamId && team === undefined;
+  const error = null; // Convex gère les erreurs internement
+
+  // Mutations Convex
+  const addMemberMutation = useMutation(api.teamsMutations.addMember);
+  const removeMemberMutation = useMutation(api.teamsMutations.removeMember);
+  const updateTeamMutation = useMutation(api.teamsMutations.update);
+  const updateMemberRoleMutation = useMutation(api.teamsMutations.updateMemberRole);
 
   // Fonction pour ajouter un membre
   const addMember = useCallback(async (userId) => {
     if (!teamId) return { error: 'No team ID' };
 
     try {
-      const { data, error: addError } = await supabase
-        .from('team_members')
-        .insert([{ team_id: teamId, user_id: userId }])
-        .select()
-        .single();
-
-      if (addError) throw addError;
-
-      await fetchTeam(); // Recharger les membres
-
+      const data = await addMemberMutation({ teamId, userId, role: 'member' });
       return { data, error: null };
     } catch (err) {
       console.error('Erreur ajout membre:', err);
       return { data: null, error: err };
     }
-  }, [teamId, fetchTeam]);
+  }, [teamId, addMemberMutation]);
 
   // Fonction pour retirer un membre
   const removeMember = useCallback(async (userId) => {
     if (!teamId) return { error: 'No team ID' };
 
     try {
-      const { error: removeError } = await supabase
-        .from('team_members')
-        .delete()
-        .eq('team_id', teamId)
-        .eq('user_id', userId);
-
-      if (removeError) throw removeError;
-
-      await fetchTeam(); // Recharger les membres
-
+      await removeMemberMutation({ teamId, userId });
       return { error: null };
     } catch (err) {
       console.error('Erreur retrait membre:', err);
       return { error: err };
     }
-  }, [teamId, fetchTeam]);
+  }, [teamId, removeMemberMutation]);
 
   // Fonction pour mettre à jour l'équipe
   const updateTeam = useCallback(async (updates) => {
     if (!teamId) return { error: 'No team ID' };
 
     try {
-      const { data, error: updateError } = await supabase
-        .from('teams')
-        .update(updates)
-        .eq('id', teamId)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
-      setTeam(data);
-
+      const data = await updateTeamMutation({ teamId, ...updates });
       return { data, error: null };
     } catch (err) {
       console.error('Erreur mise à jour équipe:', err);
       return { data: null, error: err };
     }
-  }, [teamId]);
+  }, [teamId, updateTeamMutation]);
 
   // Fonction pour mettre à jour le rôle d'un membre
   const updateMemberRole = useCallback(async (userId, newRole) => {
     if (!teamId) return { error: 'No team ID' };
 
     // Vérifier que l'utilisateur actuel est le capitaine
-    const userIsCaptain = team?.captain_id === options.currentUserId;
-    if (!userIsCaptain) {
+    const userIsCaptain = team?.captainId === currentUserId;
+    if (!userIsCaptain && !isAdmin) {
       return { error: 'Seul le capitaine peut changer les rôles' };
     }
 
     // Vérifier que le rôle est valide
-    const validRoles = ['player', 'coach', 'manager'];
+    const validRoles = ['player', 'coach', 'manager', 'member'];
     if (!validRoles.includes(newRole)) {
       return { error: 'Rôle invalide' };
     }
 
     try {
-      const { data, error: updateError } = await supabase
-        .from('team_members')
-        .update({ role: newRole })
-        .eq('team_id', teamId)
-        .eq('user_id', userId)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
-      await fetchTeam(); // Recharger les membres
-
+      const data = await updateMemberRoleMutation({ teamId, userId, role: newRole });
       return { data, error: null };
     } catch (err) {
       console.error('Erreur mise à jour rôle membre:', err);
       return { data: null, error: err };
     }
-  }, [teamId, team?.captain_id, options.currentUserId, fetchTeam]);
+  }, [teamId, team?.captainId, currentUserId, isAdmin, updateMemberRoleMutation]);
 
-  // Fonction pour forcer un refresh
+  // Fonction pour forcer un refresh (no-op avec Convex car réactif)
   const refetch = useCallback(() => {
-    fetchTeam();
-  }, [fetchTeam]);
+    // No-op: Convex queries are automatically reactive
+  }, []);
 
   // Helpers
-  const isCaptain = team?.captain_id === options.currentUserId;
-  const isMember = members.some(m => m.user_id === options.currentUserId);
-  const canEdit = isCaptain || options.isAdmin;
+  const isCaptain = team?.captainId === currentUserId;
+  const isMember = members.some(m => m.userId === currentUserId);
+  const canEdit = isCaptain || isAdmin;
   
   // Helper pour vérifier si un membre a les permissions pour inviter/exclure
   const canManageMembers = useCallback((memberRole) => {

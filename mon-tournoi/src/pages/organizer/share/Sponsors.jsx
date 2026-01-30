@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
 import { Button, Input, Modal } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
+
+// Note: tournament_sponsors table not yet in Convex schema - using local state
 
 export default function Sponsors() {
   const { id: tournamentId } = useParams();
@@ -24,27 +25,10 @@ export default function Sponsors() {
   const MAX_SPONSORS = 6;
 
   useEffect(() => {
-    fetchSponsors();
+    // TODO: Migrate to Convex when tournament_sponsors table is added
+    setSponsors([]);
+    setLoading(false);
   }, [tournamentId]);
-
-  const fetchSponsors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tournament_sponsors')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('tier', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (error && error.code !== '42P01') throw error;
-      setSponsors(data || []);
-    } catch (error) {
-      console.error('Erreur:', error);
-      setSponsors([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
@@ -60,22 +44,11 @@ export default function Sponsors() {
   };
 
   const uploadLogo = async () => {
+    // TODO: Migrate file upload to Convex storage
     if (!logoFile) return formData.logo_url;
-
-    const fileExt = logoFile.name.split('.').pop();
-    const fileName = `${tournamentId}/sponsors/${Date.now()}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('tournament-assets')
-      .upload(fileName, logoFile);
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage
-      .from('tournament-assets')
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
+    
+    // For now, just return the existing URL or create object URL
+    return logoPreview || formData.logo_url;
   };
 
   const handleOpenModal = (sponsor = null) => {
@@ -111,32 +84,26 @@ export default function Sponsors() {
     try {
       const logoUrl = await uploadLogo();
 
+      // TODO: Migrate to Convex when tournament_sponsors table is added
       if (editingSponsor) {
-        const { error } = await supabase
-          .from('tournament_sponsors')
-          .update({
-            ...formData,
-            logo_url: logoUrl,
-          })
-          .eq('id', editingSponsor.id);
-
-        if (error) throw error;
-        toast.success('Sponsor mis à jour');
+        setSponsors(prev => prev.map(s => 
+          s.id === editingSponsor.id 
+            ? { ...s, ...formData, logo_url: logoUrl }
+            : s
+        ));
+        toast.success('Sponsor mis à jour (sauvegarde locale)');
       } else {
-        const { error } = await supabase
-          .from('tournament_sponsors')
-          .insert({
-            ...formData,
-            logo_url: logoUrl,
-            tournament_id: tournamentId,
-          });
-
-        if (error) throw error;
-        toast.success('Sponsor ajouté');
+        const newSponsor = {
+          id: `new-${Date.now()}`,
+          ...formData,
+          logo_url: logoUrl,
+          tournament_id: tournamentId,
+        };
+        setSponsors(prev => [...prev, newSponsor]);
+        toast.success('Sponsor ajouté (sauvegarde locale)');
       }
 
       setShowModal(false);
-      fetchSponsors();
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la sauvegarde');
@@ -147,14 +114,9 @@ export default function Sponsors() {
     if (!confirm('Supprimer ce sponsor ?')) return;
 
     try {
-      const { error } = await supabase
-        .from('tournament_sponsors')
-        .delete()
-        .eq('id', sponsorId);
-
-      if (error) throw error;
-      toast.success('Sponsor supprimé');
-      fetchSponsors();
+      // TODO: Migrate to Convex when tournament_sponsors table is added
+      setSponsors(prev => prev.filter(s => s.id !== sponsorId));
+      toast.success('Sponsor supprimé (sauvegarde locale)');
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors de la suppression');

@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { toast } from './utils/toast';
 
-const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [isParticipant, setIsParticipant] = useState(false);
-  const [myParticipant, setMyParticipant] = useState(null);
+const CheckInButton = ({ tournamentId, session, tournament }) => {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [checkInWindowOpen, setCheckInWindowOpen] = useState(false);
   const [checkInExpired, setCheckInExpired] = useState(false);
   const isMountedRef = useRef(true);
+
+  // Queries Convex
+  const registrations = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const myTeams = useQuery(
+    api.teams.listByUser,
+    session?.user?.convexId ? { userId: session.user.convexId } : "skip"
+  ) || [];
+
+  // Mutation Convex
+  const toggleCheckIn = useMutation(api.tournamentRegistrationsMutations.toggleCheckIn);
 
   // Cleanup au démontage du composant
   useEffect(() => {
@@ -18,10 +30,20 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
     };
   }, []);
 
+  // Trouver mon inscription
+  const myTeamIds = myTeams?.map(t => t._id) || [];
+  const myRegistration = registrations?.find(r => 
+    r.teamId && myTeamIds.includes(r.teamId)
+  );
+  
+  const isParticipant = !!myRegistration;
+  const isCheckedIn = myRegistration?.status === 'checked_in';
+  const isDisqualified = myRegistration?.status === 'disqualified';
+
   // Mémoriser updateCountdown avec useCallback
   const updateCountdown = useCallback(() => {
     // Si pas de date de début, on permet le check-in sans restriction
-    if (!tournament?.start_date) {
+    if (!tournament?.startDate) {
       setCheckInWindowOpen(true);
       setTimeRemaining(null);
       setCheckInExpired(false);
@@ -29,9 +51,9 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
     }
 
     const now = new Date();
-    const startDate = new Date(tournament.start_date);
+    const startDate = new Date(tournament.startDate);
     
-    const checkInWindowMinutes = tournament.check_in_window_minutes || 15;
+    const checkInWindowMinutes = tournament.checkInWindowMinutes || 15;
     const windowStart = new Date(startDate.getTime() - checkInWindowMinutes * 60 * 1000);
     const deadline = startDate;
     
@@ -56,61 +78,9 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
     }
   }, [tournament]);
 
-  // Mémoriser checkStatus avec useCallback
-  const checkStatus = useCallback(async () => {
-    if (!session?.user || !isMountedRef.current) {
-      if (isMountedRef.current) setLoading(false);
-      return;
-    }
-
-    try {
-      const { data: captainTeams } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('captain_id', session.user.id);
-      
-      const { data: memberTeams } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', session.user.id);
-
-      if (!isMountedRef.current) return;
-
-      const allTeamIds = [
-        ...(captainTeams?.map(t => t.id) || []),
-        ...(memberTeams?.map(tm => tm.team_id) || [])
-      ];
-      const uniqueTeamIds = [...new Set(allTeamIds)];
-
-      if (uniqueTeamIds.length > 0) {
-        const { data: participantData } = await supabase
-          .from('participants')
-          .select('checked_in, disqualified, team_id')
-          .eq('tournament_id', tournamentId)
-          .in('team_id', uniqueTeamIds)
-          .maybeSingle();
-        
-        if (!isMountedRef.current) return;
-
-        if (participantData) {
-          setMyParticipant(participantData);
-          setIsParticipant(true);
-          setIsCheckedIn(participantData.checked_in);
-        }
-      }
-
-      updateCountdown();
-      if (isMountedRef.current) setLoading(false);
-    } catch (error) {
-      console.error('Erreur lors de la vérification du statut:', error);
-      if (isMountedRef.current) setLoading(false);
-    }
-  }, [session, tournamentId, supabase, updateCountdown]);
-
   useEffect(() => {
     isMountedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    checkStatus();
+    updateCountdown();
     
     const interval = setInterval(() => {
       if (isMountedRef.current) {
@@ -122,84 +92,34 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
       isMountedRef.current = false;
       clearInterval(interval);
     };
-  }, [checkStatus, updateCountdown]);
-
-  // Réécouter les changements de participants en temps réel pour mettre à jour le check-in
-  useEffect(() => {
-    if (!tournamentId || !session?.user || !isMountedRef.current) return;
-
-    const channel = supabase
-      .channel(`checkin-updates-${tournamentId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'participants',
-          filter: `tournament_id=eq.${tournamentId}`
-        },
-        (payload) => {
-          if (!isMountedRef.current) return;
-          // Utiliser une fonction callback pour accéder à la dernière valeur de myParticipant
-          setMyParticipant(prev => {
-            if (prev && payload.new.team_id === prev.team_id) {
-              setIsCheckedIn(payload.new.checked_in || false);
-              return payload.new;
-            }
-            return prev;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tournamentId, session?.user?.id, supabase]);
+  }, [updateCountdown]);
 
   const handleCheckIn = async () => {
     if (!confirm("Confirmes-tu ta présence pour le tournoi ?")) return;
 
-    if (!myParticipant?.team_id) {
-      toast.error("Erreur: Impossible de trouver votre équipe.");
+    if (!myRegistration) {
+      toast.error("Erreur: Impossible de trouver votre inscription.");
       return;
     }
 
-    // Faire l'update dans la base de données
-    const { error } = await supabase
-      .from('participants')
-      .update({ checked_in: true, disqualified: false })
-      .eq('tournament_id', tournamentId)
-      .eq('team_id', myParticipant.team_id);
-
-    if (error) {
+    try {
+      await toggleCheckIn({
+        registrationId: myRegistration._id,
+        checkedIn: true,
+      });
+      
+      toast.success("Présence validée ! Prêt pour le combat. ⚔️");
+    } catch (error) {
       toast.error("Erreur check-in : " + error.message);
       console.error("Erreur check-in:", error);
-      return;
     }
-
-    // Mettre à jour le state local immédiatement pour un feedback instantané
-    setIsCheckedIn(true);
-    setMyParticipant(prev => prev ? { ...prev, checked_in: true, disqualified: false } : prev);
-    
-    toast.success("Présence validée ! Prêt pour le combat. ⚔️");
-    
-    // Recharger depuis la DB pour confirmer (avec un petit délai pour laisser la DB se synchroniser)
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        checkStatus();
-      }
-    }, 200);
   };
 
-  if (loading) return null;
-  
-  // Si le joueur n'est pas inscrit, on ne montre pas ce bouton
-  if (!isParticipant) return null;
+  // Si pas d'inscription ou chargement en cours
+  if (!registrations || !isParticipant) return null;
 
   // Si disqualifié
-  if (myParticipant?.disqualified) {
+  if (isDisqualified) {
     return (
       <div style={{ 
         padding: '10px 15px', 
@@ -215,8 +135,8 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
     );
   }
 
-  // Si déjà check-in (vérifier aussi myParticipant pour éviter les problèmes de state)
-  if (isCheckedIn || myParticipant?.checked_in) {
+  // Si déjà check-in
+  if (isCheckedIn) {
     return (
       <div style={{ 
         padding: '10px 15px', 
@@ -233,7 +153,7 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
   }
 
   // Si la fenêtre de check-in est expirée (uniquement si date définie)
-  if (checkInExpired && tournament?.start_date) {
+  if (checkInExpired && tournament?.startDate) {
     return (
       <div style={{ 
         padding: '10px 15px', 
@@ -300,7 +220,7 @@ const CheckInButton = ({ tournamentId, supabase, session, tournament }) => {
         </div>
       )}
       
-      {!tournament?.start_date && (
+      {!tournament?.startDate && (
         <div style={{ 
           fontSize: '0.8rem', 
           color: '#aaa',

@@ -8,10 +8,11 @@
  * - Catégorisation
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Input, Button } from '../../shared/components/ui';
 
@@ -68,31 +69,12 @@ export default function GamesDirectory({ session }) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Convex query - automatically reactive, no need for useState/useEffect
+  const tournaments = useQuery(api.tournaments.listPublic) ?? [];
+  const loading = tournaments === undefined;
+  
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'Tous');
-
-  useEffect(() => {
-    fetchTournaments();
-  }, []);
-
-  const fetchTournaments = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('game')
-        .eq('is_public', true);
-
-      if (error) throw error;
-      setTournaments(data || []);
-    } catch (error) {
-      console.error('Erreur chargement stats jeux:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Calculer les stats par jeu
   const gamesWithStats = useMemo(() => {

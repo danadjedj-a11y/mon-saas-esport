@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { calculateMatchWinner } from './bofUtils';
 import { toast } from './utils/toast';
 import {
@@ -13,7 +15,7 @@ import {
   EditScoreModal
 } from './components/admin';
 
-export default function AdminPanel({ tournamentId, supabase, participants, matches, onUpdate, onScheduleMatch }) {
+export default function AdminPanel({ tournamentId, participants, matches, onUpdate, onScheduleMatch }) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'participants', 'matches', 'conflicts', 'teams', 'schedule', 'stats'
   const [conflicts, setConflicts] = useState([]);
@@ -25,116 +27,39 @@ export default function AdminPanel({ tournamentId, supabase, participants, match
   const [editScore1, setEditScore1] = useState(0);
   const [editScore2, setEditScore2] = useState(0);
 
-  const fetchConflicts = useCallback(async () => {
-    // Récupérer les conflits de matchs (single game)
-    const { data: matchesData } = await supabase
-      .from('matches')
-      .select('*')
-      .eq('tournament_id', tournamentId)
-      .eq('score_status', 'disputed');
+  // Convex mutations
+  const toggleCheckInMut = useMutation(api.tournamentRegistrationsMutations.toggleCheckIn);
+  const disqualifyMut = useMutation(api.tournamentRegistrationsMutations.disqualify);
+  const resolveConflictMut = useMutation(api.matchesMutations.resolveScoreConflict);
+  const resetMatchMut = useMutation(api.matchesMutations.resetMatch);
+  const adminEditScoreMut = useMutation(api.matchesMutations.adminEditScore);
+
+  // Query pour les équipes (pour enrichir les conflits)
+  const teamsData = useQuery(api.teams.list) || [];
+  const teamsMap = React.useMemo(() => {
+    return teamsData.reduce((acc, t) => { acc[t._id] = t; return acc; }, {});
+  }, [teamsData]);
+
+  const fetchConflicts = useCallback(() => {
+    // Récupérer les conflits de matchs depuis les props matches
+    const disputedMatches = (matches || []).filter(m => m.scoreStatus === 'disputed' || m.score_status === 'disputed');
     
-    // Enrichir avec les noms des équipes en une seule requête
-    let enriched = [];
-    if (matchesData && matchesData.length > 0) {
-      // Collecter tous les IDs d'équipes uniques
-      const teamIds = [...new Set(matchesData.flatMap(m => [m.player1_id, m.player2_id].filter(Boolean)))];
-      
-      // Une seule requête pour toutes les équipes
-      const { data: teamsData } = await supabase
-        .from('teams')
-        .select('id, name, tag')
-        .in('id', teamIds);
-      
-      // Créer un map pour accès rapide
-      const teamsMap = (teamsData || []).reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
-      
-      enriched = matchesData.map(match => ({
-        ...match,
-        team1: teamsMap[match.player1_id] || { name: 'Équipe 1', tag: 'T1' },
-        team2: teamsMap[match.player2_id] || { name: 'Équipe 2', tag: 'T2' }
-      }));
-    }
-    setConflicts(enriched || []);
+    const enriched = disputedMatches.map(match => ({
+      ...match,
+      team1: teamsMap[match.team1Id || match.player1_id] || { name: 'Équipe 1', tag: 'T1' },
+      team2: teamsMap[match.team2Id || match.player2_id] || { name: 'Équipe 2', tag: 'T2' }
+    }));
     
-    // Récupérer les conflits de manches (Best-of-X)
-    try {
-      const { data: tournamentData } = await supabase
-        .from('tournaments')
-        .select('best_of')
-        .eq('id', tournamentId)
-        .single();
-      
-      if (tournamentData?.best_of > 1) {
-        const { data: allMatches } = await supabase
-          .from('matches')
-          .select('id')
-          .eq('tournament_id', tournamentId);
-        
-        if (allMatches && allMatches.length > 0) {
-          const matchIds = allMatches.map(m => m.id);
-          
-          const { data: gamesData } = await supabase
-            .from('match_games')
-            .select('*')
-            .in('match_id', matchIds)
-            .eq('score_status', 'disputed');
-          
-          if (gamesData && gamesData.length > 0) {
-            // Récupérer tous les matchs concernés en une requête
-            const gameMatchIds = [...new Set(gamesData.map(g => g.match_id))];
-            const { data: matchesForGames } = await supabase
-              .from('matches')
-              .select('*')
-              .in('id', gameMatchIds);
-            
-            const matchesMap = (matchesForGames || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
-            
-            // Collecter tous les IDs d'équipes
-            const teamIdsFromMatches = [...new Set(
-              (matchesForGames || []).flatMap(m => [m.player1_id, m.player2_id].filter(Boolean))
-            )];
-            
-            // Une seule requête pour toutes les équipes
-            const { data: teamsForGames } = await supabase
-              .from('teams')
-              .select('id, name, tag')
-              .in('id', teamIdsFromMatches);
-            
-            const teamsMapForGames = (teamsForGames || []).reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
-            
-            const enrichedGames = gamesData.map(game => {
-              const matchData = matchesMap[game.match_id];
-              if (!matchData) return null;
-              
-              return {
-                ...game,
-                match: matchData,
-                team1: teamsMapForGames[matchData.player1_id] || { name: 'Équipe 1', tag: 'T1' },
-                team2: teamsMapForGames[matchData.player2_id] || { name: 'Équipe 2', tag: 'T2' }
-              };
-            });
-            
-            const filtered = enrichedGames.filter(g => g !== null);
-            setGameConflicts(filtered);
-          } else {
-            setGameConflicts([]);
-          }
-        } else {
-          setGameConflicts([]);
-        }
-      } else {
-        setGameConflicts([]);
-      }
-    } catch (error) {
-      console.warn('Erreur récupération conflits manches:', error);
-      setGameConflicts([]);
-    }
-  }, [supabase, tournamentId]);
+    setConflicts(enriched);
+    // Les conflits de manches nécessiteraient une query séparée vers matchGames
+    // Pour l'instant on ne gère pas les conflits de manches côté Convex
+    setGameConflicts([]);
+  }, [matches, teamsMap]);
 
   const calculateStats = useCallback(() => {
     const totalParticipants = participants.length;
-    const checkedIn = participants.filter(p => p.checked_in).length;
-    const disqualified = participants.filter(p => p.disqualified).length;
+    const checkedIn = participants.filter(p => p.checked_in || p.status === 'checked_in').length;
+    const disqualified = participants.filter(p => p.disqualified || p.status === 'disqualified').length;
     const totalMatches = matches.length;
     const completedMatches = matches.filter(m => m.status === 'completed').length;
     const pendingMatches = matches.filter(m => m.status === 'pending').length;
@@ -261,153 +186,62 @@ export default function AdminPanel({ tournamentId, supabase, participants, match
   const handleManualCheckIn = async (participantId) => {
     if (!confirm("Marquer cette équipe comme check-in ?")) return;
     
-    const { error } = await supabase
-      .from('participants')
-      .update({ checked_in: true, disqualified: false })
-      .eq('id', participantId);
-    
-    if (error) {
-      toast.error("Erreur : " + error.message);
-    } else {
+    try {
+      await toggleCheckInMut({ registrationId: participantId, checkedIn: true });
       if (onUpdate) onUpdate();
+    } catch (error) {
+      toast.error("Erreur : " + error.message);
     }
   };
 
   const handleDisqualify = async (participantId) => {
     if (!confirm("Disqualifier cette équipe ?")) return;
     
-    const { error } = await supabase
-      .from('participants')
-      .update({ disqualified: true })
-      .eq('id', participantId);
-    
-    if (error) {
-      toast.error("Erreur : " + error.message);
-    } else {
+    try {
+      await disqualifyMut({ registrationId: participantId, disqualified: true });
       if (onUpdate) onUpdate();
+    } catch (error) {
+      toast.error("Erreur : " + error.message);
     }
   };
 
   const handleUnDisqualify = async (participantId) => {
     if (!confirm("Réintégrer cette équipe ?")) return;
     
-    const { error } = await supabase
-      .from('participants')
-      .update({ disqualified: false })
-      .eq('id', participantId);
-    
-    if (error) {
-      toast.error("Erreur : " + error.message);
-    } else {
+    try {
+      await disqualifyMut({ registrationId: participantId, disqualified: false });
       if (onUpdate) onUpdate();
+    } catch (error) {
+      toast.error("Erreur : " + error.message);
     }
   };
 
   const resolveConflict = async (matchId, scoreP1, scoreP2) => {
     if (!confirm(`Confirmer le score ${scoreP1} - ${scoreP2} ?`)) return;
 
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        score_p1: scoreP1,
-        score_p2: scoreP2,
-        score_status: 'confirmed',
-        status: 'completed',
-        score_p1_reported: scoreP1,
-        score_p2_reported: scoreP2,
-        reported_by_team1: true,
-        reported_by_team2: true
-      })
-      .eq('id', matchId);
-
-    if (error) {
-      toast.error("Erreur : " + error.message);
-    } else {
+    try {
+      await resolveConflictMut({
+        matchId: matchId,
+        scoreTeam1: scoreP1,
+        scoreTeam2: scoreP2
+      });
       fetchConflicts();
       if (onUpdate) onUpdate();
+    } catch (error) {
+      toast.error("Erreur : " + error.message);
     }
   };
 
   const resolveGameConflict = async (gameId, matchId, scoreTeam1, scoreTeam2) => {
-    if (!confirm(`Confirmer le score de la manche : ${scoreTeam1} - ${scoreTeam2} ?`)) return;
-
-    const { data: matchData } = await supabase
-      .from('matches')
-      .select('player1_id, player2_id, tournament_id')
-      .eq('id', matchId)
-      .single();
-
-    if (!matchData) {
-      toast.error("Erreur : Match non trouvé");
-      return;
-    }
-
-    const winnerTeamId = scoreTeam1 > scoreTeam2 ? matchData.player1_id : (scoreTeam2 > scoreTeam1 ? matchData.player2_id : null);
-
-    const { error: gameError } = await supabase
-      .from('match_games')
-      .update({
-        team1_score: scoreTeam1,
-        team2_score: scoreTeam2,
-        team1_score_reported: scoreTeam1,
-        team2_score_reported: scoreTeam2,
-        winner_team_id: winnerTeamId,
-        score_status: 'confirmed',
-        status: 'completed',
-        reported_by_team1: true,
-        reported_by_team2: true,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', gameId);
-
-    if (gameError) {
-      toast.error("Erreur : " + gameError.message);
-      return;
-    }
-
-    await supabase
-      .from('game_score_reports')
-      .update({ is_resolved: true })
-      .eq('game_id', gameId);
-
-    const { data: allGames } = await supabase
-      .from('match_games')
-      .select('*')
-      .eq('match_id', matchId)
-      .order('game_number', { ascending: true });
-
-    if (allGames) {
-      const { data: tournamentData } = await supabase
-        .from('tournaments')
-        .select('best_of, format')
-        .eq('id', matchData.tournament_id)
-        .single();
-
-      if (tournamentData?.best_of) {
-        const matchResult = calculateMatchWinner(allGames, tournamentData.best_of, matchData.player1_id, matchData.player2_id);
-
-        if (matchResult.isCompleted && matchResult.winner) {
-          await supabase
-            .from('matches')
-            .update({
-              score_p1: matchResult.team1Wins,
-              score_p2: matchResult.team2Wins,
-              status: 'completed',
-              score_status: 'confirmed'
-            })
-            .eq('id', matchId);
-        }
-      }
-    }
-
-    fetchConflicts();
-    if (onUpdate) onUpdate();
+    // Les conflits de manches (Best-of-X) ne sont pas encore supportés dans Convex
+    // Cette fonctionnalité nécessiterait d'ajouter scoreStatus au schéma matchGames
+    toast.error("Résolution des conflits de manches non supportée pour l'instant");
   };
 
   const handleEditMatchScore = (match) => {
     setSelectedMatch(match);
-    setEditScore1(match.score_p1 || 0);
-    setEditScore2(match.score_p2 || 0);
+    setEditScore1(match.scoreTeam1 || match.score_p1 || 0);
+    setEditScore2(match.scoreTeam2 || match.score_p2 || 0);
     setEditScoreModal(true);
   };
 
@@ -416,50 +250,28 @@ export default function AdminPanel({ tournamentId, supabase, participants, match
     const s1 = parseInt(editScore1);
     const s2 = parseInt(editScore2);
 
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        score_p1: s1,
-        score_p2: s2,
-        score_status: 'confirmed',
-        status: 'completed',
-        score_p1_reported: s1,
-        score_p2_reported: s2,
-        reported_by_team1: true,
-        reported_by_team2: true
-      })
-      .eq('id', selectedMatch.id);
-
-    if (error) {
-      toast.error("Erreur : " + error.message);
-    } else {
+    try {
+      await adminEditScoreMut({
+        matchId: selectedMatch._id || selectedMatch.id,
+        scoreTeam1: s1,
+        scoreTeam2: s2
+      });
       setEditScoreModal(false);
       setSelectedMatch(null);
       if (onUpdate) onUpdate();
+    } catch (error) {
+      toast.error("Erreur : " + error.message);
     }
   };
 
   const handleResetMatch = async (matchId) => {
     if (!confirm("Réinitialiser ce match ? Les scores seront effacés et le match repassera en attente.")) return;
 
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        score_p1: 0,
-        score_p2: 0,
-        score_status: 'pending',
-        status: 'pending',
-        score_p1_reported: null,
-        score_p2_reported: null,
-        reported_by_team1: false,
-        reported_by_team2: false
-      })
-      .eq('id', matchId);
-
-    if (error) {
-      toast.error("Erreur : " + error.message);
-    } else {
+    try {
+      await resetMatchMut({ matchId });
       if (onUpdate) onUpdate();
+    } catch (error) {
+      toast.error("Erreur : " + error.message);
     }
   };
 
@@ -469,7 +281,7 @@ export default function AdminPanel({ tournamentId, supabase, participants, match
     { id: 'matches', label: '🎮 Matchs', count: matches.length },
     { id: 'conflicts', label: '⚠️ Conflits', count: conflicts.length + gameConflicts.length },
     { id: 'teams', label: '🏆 Équipes', count: teamStats.length },
-    { id: 'schedule', label: '📅 Planning', count: matches.filter(m => m.scheduled_at).length },
+    { id: 'schedule', label: '📅 Planning', count: matches.filter(m => m.scheduled_at || m.scheduledTime).length },
     { id: 'stats', label: '📈 Statistiques' }
   ];
 

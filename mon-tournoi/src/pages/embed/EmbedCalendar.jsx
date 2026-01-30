@@ -1,47 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 /**
  * EmbedCalendar - Widget embed pour le calendrier des matchs
  */
 export default function EmbedCalendar() {
   const { id: tournamentId } = useParams();
-  const [tournament, setTournament] = useState(null);
-  const [matches, setMatches] = useState([]);
-  const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [tournamentRes, matchesRes, participantsRes] = await Promise.all([
-          supabase.from('tournaments').select('name').eq('id', tournamentId).single(),
-          supabase
-            .from('matches')
-            .select('*')
-            .eq('tournament_id', tournamentId)
-            .order('scheduled_time', { ascending: true }),
-          supabase.from('participants').select('id, name, team_name').eq('tournament_id', tournamentId),
-        ]);
+  // Convex queries
+  const tournament = useQuery(api.tournaments.getById, { tournamentId });
+  const rawMatches = useQuery(api.matches.listByTournament, { tournamentId }) ?? [];
+  const participants = useQuery(api.tournamentRegistrations.listByTournament, { tournamentId }) ?? [];
 
-        setTournament(tournamentRes.data);
-        setMatches(matchesRes.data || []);
-        setParticipants(participantsRes.data || []);
-      } catch (error) {
-        console.error('Erreur:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loading = tournament === undefined || rawMatches === undefined || participants === undefined;
 
-    fetchData();
-  }, [tournamentId]);
+  // Sort matches by scheduled time
+  const matches = useMemo(() => {
+    return [...rawMatches].sort((a, b) => {
+      const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : Infinity;
+      const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : Infinity;
+      return timeA - timeB;
+    });
+  }, [rawMatches]);
 
   const getParticipantName = (id) => {
     if (!id) return 'TBD';
-    const p = participants.find(p => p.id === id);
-    return p?.team_name || p?.name || 'TBD';
+    const p = participants.find(p => p._id === id);
+    return p?.teamName || p?.name || 'TBD';
   };
 
   const formatDate = (dateStr) => {
@@ -74,8 +61,8 @@ export default function EmbedCalendar() {
 
   // Grouper par date
   const groupedMatches = matches.reduce((acc, match) => {
-    const date = match.scheduled_time 
-      ? new Date(match.scheduled_time).toLocaleDateString('fr-FR')
+    const date = match.scheduledTime 
+      ? new Date(match.scheduledTime).toLocaleDateString('fr-FR')
       : 'Non planifié';
     if (!acc[date]) acc[date] = [];
     acc[date].push(match);
@@ -106,23 +93,23 @@ export default function EmbedCalendar() {
               <div className="space-y-2">
                 {dateMatches.map((match) => (
                   <div
-                    key={match.id}
+                    key={match._id}
                     className={`bg-[#161b22] rounded-lg border-l-2 ${getStatusColor(match.status)} p-3`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 text-sm">
-                          <span className="text-white">{getParticipantName(match.player1_id)}</span>
+                          <span className="text-white">{getParticipantName(match.player1Id)}</span>
                           <span className="text-gray-600">vs</span>
-                          <span className="text-white">{getParticipantName(match.player2_id)}</span>
+                          <span className="text-white">{getParticipantName(match.player2Id)}</span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(match.scheduled_time)}
+                          {formatDate(match.scheduledTime)}
                         </p>
                       </div>
                       {match.status === 'completed' && (
                         <div className="text-sm font-mono text-gray-400">
-                          {match.score_p1} - {match.score_p2}
+                          {match.scoreP1} - {match.scoreP2}
                         </div>
                       )}
                       {(match.status === 'ongoing' || match.status === 'in_progress') && (

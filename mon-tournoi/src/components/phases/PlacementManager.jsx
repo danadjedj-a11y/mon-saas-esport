@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useState, useCallback } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { Button, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import clsx from 'clsx';
@@ -15,106 +16,53 @@ export default function PlacementManager({
   format,
   onPlacementChange 
 }) {
-  const [slots, setSlots] = useState([]);
-  const [participants, setParticipants] = useState([]);
-  const [unplacedParticipants, setUnplacedParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [draggedParticipant, setDraggedParticipant] = useState(null);
   const [showParticipantModal, setShowParticipantModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
 
-  // Charger les données
-  useEffect(() => {
-    fetchData();
-  }, [phaseId, tournamentId]);
+  // Convex queries
+  const participants = useQuery(api.registrations.listByTournament, 
+    tournamentId ? { tournamentId, status: 'confirmed' } : 'skip'
+  ) || [];
+  const slotsData = useQuery(api.tournamentPhases.getBracketSlots, 
+    phaseId ? { phaseId } : 'skip'
+  ) || [];
+  const loading = participants === undefined || slotsData === undefined;
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Charger les participants du tournoi
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('participants')
-        .select(`
-          *,
-          team:teams(id, name, logo_url, tag)
-        `)
-        .eq('tournament_id', tournamentId)
-        .eq('status', 'confirmed')
-        .order('seed_order', { ascending: true });
+  // Convex mutations
+  const placeBracketSlot = useMutation(api.tournamentPhases.placeBracketSlot);
+  const clearBracketSlot = useMutation(api.tournamentPhases.clearBracketSlot);
+  const resetBracketSlots = useMutation(api.tournamentPhases.resetBracketSlots);
+  const autoPlaceBracketSlots = useMutation(api.tournamentPhases.autoPlaceBracketSlots);
 
-      if (participantsError) throw participantsError;
-      setParticipants(participantsData || []);
+  // Compute slots - use data or create empty slots
+  const slots = slotsData.length > 0 
+    ? slotsData 
+    : Array.from({ length: size }, (_, i) => ({
+        slotNumber: i + 1,
+        teamId: null,
+        participantId: null,
+      }));
 
-      // Charger les placements existants
-      const { data: slotsData, error: slotsError } = await supabase
-        .from('bracket_slots')
-        .select('*')
-        .eq('phase_id', phaseId)
-        .order('slot_number', { ascending: true });
-
-      if (!slotsError && slotsData) {
-        setSlots(slotsData);
-        
-        // Calculer les participants non placés
-        const placedTeamIds = slotsData.filter(s => s.team_id).map(s => s.team_id);
-        const unplaced = participantsData?.filter(p => 
-          p.team_id && !placedTeamIds.includes(p.team_id)
-        ) || [];
-        setUnplacedParticipants(unplaced);
-      } else {
-        // Initialiser les slots vides si la table n'existe pas encore
-        const emptySlots = Array.from({ length: size }, (_, i) => ({
-          slot_number: i + 1,
-          team_id: null,
-          participant_id: null,
-        }));
-        setSlots(emptySlots);
-        setUnplacedParticipants(participantsData || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement placement:', error);
-      toast.error('Erreur lors du chargement des placements');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Calculate unplaced participants
+  const placedTeamIds = slots.filter(s => s.teamId).map(s => s.teamId);
+  const unplacedParticipants = participants.filter(p => 
+    p.teamId && !placedTeamIds.includes(p.teamId)
+  );
 
   // Placer une équipe dans un slot
   const placeTeam = async (slotNumber, participant) => {
     if (!participant) return;
 
     try {
-      // Vérifier si un slot existe déjà
-      const existingSlot = slots.find(s => s.slot_number === slotNumber);
-      
-      if (existingSlot?.id) {
-        // Mettre à jour le slot existant
-        const { error } = await supabase
-          .from('bracket_slots')
-          .update({
-            team_id: participant.team_id,
-            participant_id: participant.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingSlot.id);
-        
-        if (error) throw error;
-      } else {
-        // Créer un nouveau slot
-        const { error } = await supabase
-          .from('bracket_slots')
-          .insert({
-            phase_id: phaseId,
-            slot_number: slotNumber,
-            team_id: participant.team_id,
-            participant_id: participant.id,
-          });
-        
-        if (error) throw error;
-      }
+      await placeBracketSlot({
+        phaseId,
+        slotNumber,
+        teamId: participant.teamId,
+        participantId: participant._id,
+      });
 
       toast.success(`${participant.team?.name || 'Équipe'} placée en position ${slotNumber}`);
-      fetchData();
       onPlacementChange?.();
     } catch (error) {
       console.error('Erreur placement:', error);
@@ -125,22 +73,12 @@ export default function PlacementManager({
   // Retirer une équipe d'un slot
   const removeTeam = async (slotNumber) => {
     try {
-      const slot = slots.find(s => s.slot_number === slotNumber);
-      if (!slot?.id) return;
-
-      const { error } = await supabase
-        .from('bracket_slots')
-        .update({
-          team_id: null,
-          participant_id: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', slot.id);
-
-      if (error) throw error;
+      await clearBracketSlot({
+        phaseId,
+        slotNumber,
+      });
       
       toast.success('Équipe retirée');
-      fetchData();
       onPlacementChange?.();
     } catch (error) {
       console.error('Erreur retrait:', error);
@@ -156,30 +94,21 @@ export default function PlacementManager({
     }
 
     try {
-      // Supprimer les placements existants
-      await supabase
-        .from('bracket_slots')
-        .delete()
-        .eq('phase_id', phaseId);
-
-      // Créer les nouveaux placements
+      // Créer les placements
       const placements = participants
         .slice(0, size)
         .map((participant, index) => ({
-          phase_id: phaseId,
-          slot_number: index + 1,
-          team_id: participant.team_id,
-          participant_id: participant.id,
+          slotNumber: index + 1,
+          teamId: participant.teamId,
+          participantId: participant._id,
         }));
 
-      const { error } = await supabase
-        .from('bracket_slots')
-        .insert(placements);
-
-      if (error) throw error;
+      await autoPlaceBracketSlots({
+        phaseId,
+        placements,
+      });
 
       toast.success(`${placements.length} équipes placées automatiquement`);
-      fetchData();
       onPlacementChange?.();
     } catch (error) {
       console.error('Erreur auto-placement:', error);
@@ -192,13 +121,9 @@ export default function PlacementManager({
     if (!confirm('Réinitialiser tous les placements ?')) return;
 
     try {
-      await supabase
-        .from('bracket_slots')
-        .delete()
-        .eq('phase_id', phaseId);
+      await resetBracketSlots({ phaseId });
 
       toast.success('Placements réinitialisés');
-      fetchData();
       onPlacementChange?.();
     } catch (error) {
       console.error('Erreur reset:', error);
@@ -233,9 +158,9 @@ export default function PlacementManager({
 
   // Obtenir l'équipe placée dans un slot
   const getTeamForSlot = (slotNumber) => {
-    const slot = slots.find(s => s.slot_number === slotNumber);
-    if (!slot?.team_id) return null;
-    return participants.find(p => p.team_id === slot.team_id);
+    const slot = slots.find(s => s.slotNumber === slotNumber);
+    if (!slot?.teamId) return null;
+    return participants.find(p => p.teamId === slot.teamId);
   };
 
   if (loading) {
@@ -265,7 +190,7 @@ export default function PlacementManager({
           ↺ Réinitialiser
         </Button>
         <span className="text-sm text-gray-500 ml-auto">
-          {slots.filter(s => s.team_id).length} / {size} positions remplies
+          {slots.filter(s => s.teamId).length} / {size} positions remplies
         </span>
       </div>
 
@@ -295,9 +220,9 @@ export default function PlacementManager({
               {team ? (
                 <div className="pt-4">
                   <div className="flex items-center gap-2">
-                    {team.team?.logo_url ? (
+                    {team.team?.logoUrl ? (
                       <img 
-                        src={team.team.logo_url} 
+                        src={team.team.logoUrl} 
                         alt="" 
                         className="w-6 h-6 rounded object-cover"
                       />
@@ -339,14 +264,14 @@ export default function PlacementManager({
           <div className="flex flex-wrap gap-2">
             {unplacedParticipants.map(participant => (
               <div
-                key={participant.id}
+                key={participant._id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, participant)}
                 className="flex items-center gap-2 px-3 py-2 bg-[#2a2d3e] border border-white/10 rounded-lg cursor-grab hover:border-violet/50 transition-colors"
               >
-                {participant.team?.logo_url ? (
+                {participant.team?.logoUrl ? (
                   <img 
-                    src={participant.team.logo_url} 
+                    src={participant.team.logoUrl} 
                     alt="" 
                     className="w-5 h-5 rounded object-cover"
                   />
@@ -359,7 +284,7 @@ export default function PlacementManager({
                   {participant.team?.name || 'Équipe'}
                 </span>
                 <span className="text-xs text-gray-500 ml-1">
-                  (Seed {participant.seed_order || '?'})
+                  (Seed {participant.seed || '?'})
                 </span>
               </div>
             ))}
@@ -385,7 +310,7 @@ export default function PlacementManager({
           ) : (
             unplacedParticipants.map(participant => (
               <button
-                key={participant.id}
+                key={participant._id}
                 onClick={() => {
                   placeTeam(selectedSlot, participant);
                   setShowParticipantModal(false);
@@ -393,9 +318,9 @@ export default function PlacementManager({
                 }}
                 className="w-full flex items-center gap-3 p-3 bg-[#2a2d3e] border border-white/10 rounded-lg hover:border-violet/50 transition-colors text-left"
               >
-                {participant.team?.logo_url ? (
+                {participant.team?.logoUrl ? (
                   <img 
-                    src={participant.team.logo_url} 
+                    src={participant.team.logoUrl} 
                     alt="" 
                     className="w-8 h-8 rounded object-cover"
                   />
@@ -406,7 +331,7 @@ export default function PlacementManager({
                 )}
                 <div className="flex-1">
                   <p className="text-white font-medium">{participant.team?.name || 'Équipe'}</p>
-                  <p className="text-xs text-gray-500">Seed actuel: {participant.seed_order || '-'}</p>
+                  <p className="text-xs text-gray-500">Seed actuel: {participant.seed || '-'}</p>
                 </div>
               </button>
             ))

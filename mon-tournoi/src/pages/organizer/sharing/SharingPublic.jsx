@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button, Input } from '../../../shared/components/ui';
 import { toast } from '../../../utils/toast';
 
@@ -18,38 +19,30 @@ export default function SharingPublic() {
     matches: 0,
     views: 0,
   });
-  const [loading, setLoading] = useState(true);
 
   const publicUrl = `${window.location.origin}/tournament/${tournamentId}`;
 
+  // Charger les stats via Convex
+  const registrations = useQuery(
+    api.tournamentRegistrations.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+  const matchesData = useQuery(
+    api.matches.listByTournament,
+    tournamentId ? { tournamentId } : "skip"
+  );
+
+  const loading = registrations === undefined || matchesData === undefined;
+
   useEffect(() => {
-    fetchStats();
-  }, [tournamentId]);
-
-  const fetchStats = async () => {
-    try {
-      const [participantsRes, matchesRes] = await Promise.all([
-        supabase
-          .from('participants')
-          .select('id', { count: 'exact' })
-          .eq('tournament_id', tournamentId),
-        supabase
-          .from('matches')
-          .select('id', { count: 'exact' })
-          .eq('tournament_id', tournamentId),
-      ]);
-
+    if (registrations !== undefined && matchesData !== undefined) {
       setStats({
-        participants: participantsRes.count || 0,
-        matches: matchesRes.count || 0,
-        views: tournament?.views_count || Math.floor(Math.random() * 500), // Placeholder
+        participants: registrations?.length || 0,
+        matches: matchesData?.length || 0,
+        views: tournament?.viewsCount || Math.floor(Math.random() * 500),
       });
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [registrations, matchesData, tournament]);
 
   const copyToClipboard = (text, message = 'Copié !') => {
     navigator.clipboard.writeText(text);

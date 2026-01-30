@@ -1,11 +1,12 @@
 /**
- * SearchResults - Page de résultats de recherche
+ * SearchResults - Page de résultats de recherche (Convex)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../supabaseClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Button, Tabs } from '../../shared/components/ui';
 import { TournamentCardSkeleton } from '../../components/Skeleton';
@@ -16,44 +17,24 @@ export default function SearchResults({ session }) {
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
   
-  const [loading, setLoading] = useState(true);
-  const [tournaments, setTournaments] = useState([]);
-  const [teams, setTeams] = useState([]);
   const [activeTab, setActiveTab] = useState('tournaments');
 
-  useEffect(() => {
-    if (query) {
-      searchAll();
-    }
-  }, [query]);
+  // Convex queries
+  const tournamentsData = useQuery(api.tournaments.search, 
+    query ? { searchQuery: query, limit: 50 } : "skip"
+  );
+  const teamsData = useQuery(api.teams.list); // TODO: Add search query to teams
 
-  const searchAll = async () => {
-    setLoading(true);
-    try {
-      // Recherche tournois
-      const { data: tournamentsData } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('is_public', true)
-        .or(`name.ilike.%${query}%,game.ilike.%${query}%,description.ilike.%${query}%`)
-        .order('start_date', { ascending: false })
-        .limit(50);
-
-      // Recherche équipes
-      const { data: teamsData } = await supabase
-        .from('teams')
-        .select('*')
-        .ilike('name', `%${query}%`)
-        .limit(50);
-
-      setTournaments(tournamentsData || []);
-      setTeams(teamsData || []);
-    } catch (error) {
-      console.error('Erreur recherche:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = tournamentsData === undefined;
+  
+  // Filtrer les équipes par recherche côté client pour l'instant
+  const tournaments = tournamentsData ?? [];
+  const teams = useMemo(() => {
+    if (!teamsData || !query) return [];
+    return teamsData.filter(t => 
+      t.name?.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 50);
+  }, [teamsData, query]);
 
   const totalResults = tournaments.length + teams.length;
 
@@ -142,9 +123,9 @@ function TournamentResults({ tournaments, navigate }) {
     <div className="space-y-4">
       {tournaments.map(tournament => (
         <TournamentRow 
-          key={tournament.id} 
+          key={tournament._id} 
           tournament={tournament}
-          onClick={() => navigate(`/tournament/${tournament.id}/public`)}
+          onClick={() => navigate(`/tournament/${tournament._id}/public`)}
         />
       ))}
     </div>
@@ -166,8 +147,8 @@ function TeamResults({ teams, navigate }) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {teams.map(team => (
         <div 
-          key={team.id}
-          onClick={() => navigate(`/team/${team.id}`)}
+          key={team._id}
+          onClick={() => navigate(`/team/${team._id}`)}
           className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-violet-500/50 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-4">
@@ -203,10 +184,10 @@ function TournamentRow({ tournament, onClick }) {
       <div className="flex items-center gap-4">
         <div className="text-center w-16 flex-shrink-0">
           <div className="text-2xl font-bold text-white">
-            {new Date(tournament.start_date).getDate()}
+            {new Date(tournament.startDate).getDate()}
           </div>
           <div className="text-xs text-gray-500 uppercase">
-            {new Date(tournament.start_date).toLocaleDateString('fr-FR', { month: 'short' })}
+            {new Date(tournament.startDate).toLocaleDateString('fr-FR', { month: 'short' })}
           </div>
         </div>
         
@@ -220,9 +201,9 @@ function TournamentRow({ tournament, onClick }) {
           </div>
           <h3 className="font-bold text-white truncate">{tournament.name}</h3>
           <div className="flex gap-3 text-sm text-gray-400 mt-1">
-            <span>👥 {tournament.max_participants}</span>
-            {tournament.cashprize_total > 0 && (
-              <span className="text-yellow-400">💰 {tournament.cashprize_total}€</span>
+            <span>👥 {tournament.maxParticipants}</span>
+            {(tournament.cashprizeTotal ?? 0) > 0 && (
+              <span className="text-yellow-400">💰 {tournament.cashprizeTotal}€</span>
             )}
           </div>
         </div>

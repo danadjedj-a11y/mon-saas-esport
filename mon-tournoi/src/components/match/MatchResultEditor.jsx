@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
+import { useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { Button, Input, Modal } from '../../shared/components/ui';
 import { toast } from '../../utils/toast';
 import clsx from 'clsx';
@@ -22,6 +23,9 @@ export default function MatchResultEditor({
   const [games, setGames] = useState([]);
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState(match?.notes || '');
+
+  // Convex mutation for updating match
+  const updateMatchMutation = useMutation(api.matchesMutations.updateScore);
 
   // Initialiser les manches
   useEffect(() => {
@@ -126,24 +130,28 @@ export default function MatchResultEditor({
         finalTeam2Score = totals.team2;
       }
 
+      const winnerId = winner === 'team1' ? match.team1_id : (winner === 'team2' ? match.team2_id : undefined);
+
+      // Use Convex mutation
+      await updateMatchMutation({
+        matchId: match._id || match.id,
+        scoreTeam1: finalTeam1Score,
+        scoreTeam2: finalTeam2Score,
+        winnerId: winnerId,
+      });
+
+      // Store additional data (games, notes) if needed
+      // Note: For full migration, add games and notes fields to the mutation
+
+      toast.success('Résultat sauvegardé');
       const updateData = {
         team1_score: finalTeam1Score,
         team2_score: finalTeam2Score,
-        winner_id: winner === 'team1' ? match.team1_id : (winner === 'team2' ? match.team2_id : null),
+        winner_id: winnerId,
         status: winner ? 'completed' : 'in_progress',
         games: games.length > 0 ? games : null,
         notes: notes,
-        updated_at: new Date().toISOString(),
       };
-
-      const { error } = await supabase
-        .from('matches')
-        .update(updateData)
-        .eq('id', match.id);
-
-      if (error) throw error;
-
-      toast.success('Résultat sauvegardé');
       onSave?.(updateData);
       onClose();
     } catch (error) {
@@ -160,20 +168,13 @@ export default function MatchResultEditor({
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('matches')
-        .update({
-          team1_score: 0,
-          team2_score: 0,
-          winner_id: null,
-          status: 'pending',
-          games: null,
-          notes: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', match.id);
-
-      if (error) throw error;
+      // Use Convex mutation to reset
+      await updateMatchMutation({
+        matchId: match._id || match.id,
+        scoreTeam1: 0,
+        scoreTeam2: 0,
+        winnerId: undefined,
+      });
 
       toast.success('Match réinitialisé');
       onSave?.({ reset: true });

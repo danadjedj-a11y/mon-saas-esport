@@ -1,13 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { Button, Card, Input } from '../shared/components/ui';
 import { toast } from '../utils/toast';
-import { supabase } from '../supabaseClient';
-import {
-  getUserGamingAccounts,
-  addGamingAccount,
-  updateGamingAccount,
-  deleteGamingAccount,
-} from '../shared/services/api/gamingAccounts';
 import {
   PLATFORM_NAMES,
   PLATFORM_LOGOS,
@@ -18,90 +13,47 @@ import {
 } from '../utils/gamePlatforms';
 
 export default function GamingAccountsSection({ session }) {
-  const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [editingPlatform, setEditingPlatform] = useState(null);
   const [formData, setFormData] = useState({ username: '', tag: '' });
   const [saving, setSaving] = useState(false);
-  const [registeredTournaments, setRegisteredTournaments] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      loadAccounts();
-      loadRegisteredTournaments();
-      loadPendingRequests();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  // Convex queries and mutations for gaming accounts
+  const accounts = useQuery(api.playerGameAccounts.listByUser,
+    session?.user?.id ? { userId: session.user.id } : "skip"
+  ) || [];
+  
+  // Get registered tournaments for the user
+  const registeredTournaments = useQuery(
+    api.tournamentRegistrations.listByUser,
+    session?.user?.id ? { userId: session.user.id } : "skip"
+  ) || [];
+  
+  // Get pending account change requests
+  const pendingRequests = useQuery(
+    api.playerGameAccounts.listPendingRequests,
+    session?.user?.id ? { userId: session.user.id } : "skip"
+  ) || [];
 
-  const loadAccounts = async () => {
-    setLoading(true);
-    try {
-      const data = await getUserGamingAccounts(session.user.id);
-      setAccounts(data);
-    } catch (error) {
-      toast.error('Erreur lors du chargement des comptes gaming');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const addAccount = useMutation(api.playerGameAccounts.add);
+  const updateAccount = useMutation(api.playerGameAccounts.update);
+  const removeAccount = useMutation(api.playerGameAccounts.remove);
+  const requestAccountChange = useMutation(api.playerGameAccounts.requestChange);
+  
+  const loading = session?.user?.id && accounts === undefined;
 
-  // Charger les tournois où l'utilisateur est inscrit (avec statut actif)
-  const loadRegisteredTournaments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('participants')
-        .select(`
-          tournament_id,
-          tournaments:tournament_id (
-            id,
-            name,
-            game,
-            status
-          )
-        `)
-        .eq('user_id', session.user.id);
-
-      if (error) throw error;
-
-      // Filtrer les tournois actifs (pas terminés)
-      const activeTournaments = (data || [])
-        .filter(p => p.tournaments && !['completed', 'cancelled'].includes(p.tournaments.status))
-        .map(p => p.tournaments);
-
-      setRegisteredTournaments(activeTournaments);
-    } catch (error) {
-      console.error('Erreur chargement tournois:', error);
-    }
-  };
-
-  // Charger les demandes de modification en attente
-  const loadPendingRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('gaming_account_change_requests')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('status', 'pending');
-
-      if (error && error.code !== 'PGRST116') throw error;
-      setPendingRequests(data || []);
-    } catch (error) {
-      console.error('Erreur chargement demandes:', error);
-      // La table n'existe peut-être pas encore
-    }
-  };
+  // Filter active tournaments (not completed or cancelled)
+  const activeTournaments = registeredTournaments.filter(
+    t => t.tournament && !['completed', 'cancelled'].includes(t.tournament.status)
+  ).map(t => t.tournament);
 
   // Vérifier si une plateforme est utilisée dans un tournoi actif
   const isPlatformUsedInActiveTournament = (platform) => {
-    return registeredTournaments.some(t => getPlatformForGame(t.game) === platform);
+    return activeTournaments.some(t => getPlatformForGame(t?.game) === platform);
   };
 
   // Obtenir les tournois qui utilisent cette plateforme
   const getTournamentsUsingPlatform = (platform) => {
-    return registeredTournaments.filter(t => getPlatformForGame(t.game) === platform);
+    return activeTournaments.filter(t => getPlatformForGame(t?.game) === platform);
   };
 
   // Vérifier si une demande de modification est en attente pour cette plateforme
@@ -113,8 +65,8 @@ export default function GamingAccountsSection({ session }) {
     const existingAccount = accounts.find(acc => acc.platform === platform);
     if (existingAccount) {
       setFormData({
-        username: existingAccount.game_username || '',
-        tag: existingAccount.game_tag || '',
+        username: existingAccount.gameUsername || '',
+        tag: existingAccount.gameTag || '',
       });
     } else {
       setFormData({ username: '', tag: '' });
@@ -144,63 +96,53 @@ export default function GamingAccountsSection({ session }) {
       
       // Vérifier si la modification doit passer par une demande admin
       if (existingAccount && isPlatformUsedInActiveTournament(editingPlatform)) {
-        // Créer une demande de modification
-        const { error } = await supabase
-          .from('gaming_account_change_requests')
-          .insert({
-            user_id: session.user.id,
+        // Créer une demande de modification via Convex
+        try {
+          await requestAccountChange({
+            userId: session.user.id,
             platform: editingPlatform,
-            old_username: existingAccount.game_username,
-            old_tag: existingAccount.game_tag,
-            new_username: formData.username,
-            new_tag: formData.tag || null,
-            status: 'pending',
-            created_at: new Date().toISOString(),
+            oldUsername: existingAccount.gameUsername,
+            oldTag: existingAccount.gameTag,
+            newUsername: formData.username,
+            newTag: formData.tag || undefined,
           });
-
-        if (error) {
-          if (error.code === '23505') {
-            toast.error('Une demande de modification est déjà en cours pour ce compte');
-          } else if (error.code === '42P01') {
-            // La table n'existe pas encore, on fait la modification directe
-            console.warn('Table gaming_account_change_requests non trouvée, modification directe');
-            await updateGamingAccount(
-              existingAccount.id,
-              formData.username,
-              formData.tag || null
-            );
+          toast.success('📝 Demande de modification envoyée ! Un admin validera votre changement.');
+        } catch (error) {
+          // If the request mutation doesn't exist, do direct update
+          if (error.message?.includes('not found')) {
+            await updateAccount({
+              accountId: existingAccount._id,
+              gameUsername: formData.username,
+              gameTag: formData.tag || undefined,
+            });
             toast.success('✅ Compte mis à jour avec succès !');
           } else {
             throw error;
           }
-        } else {
-          toast.success('📝 Demande de modification envoyée ! Un admin validera votre changement.');
-          await loadPendingRequests();
         }
       } else if (existingAccount) {
         // Update existing (pas inscrit à un tournoi actif avec ce jeu)
-        await updateGamingAccount(
-          existingAccount.id,
-          formData.username,
-          formData.tag || null
-        );
+        await updateAccount({
+          accountId: existingAccount._id,
+          gameUsername: formData.username,
+          gameTag: formData.tag || undefined,
+        });
         toast.success('✅ Compte mis à jour avec succès !');
       } else {
         // Add new
-        await addGamingAccount(
-          session.user.id,
-          editingPlatform,
-          formData.username,
-          formData.tag || null
-        );
+        await addAccount({
+          userId: session.user.id,
+          platform: editingPlatform,
+          gameUsername: formData.username,
+          gameTag: formData.tag || undefined,
+        });
         toast.success('✅ Compte ajouté avec succès !');
       }
 
-      await loadAccounts();
       handleCancel();
     } catch (error) {
       // Check for unique constraint violation
-      if (error.code === '23505') {
+      if (error.message?.includes('existe déjà')) {
         toast.error('Un compte existe déjà pour cette plateforme');
       } else if (error.message) {
         toast.error(`Erreur: ${error.message}`);
@@ -226,9 +168,8 @@ export default function GamingAccountsSection({ session }) {
     }
 
     try {
-      await deleteGamingAccount(accountId);
+      await removeAccount({ accountId });?
       toast.success('✅ Compte supprimé avec succès !');
-      await loadAccounts();
     } catch (error) {
       toast.error('Erreur lors de la suppression');
       console.error(error);
@@ -265,7 +206,7 @@ export default function GamingAccountsSection({ session }) {
                 <div className="mt-2">
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-cyan-400 text-sm font-medium">
                     <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                    {formatGamertag(account.game_username, account.game_tag, platform)}
+                    {formatGamertag(account.gameUsername, account.gameTag, platform)}
                   </span>
                 </div>
               )}
@@ -283,7 +224,7 @@ export default function GamingAccountsSection({ session }) {
               {/* Pending request indicator */}
               {hasRequest && !isEditing && (
                 <div className="mt-2 p-2 bg-violet-500/10 border border-violet-500/30 rounded-lg">
-                  <p className="text-violet-400 text-xs">
+                  <p className="text-violet-400 text-xs">?
                     📝 Demande de modification en attente de validation par un admin
                   </p>
                 </div>
@@ -304,7 +245,7 @@ export default function GamingAccountsSection({ session }) {
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     className="text-sm"
-                  />
+                  />?
                   {platformRequiresTag(platform) && (
                     <Input
                       placeholder="Tag (ex: 1234)"
@@ -350,7 +291,7 @@ export default function GamingAccountsSection({ session }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(account.id, platform)}
+                  onClick={() => handleDelete(account._id, platform)}
                   className="text-red-400 hover:text-red-300"
                 >
                   🗑️

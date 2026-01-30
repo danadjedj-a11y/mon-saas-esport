@@ -1,67 +1,44 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { toast } from '../utils/toast';
 
 export default function TemplateSelector({ session, onSelectTemplate, currentValues }) {
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
 
-  useEffect(() => {
-    fetchTemplates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
-
-  const fetchTemplates = async () => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Récupérer les templates publics et ceux de l'utilisateur
-      const { data, error } = await supabase
-        .from('tournament_templates')
-        .select('*')
-        .or(`is_public.eq.true,owner_id.eq.${session.user.id}`)
-        .order('usage_count', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setTemplates(data || []);
-    } catch (err) {
-      console.error('Erreur chargement templates:', err);
-      toast.error(`Erreur: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Convex query for templates - gets public templates and user's own templates
+  const templates = useQuery(
+    api.templates.list,
+    session?.user?.id ? { userId: session.user.id } : "skip"
+  ) || [];
+  
+  const incrementUsage = useMutation(api.templates.incrementUsage);
+  const loading = session?.user?.id && templates === undefined;
 
   const handleSelectTemplate = (template) => {
-    setSelectedTemplateId(template.id);
+    setSelectedTemplateId(template._id);
     
     // Appliquer les valeurs du template
     const templateData = {
       name: currentValues?.name || '', // Garder le nom saisi par l'utilisateur
       game: template.game || currentValues?.game || '',
       format: template.format || currentValues?.format || 'elimination',
-      max_participants: template.max_participants || currentValues?.max_participants || null,
-      best_of: template.best_of || currentValues?.best_of || 1,
-      check_in_window_minutes: template.check_in_window_minutes || currentValues?.check_in_window_minutes || 15,
-      registration_deadline: template.registration_deadline || currentValues?.registration_deadline || null,
-      start_date: template.start_date || currentValues?.start_date || null,
+      maxParticipants: template.maxParticipants || currentValues?.maxParticipants || null,
+      bestOf: template.bestOf || currentValues?.bestOf || 1,
+      checkInWindowMinutes: template.checkInWindowMinutes || currentValues?.checkInWindowMinutes || 15,
+      registrationDeadline: template.registrationDeadline || currentValues?.registrationDeadline || null,
+      startDate: template.startDate || currentValues?.startDate || null,
       rules: template.rules || currentValues?.rules || '',
-      prize_pool: template.prize_pool || currentValues?.prize_pool || null,
-      entry_fee: template.entry_fee || currentValues?.entry_fee || null,
-      maps_pool: template.maps_pool || currentValues?.maps_pool || null
+      prizePool: template.prizePool || currentValues?.prizePool || null,
+      entryFee: template.entryFee || currentValues?.entryFee || null,
+      mapsPool: template.mapsPool || currentValues?.mapsPool || null
     };
 
     onSelectTemplate(templateData);
 
     // Incrémenter le compteur d'utilisation
-    if (template.id) {
-      supabase.rpc('increment_template_usage', { p_template_id: template.id })
+    if (template._id) {
+      incrementUsage({ templateId: template._id })
         .catch(err => console.error('Erreur incrémentation usage:', err));
     }
 
@@ -122,28 +99,28 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
         {templates.map((template) => (
           <div
-            key={template.id}
+            key={template._id}
             onClick={() => handleSelectTemplate(template)}
             style={{
-              background: selectedTemplateId === template.id 
+              background: selectedTemplateId === template._id 
                 ? 'rgba(139, 92, 246, 0.3)' 
                 : 'rgba(3, 9, 19, 0.9)',
               padding: '15px',
               borderRadius: '10px',
-              border: selectedTemplateId === template.id 
+              border: selectedTemplateId === template._id 
                 ? '2px solid #06B6D4' 
                 : '2px solid #8B5CF6',
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
-              if (selectedTemplateId !== template.id) {
+              if (selectedTemplateId !== template._id) {
                 e.currentTarget.style.borderColor = '#06B6D4';
                 e.currentTarget.style.transform = 'translateY(-3px)';
               }
             }}
             onMouseLeave={(e) => {
-              if (selectedTemplateId !== template.id) {
+              if (selectedTemplateId !== template._id) {
                 e.currentTarget.style.borderColor = '#8B5CF6';
                 e.currentTarget.style.transform = 'translateY(0)';
               }
@@ -164,7 +141,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
               }}>
                 {template.name}
               </h4>
-              {template.is_public && (
+              {template.isPublic && (
                 <span style={{
                   fontSize: '0.7rem',
                   color: '#06B6D4',
@@ -197,11 +174,11 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
             }}>
               {template.game && <span>🎮 {template.game}</span>}
               {template.format && <span>📊 {template.format}</span>}
-              {template.max_participants && <span>👥 {template.max_participants}</span>}
-              {template.best_of > 1 && <span>🎯 Bo{template.best_of}</span>}
+              {template.maxParticipants && <span>👥 {template.maxParticipants}</span>}
+              {template.bestOf > 1 && <span>🎯 Bo{template.bestOf}</span>}
             </div>
             
-            {template.usage_count > 0 && (
+            {template.usageCount > 0 && (
               <div style={{
                 marginTop: '10px',
                 fontSize: '0.7rem',
@@ -209,7 +186,7 @@ export default function TemplateSelector({ session, onSelectTemplate, currentVal
                 fontFamily: "'Protest Riot', sans-serif",
                 opacity: 0.6
               }}>
-                Utilisé {template.usage_count} fois
+                Utilisé {template.usageCount} fois
               </div>
             )}
           </div>
