@@ -177,13 +177,14 @@ export default async function handler(req, res) {
         }
 
         // Parser champions favoris
-        const champPattern = /champion\/([A-Za-z]+)/gi;
+        const champPattern = /champion\/([A-Za-z]+)(?:\/|")/gi;
         const champMatches = html.matchAll(champPattern);
         const champions = new Set();
+        const invalidChamps = ['All', 'Stats', 'Builds', 'Runes', 'Role', 'Champion', 'Items', 'Guide', 'Pro', 'Counter'];
         for (const match of champMatches) {
           if (champions.size < 5) {
             const champ = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-            if (!['All', 'Stats', 'Builds', 'Runes'].includes(champ)) {
+            if (!invalidChamps.includes(champ) && champ.length > 2) {
               champions.add(champ);
             }
           }
