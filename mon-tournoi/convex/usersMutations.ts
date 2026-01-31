@@ -67,6 +67,7 @@ export const upsert = mutation({
 
 /**
  * Met à jour le profil utilisateur
+ * v2: Ajout valorantDataJson et lolDataJson pour stockage JSON
  */
 export const updateProfile = mutation({
     args: {
@@ -79,7 +80,6 @@ export const updateProfile = mutation({
             steamId: v.optional(v.string()),
             epicGamesId: v.optional(v.string()),
             battleNetId: v.optional(v.string()),
-            // Valorant et LoL data stockés en JSON string
             valorantDataJson: v.optional(v.string()),
             lolDataJson: v.optional(v.string()),
         })),
