@@ -79,10 +79,9 @@ export const updateProfile = mutation({
             steamId: v.optional(v.string()),
             epicGamesId: v.optional(v.string()),
             battleNetId: v.optional(v.string()),
-            // Valorant full data
-            valorantData: v.optional(v.any()),
-            // LoL full data
-            lolData: v.optional(v.any()),
+            // Valorant et LoL data stockés en JSON string
+            valorantDataJson: v.optional(v.string()),
+            lolDataJson: v.optional(v.string()),
         })),
     },
     handler: async (ctx, args) => {

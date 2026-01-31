@@ -274,20 +274,23 @@ export default function Profile() {
         steamId: gamingAccounts.steamId || undefined,
         epicGamesId: gamingAccounts.epicGamesId || undefined,
         battleNetId: gamingAccounts.battleNetId || undefined,
-        valorantData: gamingAccounts.valorantData || undefined,
-        lolData: gamingAccounts.lolData || undefined,
+        // Stocker en JSON string pour éviter les problèmes de validation
+        valorantDataJson: gamingAccounts.valorantData ? JSON.stringify(gamingAccounts.valorantData) : undefined,
+        lolDataJson: gamingAccounts.lolData ? JSON.stringify(gamingAccounts.lolData) : undefined,
       };
       
       if (game === 'valorant') {
-        cleanAccounts.valorantData = accountData;
+        cleanAccounts.valorantDataJson = JSON.stringify(accountData);
         cleanAccounts.riotId = `${accountData.name}#${accountData.tag}`;
       } else if (game === 'lol') {
-        cleanAccounts.lolData = accountData;
+        cleanAccounts.lolDataJson = JSON.stringify(accountData);
       }
       
       await updateProfile({
         gamingAccounts: cleanAccounts
       });
+      
+      console.log('Gaming account saved successfully');
     } catch (error) {
       console.error('Failed to save gaming account:', error);
     }
@@ -305,33 +308,54 @@ export default function Profile() {
       
       if (convexUser.gamingAccounts) {
         const ga = convexUser.gamingAccounts;
+        
+        // Désérialiser les données JSON
+        let valorantData = null;
+        let lolData = null;
+        
+        try {
+          if (ga.valorantDataJson) {
+            valorantData = JSON.parse(ga.valorantDataJson);
+          }
+        } catch (e) {
+          console.error('Error parsing valorantDataJson:', e);
+        }
+        
+        try {
+          if (ga.lolDataJson) {
+            lolData = JSON.parse(ga.lolDataJson);
+          }
+        } catch (e) {
+          console.error('Error parsing lolDataJson:', e);
+        }
+        
         setGamingAccounts({
           discordId: ga.discordId || clerkDiscord || '',
           riotId: ga.riotId || '',
           steamId: ga.steamId || '',
           epicGamesId: ga.epicGamesId || '',
           battleNetId: ga.battleNetId || '',
-          valorantData: ga.valorantData || null,
-          lolData: ga.lolData || null,
+          valorantData: valorantData,
+          lolData: lolData,
         });
         
         // Charger les données sauvegardées
-        if (ga.valorantData) {
-          setValorantData(ga.valorantData);
+        if (valorantData) {
+          setValorantData(valorantData);
           // Utiliser le nom+tag du compte Valorant
-          if (ga.valorantData.name && ga.valorantData.tag) {
-            setValorantInput(`${ga.valorantData.name}#${ga.valorantData.tag}`);
+          if (valorantData.name && valorantData.tag) {
+            setValorantInput(`${valorantData.name}#${valorantData.tag}`);
           } else if (ga.riotId) {
             setValorantInput(ga.riotId);
           }
         }
-        if (ga.lolData) {
-          setLoLData(ga.lolData);
+        if (lolData) {
+          setLoLData(lolData);
           // Utiliser le nom+tag du compte LoL
-          if (ga.lolData.name && ga.lolData.tag) {
-            setLoLInput(`${ga.lolData.name}#${ga.lolData.tag}`);
-          } else if (ga.lolData.name) {
-            setLoLInput(ga.lolData.name);
+          if (lolData.name && lolData.tag) {
+            setLoLInput(`${lolData.name}#${lolData.tag}`);
+          } else if (lolData.name) {
+            setLoLInput(lolData.name);
           }
         }
       } else if (clerkDiscord) {
