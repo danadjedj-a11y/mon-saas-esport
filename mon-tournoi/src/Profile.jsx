@@ -269,16 +269,18 @@ export default function Profile() {
   const saveGamingAccount = async (game, accountData) => {
     try {
       // Créer un objet propre avec seulement les champs acceptés par le schema
+      // NOTE: valorantData et lolData sont des states séparés, pas dans gamingAccounts
       const cleanAccounts = {
         riotId: gamingAccounts.riotId || undefined,
         steamId: gamingAccounts.steamId || undefined,
         epicGamesId: gamingAccounts.epicGamesId || undefined,
         battleNetId: gamingAccounts.battleNetId || undefined,
-        // Stocker en JSON string pour éviter les problèmes de validation
-        valorantDataJson: gamingAccounts.valorantData ? JSON.stringify(gamingAccounts.valorantData) : undefined,
-        lolDataJson: gamingAccounts.lolData ? JSON.stringify(gamingAccounts.lolData) : undefined,
+        // Préserver les données existantes (utiliser les states, pas gamingAccounts)
+        valorantDataJson: valorantData ? JSON.stringify(valorantData) : undefined,
+        lolDataJson: lolData ? JSON.stringify(lolData) : undefined,
       };
       
+      // Écraser avec les nouvelles données selon le jeu
       if (game === 'valorant') {
         cleanAccounts.valorantDataJson = JSON.stringify(accountData);
         cleanAccounts.riotId = `${accountData.name}#${accountData.tag}`;
@@ -286,13 +288,17 @@ export default function Profile() {
         cleanAccounts.lolDataJson = JSON.stringify(accountData);
       }
       
+      console.log('Saving gaming accounts:', cleanAccounts);
+      
       await updateProfile({
         gamingAccounts: cleanAccounts
       });
       
       console.log('Gaming account saved successfully');
+      toast.success('✅ Données sauvegardées');
     } catch (error) {
       console.error('Failed to save gaming account:', error);
+      toast.error('Erreur lors de la sauvegarde');
     }
   };
 
