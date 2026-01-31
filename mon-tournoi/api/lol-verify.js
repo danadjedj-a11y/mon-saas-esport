@@ -1,5 +1,5 @@
 // API pour vérifier un compte League of Legends
-// Utilise League of Graphs pour les données
+// Utilise League of Graphs pour les données complètes + historique
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -32,8 +32,6 @@ export default async function handler(req, res) {
   };
 
   const regionInfo = regionMap[region] || { display: region.toUpperCase(), log: region.replace('1', '') };
-  
-  // Format Riot ID pour les URLs
   const riotIdPath = tag ? `${name}-${tag}` : name;
 
   let profileData = {
@@ -43,6 +41,7 @@ export default async function handler(req, res) {
     regionDisplay: regionInfo.display,
     summonerLevel: null,
     profileIcon: null,
+    // Current rank
     soloRank: 'Unranked',
     soloTier: null,
     soloDivision: null,
@@ -50,6 +49,7 @@ export default async function handler(req, res) {
     soloWins: 0,
     soloLosses: 0,
     soloWinrate: null,
+    // Flex
     flexRank: 'Unranked',
     flexTier: null,
     flexDivision: null,
@@ -57,8 +57,13 @@ export default async function handler(req, res) {
     flexWins: 0,
     flexLosses: 0,
     flexWinrate: null,
+    // History
+    pastSeasons: [],
+    // Champions
     topChampions: [],
-    gamesPlayed: null
+    gamesPlayed: null,
+    // Metadata
+    lastUpdated: Date.now()
   };
 
   const headers = {
@@ -68,7 +73,6 @@ export default async function handler(req, res) {
   };
 
   try {
-    // League of Graphs URL
     const logUrl = `https://www.leagueofgraphs.com/summoner/${regionInfo.log}/${encodeURIComponent(riotIdPath).replace(/%20/g, '+')}`;
     console.log('Fetching LoG:', logUrl);
     
@@ -77,14 +81,12 @@ export default async function handler(req, res) {
     if (logResponse.ok) {
       const html = await logResponse.text();
       
-      // 1. Parser depuis la meta description (très fiable)
-      // Format: "Gold I - Wins: 33 (42.9%) (#2,206,397) / Yone: Wins: 59.3% - Played: 27"
+      // 1. Meta description - très fiable pour rank actuel
       const metaMatch = html.match(/<meta\s+name="description"\s+content="([^"]+)"/i);
       if (metaMatch) {
         const metaContent = metaMatch[1];
-        console.log('Meta content:', metaContent);
         
-        // Rank from meta
+        // Rank
         const rankMatch = metaContent.match(/^(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i);
         if (rankMatch) {
           profileData.soloTier = rankMatch[1].toUpperCase();
@@ -92,12 +94,11 @@ export default async function handler(req, res) {
           profileData.soloRank = `${rankMatch[1]} ${rankMatch[2] || ''}`.trim();
         }
         
-        // Wins and winrate from meta
+        // W/L et winrate
         const winsMatch = metaContent.match(/Wins:\s*(\d+)\s*\((\d+(?:\.\d+)?)\s*%\)/i);
         if (winsMatch) {
           profileData.soloWins = parseInt(winsMatch[1]);
           profileData.soloWinrate = Math.round(parseFloat(winsMatch[2]));
-          // Calculate losses from winrate
           if (profileData.soloWinrate > 0) {
             const totalGames = Math.round(profileData.soloWins / (profileData.soloWinrate / 100));
             profileData.soloLosses = totalGames - profileData.soloWins;
@@ -105,85 +106,98 @@ export default async function handler(req, res) {
           }
         }
         
-        // Champions from meta
-        const champMatches = metaContent.matchAll(/\/\s*([A-Za-z]+):\s*Wins:\s*[\d.]+%\s*-\s*Played:\s*(\d+)/gi);
+        // Champions
+        const champMatches = metaContent.matchAll(/\/\s*([A-Za-z]+):\s*Wins:\s*([\d.]+)%\s*-\s*Played:\s*(\d+)/gi);
         for (const match of champMatches) {
           if (profileData.topChampions.length < 5) {
             profileData.topChampions.push({
               name: match[1],
-              games: parseInt(match[2])
+              winrate: parseFloat(match[2]),
+              games: parseInt(match[3])
             });
           }
         }
       }
 
-      // 2. Parser le niveau
+      // 2. Niveau
       const levelMatch = html.match(/Level\s*(\d+)/i);
       if (levelMatch) {
         profileData.summonerLevel = parseInt(levelMatch[1]);
       }
 
-      // 3. Parser les LP
-      const lpMatch = html.match(/LP:\s*<span[^>]*class="leaguePoints[^"]*"[^>]*>(\d+)/i) ||
-                      html.match(/<span[^>]*class="leaguePoints[^"]*"[^>]*>(\d+)/i);
+      // 3. LP
+      const lpMatch = html.match(/LP:\s*<span[^>]*>(\d+)/i) || html.match(/leaguePoints[^>]*>(\d+)/i);
       if (lpMatch) {
         profileData.soloLP = parseInt(lpMatch[1]);
       }
 
-      // 4. Parser l'icône de profil
+      // 4. Icône de profil
       const iconMatch = html.match(/profileicon\/(\d+)/i);
       if (iconMatch) {
         profileData.profileIcon = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${iconMatch[1]}.png`;
       }
 
-      // 5. Si pas de rang depuis meta, parser depuis leagueTier div
-      if (!profileData.soloTier) {
-        const tierMatch = html.match(/<div\s+class="leagueTier">\s*(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i);
-        if (tierMatch) {
-          profileData.soloTier = tierMatch[1].toUpperCase();
-          profileData.soloDivision = tierMatch[2] || null;
-          profileData.soloRank = `${tierMatch[1]} ${tierMatch[2] || ''}`.trim();
-        }
-      }
-
-      // 6. Parser W/L si pas encore fait
-      if (profileData.soloWins === 0) {
-        const wlMatch = html.match(/Victoires[:\s]*(\d+)[^0-9]*D[ée]faites[:\s]*(\d+)/i) ||
-                       html.match(/Wins[:\s]*(\d+)[^0-9]*Loss(?:es)?[:\s]*(\d+)/i) ||
-                       html.match(/<span\s+class="wins"[^>]*>\s*(\d+)\s*<\/span>[^<]*<span\s+class="losses"[^>]*>\s*(\d+)/i);
-        if (wlMatch) {
-          profileData.soloWins = parseInt(wlMatch[1]);
-          profileData.soloLosses = parseInt(wlMatch[2]);
-          profileData.gamesPlayed = profileData.soloWins + profileData.soloLosses;
-          if (profileData.gamesPlayed > 0) {
-            profileData.soloWinrate = Math.round((profileData.soloWins / profileData.gamesPlayed) * 100);
-          }
-        }
-      }
-
-      // 7. Parser les champions favoris depuis la page si pas dans meta
-      if (profileData.topChampions.length === 0) {
-        // Chercher dans la structure de champions
-        const champPattern = /data-name="([A-Za-z]+)"[^>]*>[^]*?Played:\s*(\d+)/gi;
-        let champMatch;
-        while ((champMatch = champPattern.exec(html)) !== null && profileData.topChampions.length < 5) {
-          profileData.topChampions.push({
-            name: champMatch[1],
-            games: parseInt(champMatch[2])
+      // 5. HISTORIQUE DES SAISONS - Parser les tags
+      // Format: <div class="tag requireTooltip brown " tooltip="...S11 Silver...reached Silver II during Season 11...">S11 Silver</div>
+      const seasonTagPattern = /<div\s+class="tag[^"]*"\s+tooltip="[^"]*>([^<]+)<\/div>/gi;
+      const seasonMatches = html.matchAll(seasonTagPattern);
+      
+      for (const match of seasonMatches) {
+        const tagContent = match[1].trim();
+        // Parse: "S11 Silver", "S13 (Split 2) Gold", "S2025 Platinum"
+        const seasonMatch = tagContent.match(/^(S\d+(?:\s*\([^)]+\))?)\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)/i);
+        if (seasonMatch) {
+          profileData.pastSeasons.push({
+            season: seasonMatch[1],
+            rank: seasonMatch[2]
           });
         }
+      }
+
+      // Alternative: parser depuis le tooltip pour plus de détails
+      const tooltipPattern = /tooltip="[^"]*<itemname[^>]*>([^<]+)<\/itemname>[^"]*reached\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)[^"]*during\s+([^.]+)\./gi;
+      const tooltipMatches = html.matchAll(tooltipPattern);
+      
+      // Reset si on a trouvé des tooltips (plus détaillés)
+      const detailedSeasons = [];
+      for (const match of tooltipMatches) {
+        const seasonName = match[1].trim(); // "S11 Silver"
+        const tier = match[2];
+        const division = match[3] || '';
+        const seasonPeriod = match[4].trim(); // "Season 11"
+        
+        // Extraire le nom de saison depuis seasonName
+        const sMatch = seasonName.match(/^(S\d+(?:\s*\([^)]+\))?)/);
+        if (sMatch) {
+          detailedSeasons.push({
+            season: sMatch[1],
+            rank: `${tier} ${division}`.trim(),
+            tier: tier.toUpperCase()
+          });
+        }
+      }
+      
+      if (detailedSeasons.length > 0) {
+        profileData.pastSeasons = detailedSeasons;
+      }
+
+      // 6. Rang Flex (si présent)
+      const flexMatch = html.match(/Ranked\s*Flex[^]*?reached\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i);
+      if (flexMatch) {
+        profileData.flexTier = flexMatch[1].toUpperCase();
+        profileData.flexDivision = flexMatch[2] || null;
+        profileData.flexRank = `${flexMatch[1]} ${flexMatch[2] || ''}`.trim();
       }
     }
   } catch (e) {
     console.log('League of Graphs error:', e.message);
   }
 
-  // Icône par défaut si pas trouvée
+  // Icône par défaut
   if (!profileData.profileIcon) {
     profileData.profileIcon = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/29.png`;
   }
 
-  // Retourner les données
   return res.status(200).json({
     success: true,
     validated: true,

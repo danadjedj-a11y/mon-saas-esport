@@ -18,7 +18,7 @@ import { api } from "../convex/_generated/api";
 import { Button, Card, Badge, Tabs, Avatar, Input, GradientButton } from './shared/components/ui';
 import { toast } from './utils/toast';
 import DashboardLayout from './layouts/DashboardLayout';
-import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2, Shield, Search, ChevronDown, ChevronUp, Trophy, Target, Swords, TrendingUp } from 'lucide-react';
+import { Camera, Loader2, ExternalLink, CheckCircle, AlertCircle, Link2, Shield, Search, ChevronDown, ChevronUp, Trophy, Target, Swords, TrendingUp, RefreshCw } from 'lucide-react';
 import { verifyValorantAccount, verifyLoLAccount, VALORANT_TIERS, LOL_TIERS } from './services/riotVerification';
 
 // Icône Discord SVG
@@ -318,15 +318,21 @@ export default function Profile() {
         // Charger les données sauvegardées
         if (ga.valorantData) {
           setValorantData(ga.valorantData);
-          setValorantInput(ga.riotId || '');
+          // Utiliser le nom+tag du compte Valorant
+          if (ga.valorantData.name && ga.valorantData.tag) {
+            setValorantInput(`${ga.valorantData.name}#${ga.valorantData.tag}`);
+          } else if (ga.riotId) {
+            setValorantInput(ga.riotId);
+          }
         }
         if (ga.lolData) {
           setLoLData(ga.lolData);
-          setLoLInput(ga.riotId || '');
-        }
-        if (ga.riotId) {
-          setValorantInput(ga.riotId);
-          setLoLInput(ga.riotId);
+          // Utiliser le nom+tag du compte LoL
+          if (ga.lolData.name && ga.lolData.tag) {
+            setLoLInput(`${ga.lolData.name}#${ga.lolData.tag}`);
+          } else if (ga.lolData.name) {
+            setLoLInput(ga.lolData.name);
+          }
         }
       } else if (clerkDiscord) {
         setGamingAccounts(prev => ({
@@ -895,8 +901,8 @@ export default function Profile() {
               disabled={verifyingValorant || !valorantInput}
               className="px-6 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap transition-colors"
             >
-              {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Vérifier
+              {verifyingValorant ? <Loader2 className="w-4 h-4 animate-spin" /> : (valorantData ? <RefreshCw className="w-4 h-4" /> : <Search className="w-4 h-4" />)}
+              {valorantData ? 'Actualiser' : 'Vérifier'}
             </button>
           </div>
         </div>
@@ -1123,8 +1129,8 @@ export default function Profile() {
               disabled={verifyingLoL || !lolInput}
               className="px-6 py-2.5 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-black font-semibold text-sm disabled:opacity-50 flex items-center gap-2 whitespace-nowrap transition-colors"
             >
-              {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Vérifier
+              {verifyingLoL ? <Loader2 className="w-4 h-4 animate-spin" /> : (lolData ? <RefreshCw className="w-4 h-4" /> : <Search className="w-4 h-4" />)}
+              {lolData ? 'Actualiser' : 'Vérifier'}
             </button>
           </div>
         </div>
@@ -1238,6 +1244,7 @@ export default function Profile() {
                   {lolData.topChampions.map((champ, i) => {
                     const champName = typeof champ === 'string' ? champ : champ.name;
                     const champGames = typeof champ === 'object' ? champ.games : null;
+                    const champWinrate = typeof champ === 'object' ? champ.winrate : null;
                     return (
                       <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/20 text-yellow-400 text-sm font-medium">
                         <img 
@@ -1248,11 +1255,51 @@ export default function Profile() {
                         />
                         {champName}
                         {champGames && <span className="text-yellow-300/60">({champGames})</span>}
+                        {champWinrate && <span className="text-green-400 text-xs">{champWinrate}%</span>}
                       </div>
                     );
                   })}
                 </div>
               </div>
+            )}
+
+            {/* Historique des rangs par saison */}
+            {lolData.pastSeasons && lolData.pastSeasons.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-3">📜 Historique des rangs</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {lolData.pastSeasons.map((season, i) => {
+                    const tierColors = {
+                      'IRON': '#5c5c5c',
+                      'BRONZE': '#cd7f32',
+                      'SILVER': '#c0c0c0',
+                      'GOLD': '#ffd700',
+                      'PLATINUM': '#00bcd4',
+                      'EMERALD': '#50c878',
+                      'DIAMOND': '#b9f2ff',
+                      'MASTER': '#9d4dbb',
+                      'GRANDMASTER': '#cd4545',
+                      'CHALLENGER': '#f4c874'
+                    };
+                    const color = tierColors[season.tier] || tierColors[season.rank?.split(' ')[0]?.toUpperCase()] || '#9CA3AF';
+                    return (
+                      <div key={i} className="p-3 rounded-lg bg-dark-800/70 border border-white/5">
+                        <p className="text-xs text-gray-500 mb-1">{season.season}</p>
+                        <p className="font-semibold" style={{ color }}>
+                          {season.rank}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Dernière mise à jour */}
+            {lolData.lastUpdated && (
+              <p className="text-xs text-gray-600">
+                Dernière mise à jour: {new Date(lolData.lastUpdated).toLocaleString('fr-FR')}
+              </p>
             )}
 
             {/* Bouton pour modifier */}
