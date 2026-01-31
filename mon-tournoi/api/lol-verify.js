@@ -41,7 +41,6 @@ export default async function handler(req, res) {
     regionDisplay: regionInfo.display,
     summonerLevel: null,
     profileIcon: null,
-    // Current rank
     soloRank: 'Unranked',
     soloTier: null,
     soloDivision: null,
@@ -49,20 +48,13 @@ export default async function handler(req, res) {
     soloWins: 0,
     soloLosses: 0,
     soloWinrate: null,
-    // Flex
     flexRank: 'Unranked',
     flexTier: null,
     flexDivision: null,
     flexLP: 0,
-    flexWins: 0,
-    flexLosses: 0,
-    flexWinrate: null,
-    // History
     pastSeasons: [],
-    // Champions
     topChampions: [],
     gamesPlayed: null,
-    // Metadata
     lastUpdated: Date.now()
   };
 
@@ -137,52 +129,48 @@ export default async function handler(req, res) {
         profileData.profileIcon = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${iconMatch[1]}.png`;
       }
 
-      // 5. HISTORIQUE DES SAISONS - Parser les tags
-      // Format: <div class="tag requireTooltip brown " tooltip="...S11 Silver...reached Silver II during Season 11...">S11 Silver</div>
-      const seasonTagPattern = /<div\s+class="tag[^"]*"\s+tooltip="[^"]*>([^<]+)<\/div>/gi;
-      const seasonMatches = html.matchAll(seasonTagPattern);
+      // 5. HISTORIQUE DES SAISONS - Parser depuis les tooltips
+      // Format: tooltip="<itemname class='tagTitle brown'>S11 Silver</itemname>..reached Silver II during Season 11"
+      const tooltipRegex = /tooltip="[^"]*<itemname[^>]*>(S\d+(?:\s*\([^)]+\))?\s+(?:Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger))<\/itemname>[^"]*reached\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/gi;
       
-      for (const match of seasonMatches) {
-        const tagContent = match[1].trim();
-        // Parse: "S11 Silver", "S13 (Split 2) Gold", "S2025 Platinum"
-        const seasonMatch = tagContent.match(/^(S\d+(?:\s*\([^)]+\))?)\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)/i);
-        if (seasonMatch) {
-          profileData.pastSeasons.push({
-            season: seasonMatch[1],
-            rank: seasonMatch[2]
-          });
-        }
-      }
-
-      // Alternative: parser depuis le tooltip pour plus de détails
-      const tooltipPattern = /tooltip="[^"]*<itemname[^>]*>([^<]+)<\/itemname>[^"]*reached\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)[^"]*during\s+([^.]+)\./gi;
-      const tooltipMatches = html.matchAll(tooltipPattern);
-      
-      // Reset si on a trouvé des tooltips (plus détaillés)
-      const detailedSeasons = [];
-      for (const match of tooltipMatches) {
-        const seasonName = match[1].trim(); // "S11 Silver"
-        const tier = match[2];
-        const division = match[3] || '';
-        const seasonPeriod = match[4].trim(); // "Season 11"
+      let tooltipMatch;
+      while ((tooltipMatch = tooltipRegex.exec(html)) !== null) {
+        const tagTitle = tooltipMatch[1].trim(); // "S11 Silver"
+        const reachedTier = tooltipMatch[2];
+        const reachedDiv = tooltipMatch[3] || '';
         
-        // Extraire le nom de saison depuis seasonName
-        const sMatch = seasonName.match(/^(S\d+(?:\s*\([^)]+\))?)/);
-        if (sMatch) {
-          detailedSeasons.push({
-            season: sMatch[1],
-            rank: `${tier} ${division}`.trim(),
-            tier: tier.toUpperCase()
+        // Extraire la saison depuis le tagTitle
+        const seasonPart = tagTitle.match(/^(S\d+(?:\s*\([^)]+\))?)/);
+        if (seasonPart) {
+          profileData.pastSeasons.push({
+            season: seasonPart[1],
+            rank: `${reachedTier} ${reachedDiv}`.trim(),
+            tier: reachedTier.toUpperCase()
           });
         }
       }
-      
-      if (detailedSeasons.length > 0) {
-        profileData.pastSeasons = detailedSeasons;
+
+      // Si pas trouvé via tooltip, essayer le format simple des tags
+      if (profileData.pastSeasons.length === 0) {
+        // Chercher les tags directement: S11 Silver, S2025 Platinum, etc.
+        const simpleTagRegex = />\s*(S\d+(?:\s*\([^)]+\))?)\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*</gi;
+        let simpleMatch;
+        while ((simpleMatch = simpleTagRegex.exec(html)) !== null) {
+          const season = simpleMatch[1].trim();
+          const rank = simpleMatch[2];
+          // Éviter les doublons
+          if (!profileData.pastSeasons.find(s => s.season === season)) {
+            profileData.pastSeasons.push({
+              season: season,
+              rank: rank,
+              tier: rank.toUpperCase()
+            });
+          }
+        }
       }
 
-      // 6. Rang Flex (si présent)
-      const flexMatch = html.match(/Ranked\s*Flex[^]*?reached\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i);
+      // 6. Rang Flex (chercher dans tooltip)
+      const flexMatch = html.match(/Ranked\s*Flex[^<]*<\/highlight><br\/?>\s*This player reached\s+(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i);
       if (flexMatch) {
         profileData.flexTier = flexMatch[1].toUpperCase();
         profileData.flexDivision = flexMatch[2] || null;
