@@ -1235,17 +1235,22 @@ export default function Profile() {
               <div>
                 <p className="text-sm text-gray-500 mb-2">🎮 Champions favoris</p>
                 <div className="flex gap-2 flex-wrap">
-                  {lolData.topChampions.map((champ, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/20 text-yellow-400 text-sm font-medium">
-                      <img 
-                        src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${champ}.png`}
-                        alt={champ}
-                        className="w-5 h-5 rounded-full"
-                        onError={(e) => e.target.style.display = 'none'}
-                      />
-                      {champ}
-                    </div>
-                  ))}
+                  {lolData.topChampions.map((champ, i) => {
+                    const champName = typeof champ === 'string' ? champ : champ.name;
+                    const champGames = typeof champ === 'object' ? champ.games : null;
+                    return (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/20 text-yellow-400 text-sm font-medium">
+                        <img 
+                          src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${champName}.png`}
+                          alt={champName}
+                          className="w-5 h-5 rounded-full"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                        {champName}
+                        {champGames && <span className="text-yellow-300/60">({champGames})</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
