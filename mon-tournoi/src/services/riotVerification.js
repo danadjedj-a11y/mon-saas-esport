@@ -144,6 +144,7 @@ export async function verifyLoLAccount(summonerName, region = 'euw1') {
           puuid: d?.puuid,
           summonerId: d?.summonerId,
           region: d?.region || region,
+          regionDisplay: d?.regionDisplay || region.toUpperCase(),
           summonerLevel: d?.summonerLevel,
           profileIcon: d?.profileIcon,
           message: d?.message,
@@ -163,8 +164,14 @@ export async function verifyLoLAccount(summonerName, region = 'euw1') {
           flexWins: d?.flexWins || 0,
           flexLosses: d?.flexLosses || 0,
           flexWinrate: d?.flexWinrate,
-          // Stats
-          stats: d?.stats || null
+          // Historique des saisons passées
+          pastSeasons: d?.pastSeasons || [],
+          // Champions les plus joués
+          topChampions: d?.topChampions || [],
+          // Stats globales
+          gamesPlayed: d?.gamesPlayed || 0,
+          stats: d?.stats || null,
+          lastUpdated: d?.lastUpdated || Date.now()
         }
       };
     }
