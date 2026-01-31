@@ -268,17 +268,25 @@ export default function Profile() {
   // Sauvegarder un compte gaming dans Convex
   const saveGamingAccount = async (game, accountData) => {
     try {
-      const newAccounts = { ...gamingAccounts };
+      // Créer un objet propre avec seulement les champs acceptés par le schema
+      const cleanAccounts = {
+        riotId: gamingAccounts.riotId || undefined,
+        steamId: gamingAccounts.steamId || undefined,
+        epicGamesId: gamingAccounts.epicGamesId || undefined,
+        battleNetId: gamingAccounts.battleNetId || undefined,
+        valorantData: gamingAccounts.valorantData || undefined,
+        lolData: gamingAccounts.lolData || undefined,
+      };
+      
       if (game === 'valorant') {
-        newAccounts.valorantData = accountData;
-        newAccounts.riotId = `${accountData.name}#${accountData.tag}`;
+        cleanAccounts.valorantData = accountData;
+        cleanAccounts.riotId = `${accountData.name}#${accountData.tag}`;
       } else if (game === 'lol') {
-        newAccounts.lolData = accountData;
+        cleanAccounts.lolData = accountData;
       }
       
       await updateProfile({
-        clerkUserId: clerkUser.id,
-        gamingAccounts: newAccounts
+        gamingAccounts: cleanAccounts
       });
     } catch (error) {
       console.error('Failed to save gaming account:', error);
@@ -1193,33 +1201,51 @@ export default function Profile() {
             </div>
 
             {/* Stats */}
-            {lolData.stats && (
+            {(lolData.avgKDA || lolData.gamesPlayed || lolData.avgCS) && (
               <div>
                 <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
                   <Target className="w-4 h-4" />
-                  Stats récentes ({lolData.stats.matches} matchs)
+                  Statistiques
                 </p>
-                <div className="grid grid-cols-5 gap-2">
-                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-white">{lolData.stats.kills}</p>
-                    <p className="text-xs text-gray-500">Kills</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-white">{lolData.stats.deaths}</p>
-                    <p className="text-xs text-gray-500">Deaths</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-white">{lolData.stats.assists}</p>
-                    <p className="text-xs text-gray-500">Assists</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-yellow-400">{lolData.stats.kda}</p>
-                    <p className="text-xs text-gray-500">KDA</p>
-                  </div>
-                  <div className="text-center p-3 rounded-lg bg-dark-800/50">
-                    <p className="text-2xl font-bold text-green-400">{lolData.stats.winRate}%</p>
-                    <p className="text-xs text-gray-500">Win Rate</p>
-                  </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {lolData.avgKDA && (
+                    <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                      <p className="text-xl font-bold text-cyan-400">{lolData.avgKDA}</p>
+                      <p className="text-xs text-gray-500">KDA Moyen</p>
+                    </div>
+                  )}
+                  {lolData.gamesPlayed && (
+                    <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                      <p className="text-xl font-bold text-white">{lolData.gamesPlayed}</p>
+                      <p className="text-xs text-gray-500">Parties</p>
+                    </div>
+                  )}
+                  {lolData.avgCS && (
+                    <div className="text-center p-3 rounded-lg bg-dark-800/50">
+                      <p className="text-xl font-bold text-yellow-400">{lolData.avgCS}</p>
+                      <p className="text-xs text-gray-500">CS/min</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Champions favoris */}
+            {lolData.topChampions && lolData.topChampions.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2">🎮 Champions favoris</p>
+                <div className="flex gap-2 flex-wrap">
+                  {lolData.topChampions.map((champ, i) => (
+                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/20 text-yellow-400 text-sm font-medium">
+                      <img 
+                        src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${champ}.png`}
+                        alt={champ}
+                        className="w-5 h-5 rounded-full"
+                        onError={(e) => e.target.style.display = 'none'}
+                      />
+                      {champ}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

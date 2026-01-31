@@ -1,5 +1,5 @@
 // API pour vérifier un compte League of Legends
-// Utilise l'API U.GG GraphQL pour les données
+// Utilise League of Graphs, Porofessor, et OPGG pour les données
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,173 +16,292 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: true, message: 'Summoner name is required' });
   }
 
-  // Régions mapping
-  const regionDisplay = {
-    'euw1': 'EUW',
-    'eun1': 'EUNE', 
-    'na1': 'NA',
-    'kr': 'KR',
-    'br1': 'BR',
-    'jp1': 'JP',
-    'la1': 'LAN',
-    'la2': 'LAS',
-    'oc1': 'OCE',
-    'tr1': 'TR',
-    'ru': 'RU'
+  // Mapping des régions
+  const regionMap = {
+    'euw1': { display: 'EUW', log: 'euw', opgg: 'euw' },
+    'eun1': { display: 'EUNE', log: 'eune', opgg: 'eune' },
+    'na1': { display: 'NA', log: 'na', opgg: 'na' },
+    'kr': { display: 'KR', log: 'kr', opgg: 'kr' },
+    'br1': { display: 'BR', log: 'br', opgg: 'br' },
+    'jp1': { display: 'JP', log: 'jp', opgg: 'jp' },
+    'la1': { display: 'LAN', log: 'lan', opgg: 'lan' },
+    'la2': { display: 'LAS', log: 'las', opgg: 'las' },
+    'oc1': { display: 'OCE', log: 'oce', opgg: 'oce' },
+    'tr1': { display: 'TR', log: 'tr', opgg: 'tr' },
+    'ru': { display: 'RU', log: 'ru', opgg: 'ru' }
   };
 
-  // Mapping région pour U.GG
-  const uggRegion = {
-    'euw1': 'euw1',
-    'eun1': 'eun1', 
-    'na1': 'na1',
-    'kr': 'kr',
-    'br1': 'br1',
-    'jp1': 'jp1',
-    'la1': 'la1',
-    'la2': 'la2',
-    'oc1': 'oc1',
-    'tr1': 'tr1',
-    'ru': 'ru'
+  const regionInfo = regionMap[region] || { display: region.toUpperCase(), log: region.replace('1', ''), opgg: region.replace('1', '') };
+  
+  // Format Riot ID pour les URLs
+  const riotIdPath = tag ? `${name}-${tag}` : name;
+
+  let profileData = {
+    name: name,
+    tag: tag || null,
+    region: region,
+    regionDisplay: regionInfo.display,
+    summonerLevel: null,
+    profileIcon: null,
+    soloRank: 'Unranked',
+    soloTier: null,
+    soloDivision: null,
+    soloLP: 0,
+    soloWins: 0,
+    soloLosses: 0,
+    soloWinrate: null,
+    flexRank: 'Unranked',
+    flexTier: null,
+    flexDivision: null,
+    flexLP: 0,
+    flexWins: 0,
+    flexLosses: 0,
+    flexWinrate: null,
+    topChampions: [],
+    recentStats: null,
+    avgKDA: null,
+    avgCS: null,
+    gamesPlayed: null
   };
 
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+  };
+
+  // 1. Essayer League of Graphs (meilleure source de données)
   try {
-    let profileData = null;
-    let rankedData = null;
+    const logUrl = `https://www.leagueofgraphs.com/summoner/${regionInfo.log}/${encodeURIComponent(riotIdPath)}`;
+    console.log('Fetching LoG:', logUrl);
     
-    // 1. Essayer avec l'API U.GG
+    const logResponse = await fetchWithTimeout(logUrl, headers, 15000);
+    
+    if (logResponse.ok) {
+      const html = await logResponse.text();
+      
+      // Vérifier si le profil existe
+      if (html.includes('Page not found') || html.includes('Summoner not found')) {
+        console.log('LoG: Summoner not found');
+      } else {
+        // Parser le niveau - plusieurs patterns possibles
+        const levelPatterns = [
+          /class="summonerLevel"[^>]*>(\d+)</i,
+          /Level\s*<\/span>\s*<span[^>]*>(\d+)/i,
+          /"level"\s*:\s*(\d+)/i,
+          /summoner-level[^>]*>\s*(\d+)/i,
+          /Level[:\s]+(\d+)/i,
+          /<span[^>]*class="[^"]*level[^"]*"[^>]*>(\d+)/i
+        ];
+        
+        for (const pattern of levelPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            profileData.summonerLevel = parseInt(match[1]);
+            break;
+          }
+        }
+
+        // Parser l'icône de profil
+        const iconPatterns = [
+          /profileicon\/(\d+)/i,
+          /img\/profileicon\/(\d+)/i,
+          /"profileIconId"\s*:\s*(\d+)/i
+        ];
+        
+        for (const pattern of iconPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            profileData.profileIcon = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${match[1]}.png`;
+            break;
+          }
+        }
+
+        // Parser le rang Solo/Duo
+        const soloRankPatterns = [
+          /Solo\/Duo[^]*?leagueTier[^>]*>([^<]+)</i,
+          /RANKED_SOLO[^]*?(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i,
+          /Solo\/Duo[^]*?(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i,
+          /rankingsolo[^]*?(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i
+        ];
+
+        for (const pattern of soloRankPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            let rankText = match[1];
+            if (match[2]) rankText += ' ' + match[2];
+            rankText = rankText.trim();
+            
+            if (rankText && !rankText.toLowerCase().includes('unranked')) {
+              profileData.soloRank = rankText;
+              const tierMatch = rankText.match(/^(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)/i);
+              const divMatch = rankText.match(/([IV1-4]+)$/);
+              if (tierMatch) profileData.soloTier = tierMatch[1].toUpperCase();
+              if (divMatch) profileData.soloDivision = divMatch[1];
+              break;
+            }
+          }
+        }
+
+        // Parser LP
+        const lpMatch = html.match(/(\d+)\s*LP/i) || html.match(/"leaguePoints"\s*:\s*(\d+)/i);
+        if (lpMatch) {
+          profileData.soloLP = parseInt(lpMatch[1]);
+        }
+
+        // Parser W/L et winrate
+        const wlPatterns = [
+          /(\d+)\s*W\s*[\/-]\s*(\d+)\s*L/i,
+          /(\d+)\s*wins?\s*[\/-]\s*(\d+)\s*loss/i,
+          /"wins"\s*:\s*(\d+)[^}]*"losses"\s*:\s*(\d+)/i
+        ];
+
+        for (const pattern of wlPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            profileData.soloWins = parseInt(match[1]);
+            profileData.soloLosses = parseInt(match[2]);
+            break;
+          }
+        }
+
+        // Parser winrate
+        const wrMatch = html.match(/(\d+(?:\.\d+)?)\s*%\s*(?:Win|WR)/i) || 
+                       html.match(/winrate[^>]*>(\d+(?:\.\d+)?)\s*%/i);
+        if (wrMatch) {
+          profileData.soloWinrate = Math.round(parseFloat(wrMatch[1]));
+        } else if (profileData.soloWins + profileData.soloLosses > 0) {
+          profileData.soloWinrate = Math.round((profileData.soloWins / (profileData.soloWins + profileData.soloLosses)) * 100);
+        }
+
+        // Parser champions favoris
+        const champPattern = /champion\/([A-Za-z]+)/gi;
+        const champMatches = html.matchAll(champPattern);
+        const champions = new Set();
+        for (const match of champMatches) {
+          if (champions.size < 5) {
+            const champ = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+            if (!['All', 'Stats', 'Builds', 'Runes'].includes(champ)) {
+              champions.add(champ);
+            }
+          }
+        }
+        if (champions.size > 0) {
+          profileData.topChampions = Array.from(champions);
+        }
+
+        // Parser KDA moyen
+        const kdaPatterns = [
+          /(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)\s*\/\s*(\d+\.?\d*)\s*(?:KDA|Average)/i,
+          /KDA[^>]*>(\d+\.?\d*)/i,
+          /"kda"\s*:\s*(\d+\.?\d*)/i
+        ];
+        
+        for (const pattern of kdaPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            if (match[3]) {
+              profileData.avgKDA = `${match[1]}/${match[2]}/${match[3]}`;
+            } else {
+              profileData.avgKDA = match[1];
+            }
+            break;
+          }
+        }
+
+        // Parser CS moyen
+        const csMatch = html.match(/(\d+\.?\d*)\s*(?:CS|Creeps)/i);
+        if (csMatch) {
+          profileData.avgCS = parseFloat(csMatch[1]);
+        }
+
+        // Parser nombre de games
+        const gamesMatch = html.match(/(\d+)\s*(?:games?|matches?|played)/i);
+        if (gamesMatch) {
+          profileData.gamesPlayed = parseInt(gamesMatch[1]);
+        }
+      }
+    }
+  } catch (e) {
+    console.log('League of Graphs error:', e.message);
+  }
+
+  // 2. Backup: Essayer OP.GG si pas assez de données
+  if (!profileData.summonerLevel || !profileData.soloRank || profileData.soloRank === 'Unranked') {
     try {
-      const riotIdName = tag ? `${name}-${tag}` : name;
-      const uggUrl = `https://u.gg/api/lol/profile-data/${uggRegion[region] || region}/${encodeURIComponent(riotIdName)}`;
+      const opggUrl = `https://www.op.gg/summoners/${regionInfo.opgg}/${encodeURIComponent(riotIdPath)}`;
+      console.log('Fetching OPGG:', opggUrl);
       
-      const uggResponse = await fetchWithTimeout(uggUrl, {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }, 15000);
+      const opggResponse = await fetchWithTimeout(opggUrl, headers, 12000);
       
-      if (uggResponse.ok) {
-        const uggData = await uggResponse.json();
-        if (uggData && uggData.data) {
-          const d = uggData.data;
-          profileData = {
-            name: d.summonerName || d.riotIdGameName || name,
-            tag: d.riotIdTagLine || tag,
-            level: d.summonerLevel,
-            profileIconId: d.profileIconId
-          };
-          rankedData = d.rankData || d.leagueData;
+      if (opggResponse.ok) {
+        const html = await opggResponse.text();
+        
+        // Parser le niveau
+        if (!profileData.summonerLevel) {
+          const levelMatch = html.match(/Level\s*(\d+)/i) || html.match(/"level"\s*:\s*(\d+)/i);
+          if (levelMatch) {
+            profileData.summonerLevel = parseInt(levelMatch[1]);
+          }
+        }
+
+        // Parser le rang si pas encore trouvé
+        if (!profileData.soloTier) {
+          const rankMatch = html.match(/(Iron|Bronze|Silver|Gold|Platinum|Emerald|Diamond|Master|Grandmaster|Challenger)\s*([IV1-4]*)/i);
+          if (rankMatch) {
+            profileData.soloRank = `${rankMatch[1]} ${rankMatch[2] || ''}`.trim();
+            profileData.soloTier = rankMatch[1].toUpperCase();
+            profileData.soloDivision = rankMatch[2] || null;
+          }
+        }
+
+        // Parser l'icône
+        if (!profileData.profileIcon) {
+          const iconMatch = html.match(/profileicon\/(\d+)/i);
+          if (iconMatch) {
+            profileData.profileIcon = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${iconMatch[1]}.png`;
+          }
         }
       }
     } catch (e) {
-      console.log('UGG API error:', e.message);
+      console.log('OPGG error:', e.message);
     }
-
-    // 2. Essayer via League of Graphs data (version simplifiée)
-    if (!profileData) {
-      try {
-        const logRegion = region.replace('1', '');
-        const riotIdPath = tag ? `${name}-${tag}` : name;
-        const logUrl = `https://www.leagueofgraphs.com/summoner/${logRegion}/${encodeURIComponent(riotIdPath)}`;
-        
-        // Juste valider que le format est correct
-        profileData = {
-          name: name,
-          tag: tag,
-          level: null,
-          profileIconId: 29
-        };
-      } catch (e) {
-        console.log('LoG error:', e.message);
-      }
-    }
-
-    // 3. Si toujours pas de profil, accepter quand même le format Riot ID valide
-    if (!profileData) {
-      return res.status(200).json({
-        success: true,
-        validated: true,
-        data: {
-          name: name,
-          tag: tag || null,
-          region: region,
-          regionDisplay: regionDisplay[region] || region.toUpperCase(),
-          summonerLevel: null,
-          profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/29.png`,
-          soloRank: 'Unranked',
-          flexRank: 'Unranked',
-          message: 'Compte enregistré'
-        }
-      });
-    }
-
-    // Parser les données ranked
-    let soloData = null;
-    let flexData = null;
-    
-    if (rankedData && Array.isArray(rankedData)) {
-      soloData = rankedData.find(r => r.queueType === 'RANKED_SOLO_5x5');
-      flexData = rankedData.find(r => r.queueType === 'RANKED_FLEX_SR');
-    }
-
-    const formatRank = (data) => {
-      if (!data || !data.tier) return 'Unranked';
-      const tier = data.tier.charAt(0) + data.tier.slice(1).toLowerCase();
-      return `${tier} ${data.rank || ''}`.trim();
-    };
-
-    return res.status(200).json({
-      success: true,
-      validated: true,
-      data: {
-        name: profileData.name,
-        tag: profileData.tag || null,
-        region: region,
-        regionDisplay: regionDisplay[region] || region.toUpperCase(),
-        summonerLevel: profileData.level,
-        profileIcon: profileData.profileIcon || `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${profileData.profileIconId || 29}.png`,
-        
-        // Rangs
-        soloRank: formatRank(soloData),
-        soloTier: soloData?.tier || null,
-        soloDivision: soloData?.rank || null,
-        soloLP: soloData?.leaguePoints || 0,
-        soloWins: soloData?.wins || 0,
-        soloLosses: soloData?.losses || 0,
-        soloWinrate: soloData?.wins && soloData?.losses 
-          ? Math.round((soloData.wins / (soloData.wins + soloData.losses)) * 100) 
-          : null,
-        
-        flexRank: formatRank(flexData),
-        flexTier: flexData?.tier || null,
-        flexDivision: flexData?.rank || null,
-        flexLP: flexData?.leaguePoints || 0,
-        flexWins: flexData?.wins || 0,
-        flexLosses: flexData?.losses || 0,
-        flexWinrate: flexData?.wins && flexData?.losses 
-          ? Math.round((flexData.wins / (flexData.wins + flexData.losses)) * 100) 
-          : null
-      }
-    });
-
-  } catch (error) {
-    console.error('LoL API error:', error);
-    
-    // En cas d'erreur, on valide quand même avec les infos de base
-    return res.status(200).json({
-      success: true,
-      validated: true,
-      data: {
-        name: name,
-        tag: tag || null,
-        region: region,
-        summonerLevel: null,
-        profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/29.png`,
-        soloRank: 'Unranked',
-        flexRank: 'Unranked',
-        message: 'Compte enregistré'
-      }
-    });
   }
+
+  // 3. Dernier recours: Porofessor
+  if (!profileData.summonerLevel) {
+    try {
+      const poroUrl = `https://www.porofessor.gg/live/${regionInfo.log}/${encodeURIComponent(riotIdPath)}`;
+      console.log('Fetching Porofessor:', poroUrl);
+      
+      const poroResponse = await fetchWithTimeout(poroUrl, headers, 10000);
+      
+      if (poroResponse.ok) {
+        const html = await poroResponse.text();
+        
+        const levelMatch = html.match(/level[^>]*>\s*(\d+)/i);
+        if (levelMatch) {
+          profileData.summonerLevel = parseInt(levelMatch[1]);
+        }
+      }
+    } catch (e) {
+      console.log('Porofessor error:', e.message);
+    }
+  }
+
+  // Icône par défaut si pas trouvée
+  if (!profileData.profileIcon) {
+    profileData.profileIcon = `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/29.png`;
+  }
+
+  // Retourner les données
+  return res.status(200).json({
+    success: true,
+    validated: true,
+    data: profileData
+  });
 }
 
 async function fetchWithTimeout(url, headers, timeout) {
@@ -192,7 +311,8 @@ async function fetchWithTimeout(url, headers, timeout) {
   try {
     const response = await fetch(url, { 
       signal: controller.signal, 
-      headers 
+      headers,
+      redirect: 'follow'
     });
     clearTimeout(timeoutId);
     return response;
